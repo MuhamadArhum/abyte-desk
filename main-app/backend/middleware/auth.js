@@ -68,17 +68,19 @@ const authorize = (...roles) => {
 const requirePermission = (moduleKey) => async (req, res, next) => {
   if (req.user.role_name === 'Admin') return next();
   try {
+    // Match exact key OR any sub-key (e.g. 'sales' matches 'sales.pos', 'sales.orders', etc.)
     const rows = await queryDb(
       req.tenantDb,
-      'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key IN (?, ?) AND is_allowed = 1 LIMIT 1',
-      [req.user.role_name, moduleKey, moduleKey.split('.')[0]]
+      'SELECT 1 FROM role_permissions WHERE role_name = ? AND (module_key = ? OR module_key LIKE ?) AND is_allowed = 1 LIMIT 1',
+      [req.user.role_name, moduleKey, `${moduleKey}.%`]
     );
     if (rows.length === 0) {
       return res.status(403).json({ message: 'Access denied' });
     }
     next();
-  } catch {
-    return res.status(403).json({ message: 'Access denied' });
+  } catch (err) {
+    console.error('Permission check error:', err.message);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 

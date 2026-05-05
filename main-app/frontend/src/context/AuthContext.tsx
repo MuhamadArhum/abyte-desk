@@ -162,10 +162,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTenantConfig(config);
   }, []);
 
-  // RBAC: check individual module key
+  // RBAC: check individual module key or any sub-key (e.g. 'sales' matches 'sales.pos')
   const hasPermission = useCallback((moduleKey: string): boolean => {
     if (permissions === null) return true; // Admin: full access
-    return permissions.includes(moduleKey);
+    return permissions.some(p => p === moduleKey || p.startsWith(`${moduleKey}.`));
   }, [permissions]);
 
   // Multi-tenant: check if module is enabled for this tenant
