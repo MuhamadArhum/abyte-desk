@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { printReceipt, printToThermalPrinter, isThermalPrinterAvailable } from '../utils/receiptPrinter';
+import { printKOT, checkAgentHealth } from '../utils/agentPrinter';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -277,6 +278,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         }
         setSuccessSale(completedSale);
         if (settings?.auto_print_receipt) setTimeout(() => doPrint(completedSale), 300);
+        // KOT for dine-in/takeaway completed orders
+        const ot = pendingSale?.order_type;
+        if (ot === 'dine_in' || ot === 'takeaway') setTimeout(() => doKOT(completedSale), 400);
       } else {
         // Build loyalty redeem points
         let loyaltyRedeemPts = 0;
@@ -355,6 +359,24 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     } else {
       printReceipt(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
     }
+  };
+
+  const doKOT = async (sale: any) => {
+    if (!sale) return;
+    const agent = await checkAgentHealth();
+    if (!agent) return; // No agent running — skip KOT
+    await printKOT({
+      tokenNo:     sale.token_no     || undefined,
+      tableNo:     sale.table_name   || undefined,
+      date:        new Date().toLocaleString(),
+      cashierName: user?.name || 'Staff',
+      items: (sale.items || cart).map((item: any) => ({
+        name:          item.product_name || item.name,
+        quantity:      item.quantity,
+        category_id:   item.category_id,
+        category_name: item.category_name,
+      })),
+    });
   };
 
   const handlePrint = () => doPrint(successSale);

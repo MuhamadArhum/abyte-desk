@@ -12,6 +12,7 @@ import DailyReportModal from '../../components/DailyReportModal';
 import RegisterCloseModal from '../../components/RegisterCloseModal';
 import ProductVariantModal from '../../components/ProductVariantModal';
 import api from '../../utils/api';
+import { printKOT, checkAgentHealth } from '../../utils/agentPrinter';
 
 // ── TableSearchInput ─────────────────────────────────────────
 const TableSearchInput = ({
@@ -276,10 +277,33 @@ const POS = () => {
     } catch { setTables([]); }
   };
 
-  const handlePrintKOT = () => {
+  const handlePrintKOT = async (tokenNo?: string) => {
     const tableName = orderType === 'dine_in'
-      ? (tables.find(t => t.table_id === selectedTableId)?.table_name || 'No Table')
-      : 'TAKEAWAY';
+      ? (tables.find(t => t.table_id === selectedTableId)?.table_name || '')
+      : orderType === 'takeaway' ? 'TAKEAWAY' : '';
+
+    const kotItems = cart.map(item => ({
+      name:          item.product_name + (item.variant_name ? ` (${item.variant_name})` : ''),
+      quantity:      item.quantity,
+      category_id:   item.category_id,
+      category_name: item.category_name,
+      note:          undefined,
+    }));
+
+    // Try Printer Agent first (section-wise routing)
+    const agent = await checkAgentHealth();
+    if (agent) {
+      await printKOT({
+        tokenNo:     tokenNo || undefined,
+        tableNo:     tableName || undefined,
+        date:        new Date().toLocaleString(),
+        cashierName: user?.name || 'Staff',
+        items:       kotItems,
+      });
+      return;
+    }
+
+    // Fallback: browser print window
     const kotWin = window.open('', '_blank', 'width=320,height=600');
     if (!kotWin) return;
     kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
@@ -293,15 +317,15 @@ const POS = () => {
         .qty{font-weight:bold;min-width:28px}
         .name{flex:1}
         .footer{text-align:center;font-size:10px;margin-top:8px}
-      </style>
-    </head><body>
+      </style></head><body>
       <h2>KITCHEN ORDER TICKET</h2>
       <div class="sub">${new Date().toLocaleString()}</div>
       <hr/>
-      <div class="tbl">${tableName}</div>
-      <div class="sub">Waiter: ${user?.name || ''}</div>
+      ${tableName ? `<div class="tbl">${tableName}</div>` : ''}
+      ${tokenNo ? `<div class="tbl">Token: ${tokenNo}</div>` : ''}
+      <div class="sub">By: ${user?.name || ''}</div>
       <hr/>
-      ${cart.map(item => `<div class="row"><span class="qty">${item.quantity}x</span><span class="name">${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''}</span></div>`).join('')}
+      ${cart.map(i => `<div class="row"><span class="qty">${i.quantity}x</span><span class="name">${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}</span></div>`).join('')}
       <hr/>
       <div class="footer">--- KOT END ---</div>
     </body></html>`);
@@ -699,8 +723,8 @@ const POS = () => {
       const token = res.data?.token_no || null;
       setHoldToken(token);
       setTimeout(() => setHoldToken(null), 5000);
-      if (orderType === 'dine_in') {
-        handlePrintKOT();
+      if (orderType === 'dine_in' || orderType === 'takeaway') {
+        handlePrintKOT(token || undefined);
         if (newSaleId) api.patch(`/sales/${newSaleId}/kot-printed`).catch(() => {});
       }
     } catch (error) {

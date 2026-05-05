@@ -6,13 +6,15 @@ export interface Product {
   price: number;
   stock_quantity: number;
   barcode: string;
+  category_id?: number;
+  category_name?: string;
 }
 
 export interface CartItem extends Product {
   quantity: number;
   variant_id?: number;
   variant_name?: string;
-  available_stock?: number; // For variants, this is different from stock_quantity
+  available_stock?: number;
 }
 
 export interface AppliedBundle {

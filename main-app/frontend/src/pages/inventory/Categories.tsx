@@ -180,6 +180,11 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
       <React.Fragment key={cat.category_id}>
         <tr className={`hover:bg-gray-50 border-b border-gray-100 ${depth > 0 ? 'bg-gray-50/50' : ''}`}>
           <td className="px-4 py-3">
+            <span className="inline-block px-1.5 py-0.5 text-xs font-mono font-semibold bg-gray-100 text-gray-500 rounded">
+              #{cat.category_id}
+            </span>
+          </td>
+          <td className="px-4 py-3">
             <div className="flex items-center gap-2" style={{ paddingLeft: `${indent}px` }}>
               {/* Expand toggle */}
               <button
@@ -342,6 +347,7 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category Name</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Products</th>
@@ -356,7 +362,7 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
                   }
                   {displayList.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                      <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                         {search ? 'No categories match your search.' : `No ${currentTab.label.toLowerCase()} categories yet. Click "Add Category" to create one.`}
                       </td>
                     </tr>

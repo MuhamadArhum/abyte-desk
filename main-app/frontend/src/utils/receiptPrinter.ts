@@ -809,8 +809,9 @@ export function downloadReceipt(
 }
 
 // Check if thermal printer is configured (backend-based)
-export function isThermalPrinterAvailable(settings: any): boolean {
-  return settings?.printer_type === 'network' || settings?.printer_type === 'usb';
+export function isThermalPrinterAvailable(_settings: any): boolean {
+  // Always try thermal path — agent check happens inside printToThermalPrinter
+  return true;
 }
 
 // Send receipt to thermal printer.

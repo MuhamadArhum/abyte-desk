@@ -135,7 +135,9 @@
       "Bash(kill %1)",
       "Read(//d/AByte-POS/printer-agent/**)",
       "Bash(taskkill /F /IM node.exe echo \"UI check done\")",
-      "Bash(taskkill /F /IM node.exe)"
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(mkdir -p dist)",
+      "Bash(npx pkg *)"
     ]
   }
 }

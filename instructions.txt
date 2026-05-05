@@ -6,3 +6,6 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+Acha Ab hum Printing Py Kaam krain Gy Proper 
+ye btao K Kya Hmara Agent Proper Ready Hai For printing ?
+or btao k hum Printers kesy add krain gy kesy section wise add hongy sara process kesy hoga

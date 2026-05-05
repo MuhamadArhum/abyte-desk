@@ -1,23 +1,23 @@
 {
   "name": "abyte-printer-agent",
-  "version": "2.1.0",
-  "description": "Local printer bridge for AByte POS — runs on cashier PC, accepts print jobs from browser",
+  "version": "3.0.0",
+  "description": "Local printer bridge for AByte POS",
   "main": "agent.js",
   "scripts": {
     "start": "node agent.js",
-    "dev": "node agent.js",
     "build-exe": "pkg agent.js --target node18-win-x64 --output dist/ABytePrinterAgent.exe --compress GZip"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "serialport": "^12.0.0"
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "pkg": "^5.8.1"
   },
   "pkg": {
-    "assets": ["config.json"],
-    "targets": ["node18-win-x64"]
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
   }
 }
