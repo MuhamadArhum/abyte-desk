@@ -5,8 +5,7 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-order.tsx main i think pending order and complete order dono show hoo rahy hain usko Running order module bnao or us main done order ko khatam kro 
-
+Same iss trha Delivery waly main sy bhi DOne order khatam kro 
 
 Ok Ab Hum Mobile App Bhi Bnaty hain Iska 
 1: Mobile App Just Waiter k Liye hogi 

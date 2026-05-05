@@ -5,14 +5,10 @@ import {
   Clock, MapPin, Phone, User, Calendar, DollarSign, Loader2,
   RefreshCw, Package, XCircle, Navigation, ChevronRight,
   Save, ShoppingCart, CreditCard,
-  Eye, Printer, LayoutGrid, List,
+  LayoutGrid, List,
 } from 'lucide-react';
-import { printReceipt } from '../../utils/receiptPrinter';
-import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
-import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
 import CheckoutModal from '../../components/CheckoutModal';
 
 type Status = 'pending' | 'assigned' | 'dispatched' | 'in_transit' | 'delivered' | 'failed' | 'cancelled';
@@ -432,26 +428,14 @@ const Deliveries = () => {
   const [stats, setStats]           = useState<Stats | null>(null);
   const [loading, setLoading]       = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [total, setTotal]           = useState(0);
-  const [page, setPage]             = useState(1);
-  const [limit]                     = useState(20);
-  const [view, setView]             = useState<'running' | 'completed'>('running');
   const [layout, setLayout]         = useState<'card' | 'table'>(() => (localStorage.getItem('delivery_layout') as 'card' | 'table') || 'card');
   const [cs, setCs]                 = useState('Rs.');
 
   const switchLayout = (l: 'card' | 'table') => { setLayout(l); localStorage.setItem('delivery_layout', l); };
 
-  const [search, setSearch]     = useState('');
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
-  const [dateTo, setDateTo]     = useState(localToday());
+  const [search, setSearch] = useState('');
 
-  // Completed view: bill preview
-  const [previewDelivery, setPreviewDelivery] = useState<Delivery | null>(null);
-  const [previewSale, setPreviewSale]         = useState<any>(null);
-  const [previewSettings, setPreviewSettings] = useState<any>(null);
-  const [previewLoading, setPreviewLoading]   = useState(false);
-
-  const [editItem, setEditItem]     = useState<Delivery | null>(null);
+  const [editItem, setEditItem] = useState<Delivery | null>(null);
   const [form, setForm]             = useState(emptyForm());
   const [saving, setSaving]         = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
@@ -464,24 +448,15 @@ const Deliveries = () => {
   const fetchDeliveries = useCallback(async () => {
     setLoading(true);
     try {
-      if (view === 'running') {
-        const res = await api.get('/deliveries', { params: { limit: 200, search } });
-        const all = (res.data.data || []).filter((d: Delivery) => RUNNING.includes(d.status));
-        setDeliveries(all);
-        setTotal(all.length);
-      } else {
-        const res = await api.get('/deliveries', {
-          params: { page, limit, search, date_from: dateFrom, date_to: dateTo, status: 'delivered,failed,cancelled' },
-        });
-        setDeliveries(res.data.data);
-        setTotal(res.data.pagination.total);
-      }
+      const res = await api.get('/deliveries', { params: { limit: 200, search } });
+      const all = (res.data.data || []).filter((d: Delivery) => RUNNING.includes(d.status));
+      setDeliveries(all);
     } catch {
       toast.error('Failed to load deliveries');
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, view, dateFrom, dateTo]);
+  }, [search]);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -498,19 +473,6 @@ const Deliveries = () => {
   useEffect(() => {
     api.get('/settings').then(r => setCs(r.data.currency_symbol || 'Rs.')).catch(() => {});
   }, []);
-
-  const openBillPreview = async (d: Delivery) => {
-    if (!d.sale_id) return;
-    setPreviewDelivery(d);
-    setPreviewLoading(true);
-    try {
-      const [sRes, stRes] = await Promise.all([api.get(`/sales/${d.sale_id}`), api.get('/settings')]);
-      setPreviewSale(sRes.data);
-      setPreviewSettings(stRes.data);
-    } catch { toast.error('Failed to load receipt'); setPreviewDelivery(null); }
-    finally { setPreviewLoading(false); }
-  };
-  const closePreview = () => { setPreviewDelivery(null); setPreviewSale(null); setPreviewSettings(null); };
 
   const handleUpdate = async () => {
     if (!editItem) return;
@@ -623,43 +585,6 @@ const Deliveries = () => {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 md:gap-3 mt-3 md:mt-4">
-            <button
-              onClick={() => { setView('running'); setPage(1); }}
-              className={`flex items-center gap-1.5 md:gap-2.5 px-3 md:px-6 py-2 md:py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
-                view === 'running'
-                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-              }`}
-            >
-              <Navigation size={15} /> Running Orders
-              {!statsLoading && runningCount > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  view === 'running' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
-                }`}>
-                  {runningCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => { setView('completed'); setPage(1); }}
-              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
-                view === 'completed'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-              }`}
-            >
-              <CheckCircle size={16} /> Completed
-              {!statsLoading && (stats?.delivered ?? 0) > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  view === 'completed' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
-                }`}>
-                  {stats?.delivered}
-                </span>
-              )}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -683,41 +608,29 @@ const Deliveries = () => {
               className="form-input pl-9"
               placeholder="Search delivery #, customer, rider, city..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
             />
           </div>
-          {view === 'completed' && (
-            <DateRangeFilter
-              standalone={false}
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-              onFromChange={d => { setDateFrom(d); setPage(1); }}
-              onToChange={d => { setDateTo(d); setPage(1); }}
-            />
-          )}
-          {view === 'running' && (
-            <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 gap-1">
-              <button
-                onClick={() => switchLayout('card')}
-                title="Card View"
-                className={`p-1.5 rounded-md transition-colors ${layout === 'card' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => switchLayout('table')}
-                title="Table View"
-                className={`p-1.5 rounded-md transition-colors ${layout === 'table' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
-              >
-                <List size={16} />
-              </button>
-            </div>
-          )}
+          <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1 gap-1">
+            <button
+              onClick={() => switchLayout('card')}
+              title="Card View"
+              className={`p-1.5 rounded-md transition-colors ${layout === 'card' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => switchLayout('table')}
+              title="Table View"
+              className={`p-1.5 rounded-md transition-colors ${layout === 'table' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <List size={16} />
+            </button>
+          </div>
         </div>
 
         {/* ── Running Orders ───────────────────────────────────────────── */}
-        {view === 'running' && (
-          loading ? (
+        {loading ? (
             <div className="flex items-center justify-center h-[55vh]">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
@@ -873,197 +786,8 @@ const Deliveries = () => {
               </div>
             </>
           )
-        )}
+        }
 
-        {/* ── Completed Deliveries Table ───────────────────────────────── */}
-        {view === 'completed' && (
-          loading ? (
-            <div className="flex items-center justify-center h-[55vh]">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
-                <p className="text-gray-500 font-medium">Loading completed deliveries...</p>
-              </div>
-            </div>
-          ) : deliveries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-[55vh] text-gray-400">
-              <div className="bg-emerald-50 p-8 rounded-full mb-4 border-2 border-emerald-100">
-                <Truck size={56} className="text-emerald-300" />
-              </div>
-              <p className="text-xl font-semibold text-gray-500">No Completed Deliveries</p>
-              <p className="text-sm text-gray-400 mt-1">Try adjusting the date range or search</p>
-            </div>
-          ) : (
-            <>
-              <div className="bg-white border-2 border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 text-sm uppercase tracking-wider">
-                      <tr>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><Truck size={15} /> Delivery #</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><Package size={15} /> Invoice No</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><Calendar size={15} /> Date &amp; Time</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><User size={15} /> Customer</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><MapPin size={15} /> Address</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Rider</th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Sub Total</th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Tax</th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Service</th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
-                          <div className="flex items-center justify-end gap-2"><Truck size={14} /> Del. Charges</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">
-                          <div className="flex items-center justify-end gap-2"><DollarSign size={15} /> Grand Total</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">
-                          <div className="flex items-center gap-2"><CreditCard size={15} /> Payment</div>
-                        </th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200">Status</th>
-                        <th className="px-4 py-4 font-bold border-b-2 border-gray-200 text-right">Actions</th>
-                      </tr>
-                    </thead>
-
-                    {/* Summary footer */}
-                    <tfoot className="bg-gradient-to-r from-emerald-50 to-emerald-100 border-t-2 border-emerald-300">
-                      <tr>
-                        <td className="px-4 py-3 font-bold text-emerald-800 text-sm" colSpan={6}>
-                          Total: {total} deliveries
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-700 text-sm">
-                          {cs} {deliveries.reduce((s, d) => s + parseFloat(String(d.sale_sub_total || 0)), 0).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-700 text-sm">
-                          {cs} {deliveries.reduce((s, d) => s + parseFloat(String(d.sale_tax_amount || 0)), 0).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-purple-700 text-sm">
-                          {cs} {deliveries.reduce((s, d) => s + parseFloat(String(d.sale_service_amount || 0)), 0).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-800 text-sm">
-                          {cs} {deliveries.reduce((s, d) => s + parseFloat(String(d.delivery_charges || 0)), 0).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-800 text-base">
-                          {cs} {deliveries.reduce((s, d) =>
-                            s + parseFloat(String(d.sale_total_amount || 0)), 0
-                          ).toFixed(2)}
-                        </td>
-                        <td colSpan={3}></td>
-                      </tr>
-                    </tfoot>
-
-                    <tbody className="divide-y divide-gray-100">
-                      {deliveries.map(d => {
-                        const delCharges = parseFloat(String(d.delivery_charges || 0));
-                        const saleTotal  = parseFloat(String(d.sale_total_amount || 0));
-                        const subTotal   = parseFloat(String(d.sale_sub_total || 0));
-                        const taxAmt     = parseFloat(String(d.sale_tax_amount || 0));
-                        const serviceAmt = parseFloat(String(d.sale_service_amount || 0));
-                        const grandTotal = saleTotal; // sale_total_amount already includes delivery_charges
-                        const dateVal    = d.actual_delivery || d.created_at;
-                        return (
-                          <tr key={d.delivery_id} className="hover:bg-gradient-to-r hover:from-emerald-50/30 hover:to-emerald-50/30 transition-all duration-150">
-                            <td className="px-4 py-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-bold">
-                                <Truck size={11} />{d.delivery_number}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="font-bold text-emerald-700">
-                                {d.sale_invoice_no || (d.sale_id ? `#${d.sale_id}` : '—')}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-gray-600 text-sm">
-                              {new Date(dateVal).toLocaleString('en-US', {
-                                month: 'short', day: 'numeric', year: 'numeric',
-                                hour: '2-digit', minute: '2-digit',
-                              })}
-                            </td>
-                            <td className="px-4 py-4 text-gray-700 font-medium">{d.customer_name}</td>
-                            <td className="px-4 py-4 max-w-[160px]">
-                              <p className="text-sm text-gray-700 truncate">{d.delivery_address}</p>
-                              {d.delivery_city && <p className="text-xs text-gray-400">{d.delivery_city}</p>}
-                            </td>
-                            <td className="px-4 py-4">
-                              {d.rider_name
-                                ? <><p className="text-sm text-gray-700 font-medium">{d.rider_name}</p>{d.rider_phone && <p className="text-xs text-gray-400">{d.rider_phone}</p>}</>
-                                : <span className="text-xs text-gray-400 italic">—</span>
-                              }
-                            </td>
-                            <td className="px-4 py-4 text-right text-gray-700">
-                              {subTotal > 0 ? `${cs} ${subTotal.toFixed(2)}` : <span className="text-gray-300">—</span>}
-                            </td>
-                            <td className="px-4 py-4 text-right text-blue-600">
-                              {taxAmt > 0 ? `${cs} ${taxAmt.toFixed(2)}` : <span className="text-gray-300">—</span>}
-                            </td>
-                            <td className="px-4 py-4 text-right text-purple-600">
-                              {serviceAmt > 0 ? `${cs} ${serviceAmt.toFixed(2)}` : <span className="text-gray-300">—</span>}
-                            </td>
-                            <td className="px-4 py-4 text-right">
-                              {delCharges > 0
-                                ? <span className="font-semibold text-blue-700">{cs} {delCharges.toFixed(2)}</span>
-                                : <span className="text-gray-300">—</span>
-                              }
-                            </td>
-                            <td className="px-4 py-4 text-right font-bold text-lg text-emerald-600">
-                              {cs} {grandTotal.toFixed(2)}
-                            </td>
-                            <td className="px-4 py-4">
-                              {d.sale_payment_method
-                                ? <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">
-                                    {d.sale_payment_method}
-                                  </span>
-                                : <span className="text-xs text-gray-400 italic">—</span>
-                              }
-                            </td>
-                            <td className="px-4 py-4">
-                              <StatusBadge status={d.status} />
-                            </td>
-                            <td className="px-4 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {d.sale_id && (
-                                  <>
-                                    <button
-                                      onClick={() => openBillPreview(d)}
-                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
-                                      title="View Receipt"
-                                    >
-                                      <Eye size={17} />
-                                    </button>
-                                    <button
-                                      onClick={() => openBillPreview(d)}
-                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
-                                      title="Print Receipt"
-                                    >
-                                      <Printer size={17} />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {Math.ceil(total / limit) > 1 && (
-                  <div className="px-4 py-3 border-t border-gray-100">
-                    <Pagination currentPage={page} totalPages={Math.ceil(total / limit)} onPageChange={setPage} totalItems={total} itemsPerPage={limit} />
-                  </div>
-                )}
-              </div>
-            </>
-          )
-        )}
       </div>
 
       {/* ── Edit Drawer ──────────────────────────────────────────────────── */}
@@ -1075,106 +799,6 @@ const Deliveries = () => {
         />
       )}
 
-      {/* ── Bill Preview Modal ───────────────────────────────────────────── */}
-      {previewDelivery && (
-        previewLoading ? (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
-              <p className="text-gray-500">Loading receipt...</p>
-            </div>
-          </div>
-        ) : previewSale ? (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={closePreview}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800">Receipt Preview</h2>
-                  <p className="text-sm text-blue-600 font-bold flex items-center gap-1.5">
-                    <Truck size={13} />{previewDelivery.delivery_number}
-                  </p>
-                </div>
-                <button onClick={closePreview} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  {[
-                    ['Invoice', previewSale.invoice_no || `#${previewSale.sale_id}`],
-                    ['Customer', previewSale.customer_name || 'Walk-in'],
-                    ['Address', previewDelivery.delivery_address],
-                    ['Rider', previewDelivery.rider_name || '—'],
-                  ].map(([label, value]) => (
-                    <div key={label} className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-0.5">{label}</p>
-                      <p className="font-semibold text-gray-700 text-sm truncate">{value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-gray-600 font-semibold">Item</th>
-                        <th className="px-3 py-2 text-center text-gray-600 font-semibold">Qty</th>
-                        <th className="px-3 py-2 text-right text-gray-600 font-semibold">Price</th>
-                        <th className="px-3 py-2 text-right text-gray-600 font-semibold">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {(previewSale.items || []).map((item: any, idx: number) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-gray-800 font-medium">{item.product_name}</td>
-                          <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
-                          <td className="px-3 py-2 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="space-y-2 bg-gray-50 rounded-xl p-4">
-                  {(() => {
-                    const items = previewSale.items || [];
-                    const subT = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
-                    const disc = parseFloat(previewSale.discount || 0);
-                    const tax  = parseFloat(previewSale.tax_amount || 0);
-                    const svc  = parseFloat(previewSale.additional_charges_amount || 0);
-                    const delC = parseFloat(String(previewDelivery.delivery_charges || 0));
-                    const gT   = parseFloat(previewSale.total_amount || 0) + delC;
-                    return (
-                      <>
-                        <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subT.toFixed(2)}</span></div>
-                        {disc > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {disc.toFixed(2)}</span></div>}
-                        {tax > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax</span><span>{cs} {tax.toFixed(2)}</span></div>}
-                        {svc > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Service Charges</span><span>{cs} {svc.toFixed(2)}</span></div>}
-                        {delC > 0 && (
-                          <div className="flex justify-between text-sm text-blue-700 font-semibold">
-                            <span className="flex items-center gap-1"><Truck size={12} /> Delivery Charges</span>
-                            <span>{cs} {delC.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-2">
-                          <span>Grand Total</span><span className="text-emerald-600">{cs} {gT.toFixed(2)}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-              <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
-                <div className="flex-1 text-xs text-gray-400">Press <kbd className="bg-white border border-gray-200 px-1.5 py-0.5 rounded font-mono font-bold">Ctrl+P</kbd> to print</div>
-                <button onClick={closePreview} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
-                <button
-                  onClick={() => { printReceipt(previewSale, previewSettings, previewSale.cashier_name || 'Staff', previewSale.customer_name); closePreview(); }}
-                  className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
-                >
-                  <Printer size={16} /> Print
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null
-      )}
 
       <CheckoutModal
         isOpen={!!checkoutDelivery && !checkoutSaleLoading && !!checkoutSale}
