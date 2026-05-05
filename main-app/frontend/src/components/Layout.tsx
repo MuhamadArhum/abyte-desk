@@ -56,6 +56,7 @@ import {
   FlaskConical,
   Factory,
   Shield,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -156,6 +157,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ShoppingCart, label: 'POS', path: '/pos', moduleKey: 'sales.pos' },
         { icon: ShoppingBag, label: 'Orders', path: '/walk-in-orders', moduleKey: 'sales.pos' },
         { icon: Truck, label: 'Delivery', path: '/deliveries', moduleKey: 'sales.deliveries' },
+        { icon: CheckCircle, label: 'Done Orders', path: '/done-orders', moduleKey: 'sales.orders' },
         { icon: Wallet, label: 'Cash Register', path: '/cash-register', moduleKey: 'sales.register' },
         { icon: RotateCcw, label: 'Returns', path: '/returns', moduleKey: 'sales.returns' },
         { icon: FileText, label: 'Quotations', path: '/quotations', moduleKey: 'sales.quotations' },

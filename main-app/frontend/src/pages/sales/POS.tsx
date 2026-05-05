@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle, UtensilsCrossed, Coffee, Table2 } from 'lucide-react';
-import CompletedOrdersView from '../../components/CompletedOrdersView';
 import Pagination from '../../components/Pagination';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -141,7 +140,6 @@ const POS = () => {
   // ── Permission flags ──────────────────────────────────────────────────────
   const canCreateSale      = canDo('sales.pos', 'create');
   const canUpdateSale      = canDo('sales.pos', 'update');
-  const canViewOrders      = hasPermission('sales.orders');
   const canViewReports     = hasPermission('sales.reports');
   const canCloseRegister   = hasPermission('sales.register');
   const canCreateQuotation = hasPermission('sales.quotations');
@@ -201,8 +199,6 @@ const POS = () => {
   const [qtValidUntil, setQtValidUntil] = useState('');
   const [qtNotes, setQtNotes] = useState('');
 
-  // Completed orders modal (Orders button in header)
-  const [showSalesModal, setShowSalesModal] = useState(false);
   const [, setStoreSettings] = useState<any>(null);
 
   // Mobile cart drawer toggle
@@ -564,10 +560,6 @@ const POS = () => {
         e.preventDefault();
         const input = document.getElementById('search-name-input');
         if (input) input.focus();
-      }
-      if (e.key === 'F5') {
-        e.preventDefault();
-        setShowSalesModal(true);
       }
       if (e.key === 'F8') {
         e.preventDefault();
@@ -1001,16 +993,6 @@ const POS = () => {
                 <Keyboard size={16} />
                 <span className="hidden md:inline text-sm">Keys</span>
               </button>
-              {canViewOrders && (
-                <button
-                  onClick={() => setShowSalesModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
-                >
-                  <FileText size={16} />
-                  <span className="hidden sm:inline">Done Orders</span>
-                  <span className="hidden md:inline text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
-                </button>
-              )}
               {canViewReports && (
                 <button
                   onClick={() => setIsDailyReportOpen(true)}
@@ -1746,7 +1728,6 @@ const POS = () => {
                 { key: 'F1',  desc: 'Show shortcuts' },
                 { key: 'F2',  desc: 'Focus barcode scanner' },
                 { key: 'F3',  desc: 'Focus name search' },
-                { key: 'F5',  desc: 'View done orders' },
                 { key: 'F6',  desc: 'Print Cash Bill (after checkout)' },
                 { key: 'F7',  desc: 'Print Card Bill (after checkout)' },
                 { key: 'F8',  desc: 'Punch/Dispatch order' },
@@ -1826,13 +1807,6 @@ const POS = () => {
         />
       )}
 
-      {/* ── Done Orders Modal ─────────────────────────────────── */}
-      {showSalesModal && (
-        <CompletedOrdersView
-          title="Done Orders"
-          onClose={() => setShowSalesModal(false)}
-        />
-      )}
 
       {/* ── Save as Quotation Modal ────────────────────────────── */}
       {showQuotationModal && (

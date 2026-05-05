@@ -22,6 +22,7 @@ import PriceRules from './pages/sales/PriceRules';
 import SalesTargets from './pages/sales/SalesTargets';
 import Deliveries from './pages/sales/Deliveries';
 import WalkInOrders from './pages/sales/WalkInOrders';
+import DoneOrders from './pages/sales/DoneOrders';
 import SalesReports from './pages/sales/SalesReports';
 
 // Inventory Module
@@ -157,6 +158,7 @@ function App() {
                       <Route path="/price-rules" element={<PermissionGuard moduleKey="sales.pricerules"><PriceRules /></PermissionGuard>} />
                       <Route path="/sales-targets" element={<PermissionGuard moduleKey="sales.targets"><SalesTargets /></PermissionGuard>} />
                       <Route path="/deliveries" element={<PermissionGuard moduleKey="sales.deliveries"><Deliveries /></PermissionGuard>} />
+                      <Route path="/done-orders" element={<PermissionGuard moduleKey="sales.orders"><DoneOrders /></PermissionGuard>} />
                       <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
                       <Route path="/sales-analytics" element={<PermissionGuard moduleKey="sales.reports"><SalesAnalytics /></PermissionGuard>} />
                       {/* Restaurant */}
