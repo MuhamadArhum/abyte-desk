@@ -137,7 +137,8 @@
       "Bash(taskkill /F /IM node.exe echo \"UI check done\")",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(mkdir -p dist)",
-      "Bash(npx pkg *)"
+      "Bash(npx pkg *)",
+      "Bash(git *)"
     ]
   }
 }

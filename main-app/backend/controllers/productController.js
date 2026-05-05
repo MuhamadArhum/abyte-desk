@@ -294,12 +294,13 @@ exports.remove = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
     await ensureCategoryBranch();
+    await ensureProductBranch();
     const { type } = req.query;
     const branch = branchWhere(req, 'c');
 
     let sql = `SELECT c.*, COUNT(p.product_id) as product_count
                FROM categories c
-               LEFT JOIN products p ON c.category_id = p.category_id AND p.branch_id = c.branch_id
+               LEFT JOIN products p ON c.category_id = p.category_id
                WHERE 1=1${branch.clause}`;
     const params = [...branch.params];
     if (type) {
