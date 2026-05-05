@@ -4,8 +4,8 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
-import { printReceipt, printToThermalPrinter, isThermalPrinterAvailable } from '../utils/receiptPrinter';
-import { printKOT, checkAgentHealth } from '../utils/agentPrinter';
+import { printReceipt } from '../utils/receiptPrinter';
+import { printKOT, printInvoice, checkAgentHealth } from '../utils/agentPrinter';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -352,13 +352,52 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     }
   };
 
-  const doPrint = (sale: any) => {
+  const doPrint = async (sale: any) => {
     if (!sale) return;
-    if (isThermalPrinterAvailable(settings)) {
-      printToThermalPrinter(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
-    } else {
-      printReceipt(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
+    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v).replace(/[^\d.-]/g, '')) || 0;
+    const totalAmount   = parseNum(sale.total_amount);
+    const taxAmount     = parseNum(sale.tax_amount);
+    const chargesAmount = parseNum(sale.additional_charges_amount);
+    const discountAmt   = parseNum(sale.discount);
+    const amountPaid    = parseNum(sale.amount_paid);
+
+    const invoiceData = {
+      storeName:      settings?.store_name || 'AByte ERP',
+      storeAddress:   settings?.address    || '',
+      storePhone:     settings?.phone      || '',
+      saleId:         sale.sale_id,
+      invoiceNo:      sale.invoice_no,
+      tokenNo:        sale.token_no,
+      date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
+      cashierName:    user?.name || 'Staff',
+      customerName:   selectedCustomer?.customer_name || '',
+      currencySymbol: settings?.currency_symbol || 'Rs.',
+      items: (sale.items || []).map((item: any) => ({
+        name:     item.product_name || item.name,
+        quantity: item.quantity,
+        price:    parseNum(item.unit_price ?? item.price),
+      })),
+      subtotal:      totalAmount - taxAmount - chargesAmount + discountAmt,
+      discount:      discountAmt,
+      taxAmount,
+      taxPercent:    parseNum(sale.tax_percent),
+      chargesAmount,
+      totalAmount,
+      amountPaid,
+      changeDue:     Math.max(0, amountPaid - totalAmount),
+      paymentMethod: sale.payment_method,
+      footer:        settings?.receipt_footer || 'Thank you for shopping!',
+    };
+
+    const agent = await checkAgentHealth();
+    if (agent) {
+      const result = await printInvoice(invoiceData);
+      if (result.success) return;
+      console.warn('[print] Agent invoice failed:', result.error);
     }
+
+    // Fallback: browser print
+    printReceipt(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
   };
 
   const doKOT = async (sale: any) => {
@@ -379,7 +418,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     });
   };
 
-  const handlePrint = () => doPrint(successSale);
+  const handlePrint = () => { doPrint(successSale); };
 
   const handleSyncTax = async (saleId: number) => {
     setSyncLoading(true);
