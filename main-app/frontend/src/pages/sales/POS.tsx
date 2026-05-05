@@ -135,7 +135,15 @@ const POS = () => {
     taxAmount,
     appliedBundles, setAppliedBundles, bundleDiscount
   } = useCart();
-  const { user } = useAuth();
+  const { user, canDo, hasPermission } = useAuth();
+
+  // ── Permission flags ──────────────────────────────────────────────────────
+  const canCreateSale      = canDo('sales.pos', 'create');
+  const canUpdateSale      = canDo('sales.pos', 'update');
+  const canViewOrders      = hasPermission('sales.orders');
+  const canViewReports     = hasPermission('sales.reports');
+  const canCloseRegister   = hasPermission('sales.register');
+  const canCreateQuotation = hasPermission('sales.quotations');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -559,11 +567,11 @@ const POS = () => {
       }
       if (e.key === 'F8') {
         e.preventDefault();
-        if (cart.length > 0) handleHoldOrder();
+        if (cart.length > 0 && canCreateSale) handleHoldOrder();
       }
       if (e.key === 'F9') {
         e.preventDefault();
-        if (cart.length > 0) setIsCheckoutOpen(true);
+        if (cart.length > 0 && canCreateSale) setIsCheckoutOpen(true);
       }
       if (e.key === 'Escape') {
         setIsCheckoutOpen(false);
@@ -989,22 +997,26 @@ const POS = () => {
                 <Keyboard size={16} />
                 <span className="hidden md:inline text-sm">Keys</span>
               </button>
-              <button
-                onClick={() => setShowSalesModal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
-              >
-                <FileText size={16} />
-                <span className="hidden sm:inline">Orders</span>
-                <span className="hidden md:inline text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
-              </button>
-              <button
-                onClick={() => setIsDailyReportOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
-              >
-                <BarChart size={16} />
-                <span className="hidden sm:inline">Report</span>
-              </button>
-              {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+              {canViewOrders && (
+                <button
+                  onClick={() => setShowSalesModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
+                >
+                  <FileText size={16} />
+                  <span className="hidden sm:inline">Orders</span>
+                  <span className="hidden md:inline text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
+                </button>
+              )}
+              {canViewReports && (
+                <button
+                  onClick={() => setIsDailyReportOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
+                >
+                  <BarChart size={16} />
+                  <span className="hidden sm:inline">Report</span>
+                </button>
+              )}
+              {canCloseRegister && (
                 <button
                   onClick={async () => {
                     try {
@@ -1111,7 +1123,11 @@ const POS = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2 md:gap-3">
                 {filteredProducts.map(product => (
-                  <ProductCard key={product.product_id} product={product} onAddToCart={handleAddProduct} />
+                  <ProductCard
+                    key={product.product_id}
+                    product={product}
+                    onAddToCart={canCreateSale ? handleAddProduct : undefined}
+                  />
                 ))}
                 {filteredProducts.length === 0 && (
                   <div className="col-span-full text-center py-16">
@@ -1639,14 +1655,15 @@ const POS = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || !canUpdateSale}
                   className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={!canUpdateSale ? 'No update permission' : undefined}
                 >
                   <Archive size={16} /> Save Changes
                 </button>
                 <button
                   onClick={() => { setSelectedPendingSale({ sale_id: editingSaleId, token_no: editingTokenNo, isCartEdit: true }); setIsCheckoutOpen(true); }}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || !canCreateSale}
                   className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <DollarSign size={16} /> Complete <span className="text-white/60 text-xs">F9</span>
@@ -1665,7 +1682,7 @@ const POS = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleHoldOrder}
-                    disabled={cart.length === 0}
+                    disabled={cart.length === 0 || !canCreateSale}
                     className={`flex items-center justify-center gap-2 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed ${
                       orderType === 'dine_in'
                         ? 'bg-orange-500 hover:bg-orange-600'
@@ -1673,6 +1690,7 @@ const POS = () => {
                         ? 'bg-amber-500 hover:bg-amber-600'
                         : 'bg-blue-500 hover:bg-blue-600'
                     }`}
+                    title={!canCreateSale ? 'You do not have permission to punch orders' : undefined}
                   >
                     {orderType === 'dine_in'
                       ? <><UtensilsCrossed size={15} /> KOT + Hold</>
@@ -1683,13 +1701,14 @@ const POS = () => {
                   </button>
                   <button
                     onClick={() => { setSelectedPendingSale(null); setIsCheckoutOpen(true); }}
-                    disabled={cart.length === 0}
+                    disabled={cart.length === 0 || !canCreateSale}
                     className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={!canCreateSale ? 'You do not have permission to process payments' : undefined}
                   >
                     <DollarSign size={16} /> Pay Now <span className="text-white/60 text-xs">F9</span>
                   </button>
                 </div>
-                {(user?.role_name === 'Admin' || user?.role_name === 'Manager') && (
+                {canCreateQuotation && (
                   <button
                     onClick={() => { setQtValidUntil(''); setQtNotes(''); setShowQuotationModal(true); }}
                     disabled={cart.length === 0}
@@ -1719,12 +1738,14 @@ const POS = () => {
             </div>
             <div className="space-y-2">
               {[
-                { key: 'F1', desc: 'Show shortcuts' },
-                { key: 'F2', desc: 'Focus barcode scanner' },
-                { key: 'F3', desc: 'Focus name search' },
-                { key: 'F5', desc: 'View orders' },
-                { key: 'F8', desc: 'Punch/Dispatch order' },
-                { key: 'F9', desc: 'Pay now / Checkout' },
+                { key: 'F1',  desc: 'Show shortcuts' },
+                { key: 'F2',  desc: 'Focus barcode scanner' },
+                { key: 'F3',  desc: 'Focus name search' },
+                { key: 'F5',  desc: 'View orders' },
+                { key: 'F6',  desc: 'Print Cash Bill (after checkout)' },
+                { key: 'F7',  desc: 'Print Card Bill (after checkout)' },
+                { key: 'F8',  desc: 'Punch/Dispatch order' },
+                { key: 'F9',  desc: 'Pay now / Checkout' },
                 { key: 'ESC', desc: 'Close modals' },
               ].map(({ key, desc }) => (
                 <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

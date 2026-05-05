@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
-import { printReceipt } from '../utils/receiptPrinter';
+import { printReceipt, printBillWithTax } from '../utils/receiptPrinter';
 import { printKOT, printInvoice, checkAgentHealth } from '../utils/agentPrinter';
 
 interface CheckoutModalProps {
@@ -420,6 +420,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
   const handlePrint = () => { doPrint(successSale); };
 
+  const handlePrintWithTax = (taxType: 'cash' | 'card', taxRate: number) => {
+    if (!successSale) return;
+    printBillWithTax(successSale, settings, user?.name || 'Staff', selectedCustomer?.customer_name, taxType, taxRate);
+  };
+
+  // F6 = Print Cash, F7 = Print Card — active only while success screen is shown
+  useEffect(() => {
+    if (!successSale || !settings) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F6') { e.preventDefault(); handlePrintWithTax('cash', taxOnCash); }
+      if (e.key === 'F7') { e.preventDefault(); handlePrintWithTax('card', taxOnCard); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [successSale, settings]);
+
   const handleSyncTax = async (saleId: number) => {
     setSyncLoading(true);
     try {
@@ -484,10 +500,18 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               Done
             </button>
             <button
-              onClick={handlePrint}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
+              onClick={() => handlePrintWithTax('cash', taxOnCash)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded-xl transition-colors border border-orange-200"
+              title="Print Cash Bill (F6)"
             >
-              <RotateCcw size={16} /> Reprint
+              <Banknote size={16} /> Cash <kbd className="ml-1 text-xs bg-orange-100 px-1 rounded">F6</kbd>
+            </button>
+            <button
+              onClick={() => handlePrintWithTax('card', taxOnCard)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl transition-colors border border-blue-200"
+              title="Print Card Bill (F7)"
+            >
+              <CreditCard size={16} /> Card <kbd className="ml-1 text-xs bg-blue-100 px-1 rounded">F7</kbd>
             </button>
             <button
               onClick={() => handleSyncTax(successSale.sale_id)}

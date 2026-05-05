@@ -6,9 +6,7 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-System Main Logical Error hain Kaafi
-
-1:Access Control main Proper permisson allow ni ho rahi yar (agr kisi ko just view ka allow kiya jaye to usky baqi rights diabale hony chaye)
-wo beshak koi bhi role ho 
-
-Thik hai Jab Bhi kisi role k rights band kiye jaye yani CRUD main sy koi bhi chiz bnd ya on ki jaye to wo update lazmi hona chaey ye make sure kro 
+POS Module Deep Fixes:
+1: POS module main Hum Mazeed deeply jain gy k konsa role kya kr skta yani reports kisko show krwani hai 
+2: Kon order Punch kr skta hai or kon nahi , Kisko cart screen kis trha show krwani hai complete solution btao mujy 
+3: or Bill print krny k bhi 2 methods hongy (Print Cash , Print Card) in dono main tax rate ka differece hoga 

@@ -1,17 +1,23 @@
 import React from 'react';
 import { Product } from '../context/CartContext';
-import { Plus } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart?: (product: Product) => void; // undefined = view-only mode
 }
 
 const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCart }) => {
+  const viewOnly = !onAddToCart;
+
   return (
     <div
-      className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer flex flex-col justify-between h-full"
-      onClick={() => onAddToCart(product)}
+      className={`bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between h-full transition-all ${
+        viewOnly
+          ? 'opacity-80 cursor-default'
+          : 'hover:shadow-md hover:border-emerald-200 cursor-pointer'
+      }`}
+      onClick={() => !viewOnly && onAddToCart!(product)}
     >
       <div>
         {/* Icon area */}
@@ -33,6 +39,11 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
               Low
             </span>
           )}
+          {viewOnly && (
+            <div className="absolute bottom-1 right-1 bg-gray-100 text-gray-500 rounded-full p-0.5">
+              <Eye size={10} />
+            </div>
+          )}
         </div>
 
         {/* Name */}
@@ -45,20 +56,24 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
       {/* Price + Add button */}
       <div className="flex items-center justify-between mt-2">
         <span className="text-sm font-black text-emerald-600">Rs. {product.price.toFixed(2)}</span>
-        <button
-          className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors shadow-sm ${
-            product.stock_quantity === 0
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-emerald-500 text-white hover:bg-emerald-600'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (product.stock_quantity > 0) onAddToCart(product);
-          }}
-          disabled={product.stock_quantity === 0}
-        >
-          <Plus size={14} />
-        </button>
+        {viewOnly ? (
+          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">View</span>
+        ) : (
+          <button
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors shadow-sm ${
+              product.stock_quantity === 0
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-emerald-500 text-white hover:bg-emerald-600'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (product.stock_quantity > 0) onAddToCart!(product);
+            }}
+            disabled={product.stock_quantity === 0}
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
     </div>
   );

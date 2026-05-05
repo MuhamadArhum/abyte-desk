@@ -923,3 +923,43 @@ export async function printToThermalPrinter(
   printReceipt(sale, settings, cashierName, customerName);
   return false;
 }
+
+// ── Print Cash / Print Card Bill ─────────────────────────────────────────────
+// Recalculates tax at the given rate and prints a clearly labelled bill.
+// The stored sale data is never modified — this only affects the printed copy.
+export function printBillWithTax(
+  sale: ReceiptSale,
+  settings: ReceiptSettings | null,
+  cashierName: string,
+  customerName: string | undefined,
+  taxType: 'cash' | 'card' | 'online',
+  taxRate: number
+): void {
+  const parseNum = (v: any) => parseFloat(String(v).replace(/[^\d.-]/g, '')) || 0;
+
+  const origTaxAmount     = parseNum(sale.tax_amount);
+  const origChargesAmount = parseNum(sale.additional_charges_amount);
+  const origDiscount      = parseNum(sale.discount);
+  const origTotal         = parseNum(sale.total_amount);
+  const subtotal          = origTotal - origTaxAmount - origChargesAmount + origDiscount;
+
+  const newTaxAmount  = subtotal * taxRate / 100;
+  const newTotal      = subtotal + newTaxAmount + origChargesAmount - origDiscount;
+  const billLabel     = taxType === 'cash' ? 'CASH BILL' : taxType === 'card' ? 'CARD BILL' : 'ONLINE BILL';
+
+  const modifiedSale: ReceiptSale = {
+    ...sale,
+    tax_percent: taxRate,
+    tax_amount: newTaxAmount,
+    total_amount: newTotal,
+    amount_paid: newTotal,
+    payment_method: taxType,
+  };
+
+  const modifiedSettings: ReceiptSettings = {
+    ...(settings || {}),
+    header_note: `★ ${billLabel} ★`,
+  };
+
+  printReceipt(modifiedSale, modifiedSettings, cashierName, customerName);
+}
