@@ -6,6 +6,9 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-Acha Ab hum Printing Py Kaam krain Gy Proper 
-ye btao K Kya Hmara Agent Proper Ready Hai For printing ?
-or btao k hum Printers kesy add krain gy kesy section wise add hongy sara process kesy hoga
+System Main Logical Error hain Kaafi
+
+1:Access Control main Proper permisson allow ni ho rahi yar (agr kisi ko just view ka allow kiya jaye to usky baqi rights diabale hony chaye)
+wo beshak koi bhi role ho 
+
+Thik hai Jab Bhi kisi role k rights band kiye jaye yani CRUD main sy koi bhi chiz bnd ya on ki jaye to wo update lazmi hona chaey ye make sure kro 

@@ -1,29 +1,16 @@
-// =============================================================
-// customerRoutes.js - Customer Management Routes
-// Defines the API endpoints for managing customers.
-// All routes require authentication. Any authenticated user can manage customers.
-// Mounted at: /api/customers (see server.js)
-//
-// Endpoints:
-//   GET  /api/customers      - List all customers (supports ?search filter)
-//   POST /api/customers      - Create a new customer
-//   GET  /api/customers/:id  - Get customer details with purchase history
-// =============================================================
-
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 
-// All customer routes require authentication
 router.use(authenticate);
 
-router.get('/', customerController.getAll);      // List/search customers
-router.post('/', customerController.create);     // Add new customer
-router.get('/:id', customerController.getById);  // Customer details + purchase history
-router.put('/:id', customerController.update);   // Update customer
-router.delete('/:id', customerController.remove);// Delete customer
-router.get('/:id/addresses', customerController.getAddresses);  // Get customer addresses
-router.post('/:id/addresses', customerController.addAddress);   // Add customer address
+router.get('/', customerController.getAll);
+router.post('/', requirePermission('sales.customers'), customerController.create);
+router.get('/:id', customerController.getById);
+router.put('/:id', requirePermission('sales.customers'), customerController.update);
+router.delete('/:id', requirePermission('sales.customers'), customerController.remove);
+router.get('/:id/addresses', customerController.getAddresses);
+router.post('/:id/addresses', requirePermission('sales.customers'), customerController.addAddress);
 
 module.exports = router;

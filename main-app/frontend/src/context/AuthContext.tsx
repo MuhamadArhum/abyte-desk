@@ -37,25 +37,27 @@ export interface TenantConfig {
 }
 
 interface AuthContextType {
-  user:              User | null;
-  token:             string | null;
-  tenantConfig:      TenantConfig | null;
-  login:             (token: string, user: User, permissions: string[] | null, modules?: string[]) => void;
-  logout:            () => void;
-  updateUser:        (patch: Partial<User>) => void;
-  setTenantConfig:   (config: TenantConfig) => void;
-  isAuthenticated:   boolean;
-  isLoading:         boolean;
-  permissions:       string[] | null;
-  modules:           string[];
-  hasPermission:     (moduleKey: string) => boolean;
-  hasModule:         (moduleName: string) => boolean;
-  currentPlan:       string;
-  currencySymbol:    string;
+  user:                 User | null;
+  token:                string | null;
+  tenantConfig:         TenantConfig | null;
+  login:                (token: string, user: User, permissions: string[] | null, modules?: string[]) => void;
+  logout:               () => void;
+  updateUser:           (patch: Partial<User>) => void;
+  setTenantConfig:      (config: TenantConfig) => void;
+  isAuthenticated:      boolean;
+  isLoading:            boolean;
+  permissions:          string[] | null;
+  modules:              string[];
+  hasPermission:        (moduleKey: string) => boolean;
+  canDo:                (moduleKey: string, action: 'create' | 'update' | 'delete') => boolean;
+  hasModule:            (moduleName: string) => boolean;
+  currentPlan:          string;
+  currencySymbol:       string;
+  refreshPermissions:   () => void;
   // Multi-branch: admin can select a specific branch to view, or null = all branches
-  activeBranchId:    number | null;
-  setActiveBranchId: (id: number | null) => void;
-  isAdmin:           boolean;
+  activeBranchId:       number | null;
+  setActiveBranchId:    (id: number | null) => void;
+  isAdmin:              boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,6 +117,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  // Exposed refresh function — can be called on-demand (e.g. after Access Control save)
+  const refreshPermissions = useCallback(() => {
+    if (!token) return;
+    const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+    fetch(`${apiBase}/auth/verify`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.user) {
+          setUser(data.user);
+          setPermissions(data.permissions);
+          setModules(data.modules || []);
+          localStorage.setItem('user',        JSON.stringify(data.user));
+          localStorage.setItem('permissions', JSON.stringify(data.permissions));
+          localStorage.setItem('modules',     JSON.stringify(data.modules || []));
+        }
+      })
+      .catch(() => {});
+  }, [token]);
+
+  // Poll permissions every 60 seconds + refresh when tab becomes visible again
+  // so that Access Control changes by admin take effect without re-login
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(refreshPermissions, 60_000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshPermissions();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [token, refreshPermissions]);
+
   const login = useCallback((newToken: string, newUser: User, newPermissions: string[] | null, newModules: string[] = []) => {
     localStorage.setItem('token',       newToken);
     localStorage.setItem('user',        JSON.stringify(newUser));
@@ -168,6 +209,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return permissions.some(p => p === moduleKey || p.startsWith(`${moduleKey}.`));
   }, [permissions]);
 
+  // CRUD sub-permission check: canDo('inventory.products', 'create')
+  const canDo = useCallback((moduleKey: string, action: 'create' | 'update' | 'delete'): boolean => {
+    if (permissions === null) return true; // Admin: full access
+    return permissions.includes(`${moduleKey}.${action}`);
+  }, [permissions]);
+
   // Multi-tenant: check if module is enabled for this tenant
   const hasModule = useCallback((moduleName: string): boolean => {
     if (modules.length === 0) return true; // fallback: allow all if not set
@@ -191,13 +238,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     permissions,
     modules,
     hasPermission,
+    canDo,
     hasModule,
     currentPlan,
     currencySymbol,
+    refreshPermissions,
     activeBranchId,
     setActiveBranchId,
     isAdmin,
-  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, hasModule, currencySymbol, activeBranchId, isAdmin]);
+  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, canDo, hasModule, currencySymbol, refreshPermissions, activeBranchId, isAdmin]);
 
   return (
     <AuthContext.Provider value={value}>

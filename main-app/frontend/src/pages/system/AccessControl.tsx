@@ -5,6 +5,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings, UtensilsCrossed,
 } from 'lucide-react';
 import api from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 // ─── CRUD actions ─────────────────────────────────────────────────────────────
 const CRUD = [
@@ -151,6 +152,7 @@ const subKeys = (base: string) => CRUD.map(c => `${base}.${c.action}`);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const AccessControl = () => {
+  const { user, refreshPermissions } = useAuth();
   const [roles, setRoles]               = useState<string[]>([]);
   const [allPerms, setAllPerms]         = useState<Record<string, Set<string>>>({});
   const [savedPerms, setSavedPerms]     = useState<Record<string, Set<string>>>({});
@@ -265,6 +267,10 @@ const AccessControl = () => {
       setSavedPerms(prev => ({ ...prev, [selectedRole]: new Set(permissions) }));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      // If the saved role matches the currently logged-in user's role, refresh their permissions immediately
+      if (user?.role_name === selectedRole) {
+        refreshPermissions();
+      }
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to save permissions');
     } finally {

@@ -22,9 +22,9 @@ router.get('/advance-payments', staffController.getAdvancePayments);
 router.post('/advance-payments', requirePermission('hr.payroll'), staffController.createAdvancePayment);
 
 router.get('/holidays', staffController.getHolidays);
-router.post('/holidays', requirePermission('hr.employees'), staffController.createHoliday);
-router.put('/holidays/:id', requirePermission('hr.employees'), staffController.updateHoliday);
-router.delete('/holidays/:id', requirePermission('hr.employees'), staffController.deleteHoliday);
+router.post('/holidays', requirePermission('hr.holidays'), staffController.createHoliday);
+router.put('/holidays/:id', requirePermission('hr.holidays'), staffController.updateHoliday);
+router.delete('/holidays/:id', requirePermission('hr.holidays'), staffController.deleteHoliday);
 
 router.get('/leave-requests', staffController.getLeaveRequests);
 router.post('/leave-requests', requirePermission('hr.leaves'), staffController.createLeaveRequest);
@@ -49,49 +49,49 @@ router.put('/salary-payment/:id', requirePermission('hr.payroll'), staffControll
 router.delete('/salary-payment/:id', requirePermission('hr.payroll'), staffController.deleteSalaryPayment);
 
 router.get('/departments', staffController.getDepartments);
-router.post('/departments', requirePermission('hr.employees'), staffController.createDepartment);
-router.put('/departments/:id', requirePermission('hr.employees'), staffController.updateDepartment);
-router.delete('/departments/:id', requirePermission('hr.employees'), staffController.deleteDepartment);
+router.post('/departments', requirePermission('hr.departments'), staffController.createDepartment);
+router.put('/departments/:id', requirePermission('hr.departments'), staffController.updateDepartment);
+router.delete('/departments/:id', requirePermission('hr.departments'), staffController.deleteDepartment);
 
 router.get('/designations', staffController.getDesignations);
-router.post('/designations', requirePermission('hr.employees'), staffController.createDesignation);
-router.put('/designations/:id', requirePermission('hr.employees'), staffController.updateDesignation);
-router.delete('/designations/:id', requirePermission('hr.employees'), staffController.deleteDesignation);
+router.post('/designations', requirePermission('hr.staff'), staffController.createDesignation);
+router.put('/designations/:id', requirePermission('hr.staff'), staffController.updateDesignation);
+router.delete('/designations/:id', requirePermission('hr.staff'), staffController.deleteDesignation);
 
 router.get('/salary-components', staffController.getSalaryComponents);
-router.post('/salary-components', requirePermission('hr.payroll'), staffController.createSalaryComponent);
-router.put('/salary-components/:id', requirePermission('hr.payroll'), staffController.updateSalaryComponent);
-router.delete('/salary-components/:id', requirePermission('hr.payroll'), staffController.deleteSalaryComponent);
+router.post('/salary-components', requirePermission('hr.salary-components'), staffController.createSalaryComponent);
+router.put('/salary-components/:id', requirePermission('hr.salary-components'), staffController.updateSalaryComponent);
+router.delete('/salary-components/:id', requirePermission('hr.salary-components'), staffController.deleteSalaryComponent);
 
 router.get('/staff-components/:staffId', staffController.getStaffComponents);
 router.post('/staff-components/:staffId', requirePermission('hr.payroll'), staffController.saveStaffComponents);
 
 router.get('/shifts', staffController.getShifts);
-router.post('/shifts', requirePermission('hr.employees'), staffController.createShift);
-router.put('/shifts/:id', requirePermission('hr.employees'), staffController.updateShift);
-router.delete('/shifts/:id', requirePermission('hr.employees'), staffController.deleteShift);
+router.post('/shifts', requirePermission('hr.staff'), staffController.createShift);
+router.put('/shifts/:id', requirePermission('hr.staff'), staffController.updateShift);
+router.delete('/shifts/:id', requirePermission('hr.staff'), staffController.deleteShift);
 
 router.get('/appraisals', staffController.getAppraisals);
-router.post('/appraisals', requirePermission('hr.employees'), staffController.createAppraisal);
-router.put('/appraisals/:id', requirePermission('hr.employees'), staffController.updateAppraisal);
-router.delete('/appraisals/:id', requirePermission('hr.employees'), staffController.deleteAppraisal);
+router.post('/appraisals', requirePermission('hr.appraisals'), staffController.createAppraisal);
+router.put('/appraisals/:id', requirePermission('hr.appraisals'), staffController.updateAppraisal);
+router.delete('/appraisals/:id', requirePermission('hr.appraisals'), staffController.deleteAppraisal);
 
 router.get('/exit-requests', staffController.getExitRequests);
-router.post('/exit-requests', requirePermission('hr.employees'), staffController.createExitRequest);
-router.put('/exit-requests/:id/review', requirePermission('hr.employees'), staffController.reviewExitRequest);
+router.post('/exit-requests', requirePermission('hr.exit'), staffController.createExitRequest);
+router.put('/exit-requests/:id/review', requirePermission('hr.exit'), staffController.reviewExitRequest);
 
 router.get('/leave-policies', staffController.getLeavePolicies);
 router.put('/leave-policies/:leave_type', requirePermission('hr.leaves'), staffController.updateLeavePolicy);
 router.post('/leave-policies/carry-forward', requirePermission('hr.leaves'), staffController.processLeaveCarryForward);
 
 router.get('/', staffController.getAll);
-router.post('/', requirePermission('hr.employees'), staffController.create);
+router.post('/', requirePermission('hr.staff'), staffController.create);
 
 router.get('/:id', staffController.getById);
 router.get('/:id/attendance', staffController.getStaffAttendance);
 router.get('/:id/salary-payments', staffController.getSalaryPayments);
-router.put('/:id', requirePermission('hr.employees'), staffController.update);
-router.delete('/:id', requirePermission('hr.employees'), staffController.delete);
+router.put('/:id', requirePermission('hr.staff'), staffController.update);
+router.delete('/:id', requirePermission('hr.staff'), staffController.delete);
 router.post('/:id/salary-payment', requirePermission('hr.payroll'), staffController.paySalary);
 
 module.exports = router;

@@ -65,18 +65,56 @@ const authorize = (...roles) => {
 // --- requirePermission ---
 // Dynamic permission check from role_permissions table.
 // Admin always passes. All other roles checked against DB.
+//
+// For 2-part module keys (e.g. 'inventory.products', 'sales.pos'):
+//   GET/HEAD  → checks base key (view)
+//   POST      → checks moduleKey.create
+//   PUT/PATCH → checks moduleKey.update
+//   DELETE    → checks moduleKey.delete
+//
+// For 1-part parent keys (e.g. 'sales', 'inventory'):
+//   any method → checks base key OR any sub-key (legacy behaviour)
+//
+// For explicit 3-part sub-keys (e.g. 'sales.pos.create'):
+//   exact match only
+const METHOD_ACTION = { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' };
+
 const requirePermission = (moduleKey) => async (req, res, next) => {
   if (req.user.role_name === 'Admin') return next();
   try {
-    // Match exact key OR any sub-key (e.g. 'sales' matches 'sales.pos', 'sales.orders', etc.)
+    const parts  = moduleKey.split('.');
+    const action = METHOD_ACTION[req.method];
+
+    // 2-part module key + write method → enforce CRUD sub-key
+    if (parts.length === 2 && action) {
+      const subKey = `${moduleKey}.${action}`;
+      const rows = await queryDb(
+        req.tenantDb,
+        'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
+        [req.user.role_name, subKey]
+      );
+      if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
+      return next();
+    }
+
+    // 3-part explicit sub-key → exact match only
+    if (parts.length >= 3) {
+      const rows = await queryDb(
+        req.tenantDb,
+        'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
+        [req.user.role_name, moduleKey]
+      );
+      if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
+      return next();
+    }
+
+    // 1-part parent key OR GET on 2-part key → base key or any sub-key
     const rows = await queryDb(
       req.tenantDb,
       'SELECT 1 FROM role_permissions WHERE role_name = ? AND (module_key = ? OR module_key LIKE ?) AND is_allowed = 1 LIMIT 1',
       [req.user.role_name, moduleKey, `${moduleKey}.%`]
     );
-    if (rows.length === 0) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
     next();
   } catch (err) {
     console.error('Permission check error:', err.message);
