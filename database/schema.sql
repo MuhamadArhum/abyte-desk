@@ -31,12 +31,14 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
-    category_name VARCHAR(100) NOT NULL UNIQUE,
+    category_name VARCHAR(100) NOT NULL,
     category_type ENUM('raw_material','semi_finished','finished_good') NOT NULL DEFAULT 'finished_good',
     parent_id INT NULL,
     description TEXT,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    branch_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_category_per_branch (category_name, branch_id)
 );
 
 -- Variant Types (e.g. Size, Color)

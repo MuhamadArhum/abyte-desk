@@ -19,7 +19,28 @@ let categoryBranchEnsured = false;
 async function ensureCategoryBranch() {
   if (categoryBranchEnsured) return;
   categoryBranchEnsured = true;
-  try { await query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS branch_id INT NULL`); } catch (_) {}
+  try {
+    const [col] = await query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'branch_id'`
+    );
+    if (!col) {
+      await query(`ALTER TABLE categories ADD COLUMN branch_id INT NULL`);
+    }
+    // Fix old single-column unique constraint on category_name → make it per-branch
+    const [oldKey] = await query(
+      `SELECT kcu.CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+       JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+         ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA
+       WHERE kcu.TABLE_SCHEMA = DATABASE() AND kcu.TABLE_NAME = 'categories'
+         AND tc.CONSTRAINT_TYPE = 'UNIQUE' AND kcu.COLUMN_NAME = 'category_name'
+         AND kcu.CONSTRAINT_NAME != 'unique_category_per_branch'`
+    );
+    if (oldKey) {
+      await query(`ALTER TABLE categories DROP INDEX \`${oldKey.CONSTRAINT_NAME}\``);
+      await query(`ALTER TABLE categories ADD UNIQUE KEY unique_category_per_branch (category_name, branch_id)`);
+    }
+  } catch (_) {}
 }
 
 // Branch filter helper — works for any aliased table with a branch_id column
