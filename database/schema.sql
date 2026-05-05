@@ -28,6 +28,22 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     INDEX idx_role (role_name)
 );
 
+-- Default permissions: Manager gets access to all operational modules
+INSERT IGNORE INTO role_permissions (role_name, module_key, is_allowed) VALUES
+('Manager', 'sales',                1),
+('Manager', 'inventory',            1),
+('Manager', 'inventory.products',   1),
+('Manager', 'inventory.categories', 1),
+('Manager', 'inventory.purchases',  1),
+('Manager', 'inventory.adjustments',1),
+('Manager', 'customers',            1),
+('Manager', 'reports',              1),
+('Manager', 'expenses',             1),
+('Manager', 'staff',                1),
+('Manager', 'credit_sales',         1),
+('Cashier',  'sales',               1),
+('Cashier',  'customers',           1);
+
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -167,6 +183,18 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 INSERT IGNORE INTO customers (customer_id, customer_name, phone_number) VALUES (1, 'Walk-in Customer', NULL);
+
+-- Customer Addresses (multi-address support)
+CREATE TABLE IF NOT EXISTS customer_addresses (
+    address_id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    address_text TEXT NOT NULL,
+    label VARCHAR(50) DEFAULT NULL,
+    is_default TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+    INDEX idx_customer_address (customer_id)
+);
 
 -- Products
 CREATE TABLE IF NOT EXISTS products (

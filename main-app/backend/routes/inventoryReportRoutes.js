@@ -7,6 +7,7 @@ router.use(authenticate);
 router.use(requirePermission('inventory'));
 
 router.get('/summary', controller.getStockSummary);
+router.get('/low-stock', controller.getLowStock);
 router.get('/top-products', controller.getTopProducts);
 router.get('/category-breakdown', controller.getCategoryBreakdown);
 router.get('/slow-movers', controller.getSlowMovers);

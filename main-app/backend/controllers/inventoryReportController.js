@@ -302,3 +302,25 @@ exports.stockReconciliation = async (req, res) => {
     })) });
   } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
+exports.getLowStock = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    const branch = branchWhere(req, 'p');
+    const rows = await query(`
+      SELECT p.product_id, p.product_name, p.sku,
+             COALESCE(i.available_stock, 0) as stock_quantity,
+             COALESCE(p.min_stock_level, 10) as min_stock_level,
+             c.category_name
+      FROM products p
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      WHERE p.is_active = 1
+        AND COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10)
+        ${branch.clause}
+      ORDER BY COALESCE(i.available_stock, 0) ASC
+      LIMIT ?
+    `, [...branch.params, parseInt(limit)]);
+    res.json({ data: rows.map(r => ({ ...r, stock_quantity: Number(r.stock_quantity), min_stock_level: Number(r.min_stock_level) })) });
+  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+};

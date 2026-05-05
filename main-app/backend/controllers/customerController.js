@@ -9,6 +9,32 @@
 const { query } = require('../config/database');  // Database query helper
 const { logAction } = require('../services/auditService');
 
+let addressTableEnsured = false;
+async function ensureAddressTable() {
+  if (addressTableEnsured) return;
+  addressTableEnsured = true;
+  try {
+    const rows = await query(
+      `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customer_addresses'`
+    );
+    if (rows.length === 0) {
+      await query(`
+        CREATE TABLE customer_addresses (
+          address_id INT PRIMARY KEY AUTO_INCREMENT,
+          customer_id INT NOT NULL,
+          address_text TEXT NOT NULL,
+          label VARCHAR(50) DEFAULT NULL,
+          is_default TINYINT(1) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+          INDEX idx_customer_address (customer_id)
+        )
+      `);
+    }
+  } catch (_) {}
+}
+
 // Helper: Validate and parse pagination params
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
@@ -26,6 +52,7 @@ const parsePagination = (page, limit) => {
 // Used on the Customers page and in the POS customer dropdown.
 exports.getAll = async (req, res) => {
   try {
+    await ensureAddressTable();
     const { search } = req.query;  // Optional search keyword from URL ?search=...
     // JOIN with customer_addresses to get default address (fallback for older records)
     let sql = `SELECT c.*, COALESCE(c.address, ca.address_text) AS default_address
