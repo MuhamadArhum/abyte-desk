@@ -5,7 +5,7 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-
+order.tsx main i think pending order and complete order dono show hoo rahy hain usko Running order module bnao or us main done order ko khatam kro 
 
 
 Ok Ab Hum Mobile App Bhi Bnaty hain Iska 
@@ -13,4 +13,4 @@ Ok Ab Hum Mobile App Bhi Bnaty hain Iska
 2: App Sy Just Order Create ho skta hai / Edit Krty hue Sirf items add ho skti hain lkin Minus ni honi chaye usky liye usko Cashier / Manager k pass jana hoga
 3: App Main Just Us User k Orders jo Usny Write kiye hain wo hi show hongy
 4: App main Tables Show hongi Jo table free hogi Uska Status wagera show krwana hai Yani AIk Floor Plan main Jo Tables reserve hain unko Status Reserve krwao ya occupied 
-5: jis trha 
+5: 

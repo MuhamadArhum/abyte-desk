@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  ShoppingBag, Clock, CheckCircle, DollarSign, User, Calendar, CreditCard,
+  ShoppingBag, Clock, DollarSign, User, Calendar, CreditCard,
   Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List,
   UtensilsCrossed, Coffee, Truck, Filter,
 } from 'lucide-react';
@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { printReceipt } from '../../utils/receiptPrinter';
 import Pagination from '../../components/Pagination';
-import CompletedOrdersView from '../../components/CompletedOrdersView';
 import { useAuth } from '../../context/AuthContext';
 
 // ─── Bill Preview Modal (active orders) ─────────────────────────────────────
@@ -185,13 +184,12 @@ const WalkInOrders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role_name === 'Admin';
-  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [cs, setCs] = useState('Rs.');
 
-  // Category filter for active orders
+  // Category filter
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Active (pending) tab
+  // Orders state
   const [activeSales, setActiveSales] = useState<any[]>([]);
   const [activeLoading, setActiveLoading] = useState(false);
   const [activePage, setActivePage] = useState(1);
@@ -200,7 +198,7 @@ const WalkInOrders = () => {
   const [activeTotalPages, setActiveTotalPages] = useState(0);
   const [activeSummary, setActiveSummary] = useState<{ order_count: number; total_amount: number } | null>(null);
 
-  // Modals (active tab only)
+  // Modal
   const [previewSaleId, setPreviewSaleId] = useState<number | null>(null);
 
   // Layout toggle
@@ -234,7 +232,7 @@ const WalkInOrders = () => {
     }
   }, [activePage, activePerPage, categoryFilter]);
 
-  useEffect(() => { if (activeTab === 'active') fetchActive(); }, [activeTab, fetchActive, categoryFilter]);
+  useEffect(() => { fetchActive(); }, [fetchActive, categoryFilter]);
 
   const handleDeleteActive = async (sale: any) => {
     if (!confirm(`Delete Order${sale.token_no ? ` Token ${sale.token_no}` : ` #${sale.sale_id}`}? Stock will be restored.`)) return;
@@ -304,7 +302,7 @@ const WalkInOrders = () => {
                 <ShoppingBag size={26} className="text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Orders</h1>
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900">Running Orders</h1>
                 <p className="text-sm text-gray-500">On-spot customer orders management</p>
               </div>
             </div>
@@ -316,7 +314,7 @@ const WalkInOrders = () => {
                 <ShoppingBag size={16} /> New Sale
               </button>
               <button
-                onClick={() => { if (activeTab === 'active') fetchActive(); }}
+                onClick={() => fetchActive()}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
               >
                 <RefreshCw size={16} /> Refresh
@@ -324,37 +322,6 @@ const WalkInOrders = () => {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => { setActiveTab('active'); setActivePage(1); }}
-              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
-                activeTab === 'active'
-                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-              }`}
-            >
-              <Clock size={18} /> Running Orders
-              {activeTotalItems > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  activeTab === 'active' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
-                }`}>
-                  {activeTotalItems}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm ${
-                activeTab === 'history'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-              }`}
-            >
-              <CheckCircle size={18} />
-              Done Orders
-            </button>
-          </div>
         </div>
       </div>
 
@@ -367,11 +334,8 @@ const WalkInOrders = () => {
           <StatCard icon={DollarSign} label="Active Value" value={activeSummary ? `${cs} ${activeSummary.total_amount.toFixed(0)}` : `${cs} 0`} color="bg-emerald-600" />
         </div>
 
-        {/* ── ACTIVE TAB ────────────────────────────────────────── */}
-        {activeTab === 'active' && (
-          <>
-          {/* Category Filter */}
-          <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {/* Category Filter */}
+        <div className="flex items-center gap-2 mb-5 flex-wrap">
             <Filter size={14} className="text-gray-400 shrink-0" />
             {[
               { key: 'all',      label: 'All Orders',  icon: Package,        color: 'gray'    },
@@ -399,8 +363,8 @@ const WalkInOrders = () => {
                 </button>
               );
             })}
-          </div>
-          {activeLoading ? (
+        </div>
+        {activeLoading ? (
             <div className="flex items-center justify-center h-[55vh]">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-14 w-14 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-4"></div>
@@ -653,15 +617,7 @@ const WalkInOrders = () => {
                 </div>
               )}
             </>
-          )
-          }
-          </>
-        )}
-
-        {/* ── HISTORY TAB ───────────────────────────────────────── */}
-        {activeTab === 'history' && (
-          <CompletedOrdersView title="Order History" />
-        )}
+          )}
       </div>
 
       {/* ── Modals (active tab) ─────────────────────────────── */}
