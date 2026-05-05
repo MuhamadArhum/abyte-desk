@@ -6,7 +6,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-POS Module Deep Fixes:
-1: POS module main Hum Mazeed deeply jain gy k konsa role kya kr skta yani reports kisko show krwani hai 
-2: Kon order Punch kr skta hai or kon nahi , Kisko cart screen kis trha show krwani hai complete solution btao mujy 
-3: or Bill print krny k bhi 2 methods hongy (Print Cash , Print Card) in dono main tax rate ka differece hoga 
