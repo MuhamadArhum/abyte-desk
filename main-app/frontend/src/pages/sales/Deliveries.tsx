@@ -549,7 +549,7 @@ const Deliveries = () => {
     }
   };
 
-  const runningCount = (stats?.pending || 0) + (stats?.assigned || 0) + (stats?.dispatched || 0) + (stats?.in_transit || 0);
+
   const sortedRunning = [...deliveries].sort((a, b) => RUNNING.indexOf(a.status) - RUNNING.indexOf(b.status));
 
   return (
