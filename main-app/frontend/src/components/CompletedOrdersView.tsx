@@ -10,7 +10,7 @@ import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
   Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
   Clock, CheckCircle, AlertCircle, CloudUpload, Loader2,
-  UtensilsCrossed, Coffee, Truck, ShoppingBag, Table2,
+  UtensilsCrossed, Coffee, Truck, ShoppingBag,
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
