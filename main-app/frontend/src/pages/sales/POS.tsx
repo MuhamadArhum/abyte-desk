@@ -16,12 +16,13 @@ import { printKOT, checkAgentHealth } from '../../utils/agentPrinter';
 
 // ── TableSearchInput ─────────────────────────────────────────
 const TableSearchInput = ({
-  tables, selectedTableId, onSelect, onClear,
+  tables, selectedTableId, onSelect, onClear, allowBusy = false,
 }: {
   tables: any[];
   selectedTableId: number | null;
   onSelect: (id: number) => void;
   onClear: () => void;
+  allowBusy?: boolean;
 }) => {
   const [query, setQuery] = useState('');
   const [showDrop, setShowDrop] = useState(false);
@@ -43,7 +44,7 @@ const TableSearchInput = ({
     : tables;
 
   const handlePick = (table: any) => {
-    if (Number(table.has_pending_order) > 0) {
+    if (!allowBusy && Number(table.has_pending_order) > 0) {
       setOccupiedAlert(table.table_name);
       setQuery('');
       setShowDrop(false);
@@ -375,7 +376,6 @@ const POS = () => {
       const res = await api.get(`/sales/${sale.sale_id}`);
       const saleData = res.data;
       clearCart();
-      // Add items to cart one by one, then update quantity
       const items: any[] = saleData.items || [];
       for (const item of items) {
         const product = {
@@ -387,9 +387,7 @@ const POS = () => {
           has_variants: false,
         } as any;
         addToCart(product);
-        // quantity > 1: will be set via updateQuantity below
       }
-      // After adding all items, update quantities (requires a small delay for state to settle)
       setTimeout(() => {
         for (const item of items) {
           const qty = parseInt(item.quantity);
@@ -398,12 +396,18 @@ const POS = () => {
           }
         }
       }, 100);
+      // Restore order type and table from sale
+      const restoredType: OrderType = (['dine_in','takeaway','delivery','on_spot'].includes(saleData.order_type)
+        ? saleData.order_type : 'on_spot') as OrderType;
+      setOrderType(restoredType);
+      if (restoredType === 'dine_in' && saleData.table_id) {
+        setSelectedTableId(saleData.table_id);
+      }
       // Set customer if available
       if (saleData.customer_id && saleData.customer_id !== 1) {
         const custRes = await api.get(`/customers/${saleData.customer_id}`).catch(() => null);
         if (custRes?.data) setSelectedCustomer(custRes.data);
       }
-      // Set tax/additional rates from sale
       if (saleData.tax_percent !== undefined) setTaxRate(parseFloat(saleData.tax_percent) || 0);
       if (saleData.additional_charges_percent !== undefined) setAdditionalRate(parseFloat(saleData.additional_charges_percent) || 0);
       setEditingSaleId(sale.sale_id);
@@ -1003,7 +1007,7 @@ const POS = () => {
                   className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-200 text-sm"
                 >
                   <FileText size={16} />
-                  <span className="hidden sm:inline">Orders</span>
+                  <span className="hidden sm:inline">Done Orders</span>
                   <span className="hidden md:inline text-xs bg-emerald-200 px-1.5 py-0.5 rounded">F5</span>
                 </button>
               )}
@@ -1276,6 +1280,7 @@ const POS = () => {
             selectedTableId={selectedTableId}
             onSelect={setSelectedTableId}
             onClear={() => setSelectedTableId(null)}
+            allowBusy={!!editingSaleId}
           />
         )}
 
@@ -1741,7 +1746,7 @@ const POS = () => {
                 { key: 'F1',  desc: 'Show shortcuts' },
                 { key: 'F2',  desc: 'Focus barcode scanner' },
                 { key: 'F3',  desc: 'Focus name search' },
-                { key: 'F5',  desc: 'View orders' },
+                { key: 'F5',  desc: 'View done orders' },
                 { key: 'F6',  desc: 'Print Cash Bill (after checkout)' },
                 { key: 'F7',  desc: 'Print Card Bill (after checkout)' },
                 { key: 'F8',  desc: 'Punch/Dispatch order' },
@@ -1821,11 +1826,10 @@ const POS = () => {
         />
       )}
 
-      {/* ── Sales History Modal ────────────────────────────────── */}
+      {/* ── Done Orders Modal ─────────────────────────────────── */}
       {showSalesModal && (
         <CompletedOrdersView
-          showTypeFilter
-          title="Sales History"
+          title="Done Orders"
           onClose={() => setShowSalesModal(false)}
         />
       )}

@@ -334,7 +334,7 @@ const WalkInOrders = () => {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
               }`}
             >
-              <Clock size={18} /> Active Orders
+              <Clock size={18} /> Running Orders
               {activeTotalItems > 0 && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                   activeTab === 'active' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700'
@@ -352,7 +352,7 @@ const WalkInOrders = () => {
               }`}
             >
               <CheckCircle size={18} />
-              Order History
+              Done Orders
             </button>
           </div>
         </div>
@@ -363,7 +363,7 @@ const WalkInOrders = () => {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <StatCard icon={Clock} label="Active Orders" value={activeTotalItems} color="bg-emerald-500" />
+          <StatCard icon={Clock} label="Running Orders" value={activeTotalItems} color="bg-emerald-500" />
           <StatCard icon={DollarSign} label="Active Value" value={activeSummary ? `${cs} ${activeSummary.total_amount.toFixed(0)}` : `${cs} 0`} color="bg-emerald-600" />
         </div>
 

@@ -5,4 +5,21 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+Web App Issues and Fixes:
+1: App main Abhi Jo Pending Order hain un main Agr Koi table order lg raha hai to wo table chose ni kr paa raha 
+2: POS cart Screen main jo order wala button hai usko main bna do yani sary paid/done orders uss button k andr show hongy or us main proper filters har trha k table/wise order taker wise, user wise, shift wise, time wise, FBR synced/non synced , ye sb filters us main lgany hain 
+3: or jo POS k nichy order wala module main usko running order ka name dy do or us main done order wala button bta do (order history waly button ki baat ho rahi hai ) or pending order wali screen ko zra bara kro 
+4; Delivery k pending order wala module same iss trha hi rahy qqq k us main riddr assign wagera krna hota 
+5: or Done order jo POS cart screen main bny ga usko detailed bna dena hai us main sary filter chaye category waise (dinein,ta,delivery,walkin)
 
+
+
+
+
+
+Ok Ab Hum Mobile App Bhi Bnaty hain Iska 
+1: Mobile App Just Waiter k Liye hogi 
+2: App Sy Just Order Create ho skta hai / Edit Krty hue Sirf items add ho skti hain lkin Minus ni honi chaye usky liye usko Cashier / Manager k pass jana hoga
+3: App Main Just Us User k Orders jo Usny Write kiye hain wo hi show hongy
+4: App main Tables Show hongi Jo table free hogi Uska Status wagera show krwana hai Yani AIk Floor Plan main Jo Tables reserve hain unko Status Reserve krwao ya occupied 
+5: jis trha 

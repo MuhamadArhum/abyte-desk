@@ -626,7 +626,57 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    const { page, limit, search, status, date_from, date_to, order_type, shift_start, shift_end } = req.query;
+    const {
+      page, limit, search, status, date_from, date_to,
+      order_type, shift_start, shift_end,
+      cashier, user_id, table_id, is_synced,
+    } = req.query;
+
+    // Helper: append the same order_type / cashier / table / synced clauses to any SQL fragment
+    const applyOrderTypeClause = (s, p) => {
+      if (order_type && order_type !== 'all') {
+        if (order_type === 'delivery') {
+          s += ' AND EXISTS (SELECT 1 FROM deliveries dx WHERE dx.sale_id = s.sale_id)';
+        } else if (order_type === 'walkin' || order_type === 'on_spot') {
+          s += ` AND (s.order_type = 'on_spot' OR s.order_type IS NULL OR s.order_type = '')`;
+        } else {
+          // dine_in, takeaway
+          s += ' AND s.order_type = ?';
+          p.push(order_type);
+        }
+      }
+      return [s, p];
+    };
+
+    const applyCashierClause = (s, p) => {
+      if (cashier && cashier.trim()) {
+        s += ' AND u.name LIKE ?';
+        p.push(`%${cashier.trim()}%`);
+      }
+      if (user_id) {
+        s += ' AND s.user_id = ?';
+        p.push(user_id);
+      }
+      return [s, p];
+    };
+
+    const applyTableClause = (s, p) => {
+      if (table_id) {
+        s += ' AND s.table_id = ?';
+        p.push(table_id);
+      }
+      return [s, p];
+    };
+
+    const applySyncedClause = (s, p) => {
+      if (is_synced === '1' || is_synced === 'true') {
+        s += ' AND s.is_synced = 1';
+      } else if (is_synced === '0' || is_synced === 'false') {
+        s += ' AND (s.is_synced = 0 OR s.is_synced IS NULL)';
+      }
+      return [s, p];
+    };
+
     let sql = `
       SELECT s.*, c.customer_name, u.name as cashier_name,
              COALESCE(d.delivery_charges, 0) AS delivery_charges
@@ -636,7 +686,7 @@ exports.getAll = async (req, res) => {
       LEFT JOIN deliveries d ON d.sale_id = s.sale_id
       WHERE 1=1
     `;
-    const params = [];
+    let params = [];
 
     // Branch isolation: non-admin sees their branch; admin can filter via ?filter_branch
     if (req.user.role_name !== 'Admin' && req.user.branch_id) {
@@ -647,12 +697,10 @@ exports.getAll = async (req, res) => {
       params.push(req.query.filter_branch);
     }
 
-    // Filter by order type: walkin = no linked delivery, delivery = has linked delivery
-    if (order_type === 'delivery') {
-      sql += ' AND EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
-    } else if (order_type === 'walkin') {
-      sql += ' AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
-    }
+    [sql, params] = applyOrderTypeClause(sql, params);
+    [sql, params] = applyCashierClause(sql, params);
+    [sql, params] = applyTableClause(sql, params);
+    [sql, params] = applySyncedClause(sql, params);
 
     if (status) {
       if (status.includes(',')) {
@@ -685,9 +733,10 @@ exports.getAll = async (req, res) => {
         SELECT COUNT(*) as total, COALESCE(SUM(s.total_amount), 0) as total_amount
         FROM sales s
         LEFT JOIN customers c ON s.customer_id = c.customer_id
+        LEFT JOIN users u ON s.user_id = u.user_id
         WHERE 1=1
       `;
-      const countParams = [];
+      let countParams = [];
 
       // Branch isolation for count query
       if (req.user.role_name !== 'Admin' && req.user.branch_id) {
@@ -698,11 +747,10 @@ exports.getAll = async (req, res) => {
         countParams.push(req.query.filter_branch);
       }
 
-      if (order_type === 'delivery') {
-        countSql += ' AND EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
-      } else if (order_type === 'walkin') {
-        countSql += ' AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)';
-      }
+      [countSql, countParams] = applyOrderTypeClause(countSql, countParams);
+      [countSql, countParams] = applyCashierClause(countSql, countParams);
+      [countSql, countParams] = applyTableClause(countSql, countParams);
+      [countSql, countParams] = applySyncedClause(countSql, countParams);
 
       if (status) {
         if (status.includes(',')) {

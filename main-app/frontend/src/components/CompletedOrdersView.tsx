@@ -1,15 +1,16 @@
 /**
  * CompletedOrdersView — shared component used in:
  *  - Orders.tsx        (page content, no close button)
- *  - WalkInOrders.tsx  (history tab content)
- *  - POS.tsx           (full-screen overlay, onClose + showTypeFilter)
+ *  - WalkInOrders.tsx  (Done Orders history tab)
+ *  - POS.tsx           (full-screen overlay, Done Orders button)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
   Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
-  Clock, CheckCircle, AlertCircle, CloudUpload, Loader2
+  Clock, CheckCircle, AlertCircle, CloudUpload, Loader2,
+  UtensilsCrossed, Coffee, Truck, ShoppingBag, Table2,
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
@@ -183,13 +184,11 @@ const fmtDt = (iso: string) =>
 // ─── Main component ─────────────────────────────────────────────────────────
 interface CompletedOrdersViewProps {
   onClose?: () => void;
-  showTypeFilter?: boolean;
   title?: string;
 }
 
 const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   onClose,
-  showTypeFilter = false,
   title = 'Completed Orders',
 }) => {
   const isOverlay = Boolean(onClose);
@@ -199,8 +198,10 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [shiftInfo, setShiftInfo]     = useState<ShiftInfo | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
 
-  // Date range (used when viewMode === 'date')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'walkin' | 'delivery'>('all');
+  // Filters
+  const [typeFilter, setTypeFilter] = useState<'all' | 'dine_in' | 'takeaway' | 'delivery' | 'on_spot'>('all');
+  const [cashierSearch, setCashierSearch] = useState('');
+  const [fbrFilter, setFbrFilter] = useState<'all' | 'synced' | 'not_synced'>('all');
   const [search,   setSearch]   = useState('');
   const [dateFrom, setDateFrom] = useState(localToday);
   const [dateTo,   setDateTo]   = useState(localToday);
@@ -284,10 +285,12 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       status: 'completed,refunded',
     };
     if (search.trim()) base.search = search.trim();
-    if (showTypeFilter && typeFilter !== 'all') base.order_type = typeFilter;
+    if (typeFilter !== 'all') base.order_type = typeFilter;
+    if (cashierSearch.trim()) base.cashier = cashierSearch.trim();
+    if (fbrFilter === 'synced') base.is_synced = '1';
+    else if (fbrFilter === 'not_synced') base.is_synced = '0';
 
     if (viewMode === 'shift' && shiftInfo) {
-      // Pass exact datetimes for shift-level accuracy
       base.shift_start = shiftInfo.opened_at;
       base.shift_end   = shiftInfo.closed_at || new Date().toISOString();
     } else {
@@ -295,7 +298,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       base.date_to   = dateTo;
     }
     return base;
-  }, [page, perPage, search, viewMode, shiftInfo, dateFrom, dateTo, typeFilter, showTypeFilter]);
+  }, [page, perPage, search, viewMode, shiftInfo, dateFrom, dateTo, typeFilter, cashierSearch, fbrFilter]);
 
   // ── Fetch sales ──────────────────────────────────────────────────────────
   const fetchSales = useCallback(async () => {
@@ -319,7 +322,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   }, [fetchSales, unlocked, passwords.view_completed, isOverlay, shiftLoading]);
 
   // Reset page on filter change
-  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter, viewMode, shiftInfo]);
+  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter, cashierSearch, fbrFilter, viewMode, shiftInfo]);
 
   const handleRefund = async (saleId: number) => {
     if (!confirm(`Refund Order #${saleId}? Stock will be restored.`)) return;
@@ -395,7 +398,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       {/* Filters bar */}
       <div className={`space-y-2 ${isOverlay ? 'px-4 sm:px-6 py-3 border-b border-gray-100 bg-white shrink-0' : ''}`}>
 
-        {/* Row 1: View mode toggle + type filter */}
+        {/* Row 1: View mode toggle + Type filter tabs */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Shift / Date toggle */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
@@ -417,30 +420,26 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
             </button>
           </div>
 
-          {/* Type filter tabs (POS only) */}
-          {showTypeFilter && (
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-              {([
-                ['all',      'All'],
-                ['walkin',   'Walk-In'],
-                ['delivery', 'Delivery'],
-              ] as const).map(([tab, label]) => (
-                <button
-                  key={tab}
-                  onClick={() => setTypeFilter(tab)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    typeFilter === tab
-                      ? tab === 'delivery' ? 'bg-blue-600 text-white shadow-sm'
-                        : tab === 'walkin'   ? 'bg-orange-500 text-white shadow-sm'
-                        : 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Type filter — always shown */}
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-wrap">
+            {([
+              { key: 'all',      label: 'All',       Icon: Package,         activeClass: 'bg-emerald-600 text-white' },
+              { key: 'dine_in',  label: 'Dine-In',   Icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white' },
+              { key: 'takeaway', label: 'Takeaway',   Icon: Coffee,          activeClass: 'bg-yellow-500 text-white' },
+              { key: 'delivery', label: 'Delivery',   Icon: Truck,           activeClass: 'bg-blue-600 text-white'   },
+              { key: 'on_spot',  label: 'Walk-In',    Icon: ShoppingBag,     activeClass: 'bg-indigo-600 text-white' },
+            ] as const).map(({ key, label, Icon, activeClass }) => (
+              <button
+                key={key}
+                onClick={() => setTypeFilter(key)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  typeFilter === key ? activeClass + ' shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Icon size={11} /> {label}
+              </button>
+            ))}
+          </div>
 
           {/* Refresh */}
           {!isOverlay && (
@@ -450,13 +449,13 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
           )}
         </div>
 
-        {/* Row 2: Shift banner OR date range */}
-        {viewMode === 'shift' ? (
-          shiftLoading
-            ? <div className="flex items-center gap-2 text-xs text-gray-400 py-1"><div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-emerald-500"></div> Loading shift info...</div>
-            : shiftBanner
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Row 2: Shift banner OR date range + FBR filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          {viewMode === 'shift' ? (
+            shiftLoading
+              ? <div className="flex items-center gap-2 text-xs text-gray-400 py-1"><div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-emerald-500"></div> Loading shift info...</div>
+              : shiftBanner
+          ) : (
             <DateRangeFilter
               standalone={false}
               dateFrom={dateFrom}
@@ -464,19 +463,54 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
               onFromChange={d => setDateFrom(d)}
               onToChange={d => setDateTo(d)}
             />
-          </div>
-        )}
+          )}
 
-        {/* Row 3: Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-          <input
-            type="text"
-            placeholder="Invoice No, Customer, Order ID..."
-            className="w-full pl-9 pr-4 py-2 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          {/* FBR Sync filter */}
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl ml-auto">
+            {([
+              { key: 'all',       label: 'All'       },
+              { key: 'synced',    label: 'FBR Synced' },
+              { key: 'not_synced',label: 'Not Synced' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFbrFilter(key)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  fbrFilter === key
+                    ? key === 'synced' ? 'bg-green-600 text-white shadow-sm'
+                      : key === 'not_synced' ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-gray-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 3: Search invoice + Cashier search */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Invoice No, Customer, Token..."
+              className="w-full pl-9 pr-4 py-2 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative sm:w-48">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <input
+              type="text"
+              placeholder="Cashier / Order Taker..."
+              className="w-full pl-9 pr-4 py-2 bg-white border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm"
+              value={cashierSearch}
+              onChange={e => setCashierSearch(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -507,7 +541,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
             {/* Table: overflow-x-auto on the outer container so the border-radius
                 wraps correctly and horizontal scroll is not clipped.          */}
             <div className="border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm" style={{ minWidth: '860px' }}>
+              <table className="w-full text-left border-collapse text-sm" style={{ minWidth: '960px' }}>
                 <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wide sticky top-0 z-10">
                   <tr>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
@@ -519,9 +553,8 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                     <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
                       <div className="flex items-center gap-1"><User size={13} /> Customer</div>
                     </th>
-                    {showTypeFilter && (
-                      <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Type</th>
-                    )}
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Type</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Cashier</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Sub Total</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Tax</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Service</th>
@@ -533,15 +566,16 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                       <div className="flex items-center gap-1"><CreditCard size={13} /> Payment</div>
                     </th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Status</th>
+                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">FBR</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-center whitespace-nowrap bg-gray-50">Actions</th>
                   </tr>
                 </thead>
 
-                {/* Summary footer — fixed colSpan: 3 base + 1 optional type + 8 data = 11 or 12 */}
+                {/* Summary footer */}
                 {summary && (
                   <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
                     <tr>
-                      <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={showTypeFilter ? 4 : 3}>
+                      <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={5}>
                         {summary.order_count} orders
                       </td>
                       <td className="px-3 py-2.5 text-right font-bold text-gray-700 text-xs">
@@ -559,14 +593,21 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                       <td className="px-3 py-2.5 text-right font-bold text-emerald-800">
                         {cs} {summary.total_amount.toFixed(0)}
                       </td>
-                      <td colSpan={3}></td>
+                      <td colSpan={4}></td>
                     </tr>
                   </tfoot>
                 )}
 
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {sales.map(sale => {
-                    const isDelivery = sale.token_no?.startsWith('DL-');
+                    const orderType = sale.order_type || 'on_spot';
+                    const typeConfig: Record<string, { label: string; cls: string }> = {
+                      dine_in:  { label: 'Dine-In',  cls: 'bg-orange-50 text-orange-700 border-orange-200' },
+                      takeaway: { label: 'Takeaway', cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                      delivery: { label: 'Delivery', cls: 'bg-blue-50 text-blue-700 border-blue-200'       },
+                      on_spot:  { label: 'Walk-In',  cls: 'bg-gray-50 text-gray-600 border-gray-200'       },
+                    };
+                    const tc = typeConfig[orderType] || typeConfig.on_spot;
                     return (
                       <tr key={sale.sale_id} className="hover:bg-emerald-50/40 transition-colors">
                         <td className="px-3 py-2.5 whitespace-nowrap">
@@ -582,17 +623,16 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                           })}
                         </td>
                         <td className="px-3 py-2.5 text-gray-700 font-medium text-xs whitespace-nowrap">
-                          <div className="max-w-[130px] truncate">{sale.customer_name || 'Walk-in'}</div>
+                          <div className="max-w-[110px] truncate">{sale.customer_name || 'Walk-in'}</div>
                         </td>
-                        {showTypeFilter && (
-                          <td className="px-3 py-2.5">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${
-                              isDelivery ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orange-50 text-orange-700 border-orange-200'
-                            }`}>
-                              {isDelivery ? 'DL' : 'WI'}
-                            </span>
-                          </td>
-                        )}
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold border ${tc.cls}`}>
+                            {tc.label}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                          <div className="max-w-[90px] truncate">{sale.cashier_name || '—'}</div>
+                        </td>
                         <td className="px-3 py-2.5 text-right text-gray-600 text-xs whitespace-nowrap">
                           {cs} {parseFloat(sale.sub_total || 0).toFixed(0)}
                         </td>
@@ -627,6 +667,11 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                           }`}>
                             {sale.status}
                           </span>
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          {sale.is_synced
+                            ? <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">Synced</span>
+                            : <span className="text-gray-300 text-xs">—</span>}
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-center gap-1">
