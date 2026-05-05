@@ -90,7 +90,11 @@ exports.login = async (req, res) => {
         'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
         [user.role_name]
       );
-      permissions = permRows.map(r => r.module_key);
+      const keys = permRows.map(r => r.module_key);
+      // Also include parent keys so sidebar parent menus are visible
+      // e.g. 'sales.pos' → also add 'sales'
+      const parents = keys.map(k => k.split('.')[0]);
+      permissions = [...new Set([...keys, ...parents])];
     }
 
     // Audit log
@@ -141,7 +145,9 @@ exports.verify = async (req, res) => {
         'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
         [req.user.role_name]
       );
-      permissions = permRows.map(r => r.module_key);
+      const keys = permRows.map(r => r.module_key);
+      const parents = keys.map(k => k.split('.')[0]);
+      permissions = [...new Set([...keys, ...parents])];
     }
 
     let branch_name = null;
