@@ -55,7 +55,7 @@ exports.getAll = async (req, res) => {
     await ensureAddressTable();
     const { search } = req.query;  // Optional search keyword from URL ?search=...
     // JOIN with customer_addresses to get default address (fallback for older records)
-    let sql = `SELECT c.*, COALESCE(c.address, ca.address_text) AS default_address
+    let sql = `SELECT c.*, ca.address_text AS default_address
                FROM customers c
                LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1`;
     const params = [];
@@ -156,7 +156,7 @@ exports.getById = async (req, res) => {
     // Fetch the customer record (with default address fallback from customer_addresses)
     const rows = await query(
       `SELECT c.customer_id, c.customer_name, c.phone_number, c.email, c.company, c.tax_id, c.created_at,
-              COALESCE(c.address, ca.address_text) AS address
+              ca.address_text AS address
        FROM customers c
        LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
        WHERE c.customer_id = ?`,

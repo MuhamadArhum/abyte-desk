@@ -5,7 +5,7 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-Same iss trha Delivery waly main sy bhi DOne order khatam kro 
+
 
 Ok Ab Hum Mobile App Bhi Bnaty hain Iska 
 1: Mobile App Just Waiter k Liye hogi 
