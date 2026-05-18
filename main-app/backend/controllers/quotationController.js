@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -76,7 +77,7 @@ const getAll = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get quotations error:', error);
+    logger.error('Get quotations error:', error);
     res.status(500).json({ message: 'Failed to fetch quotations' });
   }
 };
@@ -112,7 +113,7 @@ const getById = async (req, res) => {
 
     res.json({ ...quotations[0], items });
   } catch (error) {
-    console.error('Get quotation error:', error);
+    logger.error('Get quotation error:', error);
     res.status(500).json({ message: 'Failed to fetch quotation' });
   }
 };
@@ -161,7 +162,7 @@ const create = async (req, res) => {
     res.status(201).json({ message: 'Quotation created', quotation_id, quotation_number });
   } catch (error) {
     await conn.rollback();
-    console.error('Create quotation error:', error);
+    logger.error('Create quotation error:', error);
     res.status(500).json({ message: 'Failed to create quotation' });
   } finally {
     conn.release();
@@ -227,7 +228,7 @@ const update = async (req, res) => {
     res.json({ message: 'Quotation updated' });
   } catch (error) {
     await conn.rollback();
-    console.error('Update quotation error:', error);
+    logger.error('Update quotation error:', error);
     res.status(500).json({ message: 'Failed to update quotation' });
   } finally {
     conn.release();
@@ -272,7 +273,7 @@ const updateStatus = async (req, res) => {
 
     res.json({ message: `Quotation status updated to '${status}'` });
   } catch (error) {
-    console.error('Update quotation status error:', error);
+    logger.error('Update quotation status error:', error);
     res.status(500).json({ message: 'Failed to update quotation status' });
   }
 };
@@ -377,7 +378,7 @@ const convertToSale = async (req, res) => {
     res.json({ message: 'Quotation converted to sale', sale_id });
   } catch (error) {
     await conn.rollback();
-    console.error('Convert quotation error:', error);
+    logger.error('Convert quotation error:', error);
     res.status(500).json({ message: 'Failed to convert quotation to sale' });
   } finally {
     conn.release();
@@ -405,7 +406,7 @@ const deleteFn = async (req, res) => {
 
     res.json({ message: 'Quotation deleted' });
   } catch (error) {
-    console.error('Delete quotation error:', error);
+    logger.error('Delete quotation error:', error);
     res.status(500).json({ message: 'Failed to delete quotation' });
   }
 };
@@ -433,7 +434,7 @@ const getStats = async (req, res) => {
 
     res.json(rows[0]);
   } catch (error) {
-    console.error('Get quotation stats error:', error);
+    logger.error('Get quotation stats error:', error);
     res.status(500).json({ message: 'Failed to fetch quotation stats' });
   }
 };

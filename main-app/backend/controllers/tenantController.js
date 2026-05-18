@@ -7,6 +7,7 @@
 //      → Returns branding, tax, receipt settings for the CURRENT tenant
 // =============================================================
 
+const logger = require('../config/logger');
 const bcrypt = require('bcryptjs');
 const fs     = require('fs');
 const path   = require('path');
@@ -43,7 +44,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data: result });
   } catch (err) {
-    console.error('getAll tenants error:', err);
+    logger.error('getAll tenants error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -54,7 +55,7 @@ exports.getPlans = async (req, res) => {
     const plans = await masterQuery('SELECT * FROM plans WHERE is_active = 1 ORDER BY monthly_price');
     res.json({ data: plans });
   } catch (err) {
-    console.error('getPlans error:', err);
+    logger.error('getPlans error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -108,7 +109,7 @@ exports.create = async (req, res) => {
         await conn.query(stmt);
       } catch (e) {
         if (!e.message.includes('already exists') && !e.message.includes('Duplicate')) {
-          console.warn('Schema stmt warning:', e.message.substring(0, 80));
+          logger.warn('Schema stmt warning:', e.message.substring(0, 80));
         }
       }
     }
@@ -179,7 +180,7 @@ exports.create = async (req, res) => {
     });
   } catch (err) {
     try { await conn.rollback(); } catch {}
-    console.error('Create tenant error:', err);
+    logger.error('Create tenant error:', err);
     try { await conn.query(`DROP DATABASE IF EXISTS \`${dbName}\``); } catch {}
     res.status(500).json({ message: 'Failed to create tenant: ' + err.message });
   } finally {
@@ -220,7 +221,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: 'Tenant updated' });
   } catch (err) {
-    console.error('Update tenant error:', err);
+    logger.error('Update tenant error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -237,7 +238,7 @@ exports.remove = async (req, res) => {
     await masterQuery('UPDATE tenants SET is_active = 0 WHERE tenant_id = ?', [id]);
     res.json({ message: 'Tenant deactivated (database preserved)' });
   } catch (err) {
-    console.error('Delete tenant error:', err);
+    logger.error('Delete tenant error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -261,7 +262,7 @@ exports.resetAdminPassword = async (req, res) => {
     await queryDb(db_name, 'UPDATE users SET password_hash = ? WHERE email = ?', [hash, admin_email]);
     res.json({ message: 'Admin password reset successfully' });
   } catch (err) {
-    console.error('Reset password error:', err);
+    logger.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -342,7 +343,7 @@ exports.getConfig = async (req, res) => {
       modules_enabled:  modulesEnabled,
     });
   } catch (err) {
-    console.error('getConfig error:', err);
+    logger.error('getConfig error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -404,7 +405,7 @@ exports.updateConfig = async (req, res) => {
 
     res.json({ message: 'Config updated successfully' });
   } catch (err) {
-    console.error('updateConfig error:', err);
+    logger.error('updateConfig error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -439,7 +440,7 @@ exports.getPublicConfig = async (req, res) => {
       primary_color: row.primary_color || '#10b981',
     });
   } catch (err) {
-    console.error('getPublicConfig error:', err);
+    logger.error('getPublicConfig error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

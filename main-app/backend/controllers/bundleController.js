@@ -5,6 +5,7 @@
 // Used by: /api/bundles routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const auditService = require('../services/auditService');
 
@@ -40,7 +41,7 @@ exports.getAllBundles = async (req, res) => {
 
     res.json(bundles);
   } catch (err) {
-    console.error('Get bundles error:', err);
+    logger.error('Get bundles error:', err);
     res.status(500).json({ message: 'Failed to fetch bundles', error: err.message });
   }
 };
@@ -75,7 +76,7 @@ exports.getBundleById = async (req, res) => {
 
     res.json(bundle);
   } catch (err) {
-    console.error('Get bundle by ID error:', err);
+    logger.error('Get bundle by ID error:', err);
     res.status(500).json({ message: 'Failed to fetch bundle', error: err.message });
   }
 };
@@ -150,7 +151,7 @@ exports.createBundle = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error('Create bundle error:', err);
+    logger.error('Create bundle error:', err);
     res.status(500).json({ message: 'Failed to create bundle', error: err.message });
   } finally {
     conn.release();
@@ -265,7 +266,7 @@ exports.updateBundle = async (req, res) => {
     res.json({ message: 'Bundle updated successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error('Update bundle error:', err);
+    logger.error('Update bundle error:', err);
     res.status(500).json({ message: 'Failed to update bundle', error: err.message });
   } finally {
     conn.release();
@@ -322,7 +323,7 @@ exports.deleteBundle = async (req, res) => {
     res.json({ message: 'Bundle deleted successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error('Delete bundle error:', err);
+    logger.error('Delete bundle error:', err);
     res.status(500).json({ message: 'Failed to delete bundle', error: err.message });
   } finally {
     conn.release();
@@ -416,7 +417,7 @@ exports.detectBundles = async (req, res) => {
 
     res.json({ applicable_bundles: applicableBundles });
   } catch (err) {
-    console.error('Detect bundles error:', err);
+    logger.error('Detect bundles error:', err);
     res.status(500).json({ message: 'Failed to detect bundles', error: err.message });
   }
 };

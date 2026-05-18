@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -136,7 +137,7 @@ exports.createReturn = async (req, res) => {
     res.status(201).json({ ...newReturn[0], items: returnDetails });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Create return error:', error);
+    logger.error('Create return error:', error);
     res.status(500).json({ message: 'Failed to process return' });
   } finally {
     if (conn) conn.release();
@@ -198,7 +199,7 @@ exports.getReturns = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get returns error:', error);
+    logger.error('Get returns error:', error);
     res.status(500).json({ message: 'Failed to fetch returns' });
   }
 };
@@ -251,7 +252,7 @@ exports.getSaleForReturn = async (req, res) => {
 
     res.json({ ...sale[0], items: itemsWithReturnable });
   } catch (error) {
-    console.error('Get sale for return error:', error);
+    logger.error('Get sale for return error:', error);
     res.status(500).json({ message: 'Failed to fetch sale details' });
   }
 };
@@ -280,7 +281,7 @@ exports.getReturnById = async (req, res) => {
 
     res.json({ ...returnRecord[0], items: details });
   } catch (error) {
-    console.error('Get return error:', error);
+    logger.error('Get return error:', error);
     res.status(500).json({ message: 'Failed to fetch return details' });
   }
 };

@@ -2,7 +2,8 @@
 // auth.js - Multi-Tenant Authentication & Authorization Middleware
 // =============================================================
 
-const jwt = require('jsonwebtoken');
+const jwt    = require('jsonwebtoken');
+const logger = require('../config/logger');
 const { queryDb, tenantStorage } = require('../config/database');
 const { isBlacklisted } = require('../services/tokenBlacklist');
 
@@ -16,7 +17,7 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    if (isBlacklisted(token)) {
+    if (await isBlacklisted(token)) {
       return res.status(401).json({ message: 'Token has been revoked. Please login again.' });
     }
 
@@ -117,7 +118,7 @@ const requirePermission = (moduleKey) => async (req, res, next) => {
     if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
     next();
   } catch (err) {
-    console.error('Permission check error:', err.message);
+    logger.error('Permission check error', { error: err.message });
     return res.status(500).json({ message: 'Server error' });
   }
 };

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -81,7 +82,7 @@ exports.getAll = async (req, res) => {
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
     });
   } catch (error) {
-    console.error('Get stock adjustments error:', error);
+    logger.error('Get stock adjustments error:', error);
     res.status(500).json({ message: 'Failed to fetch stock adjustments' });
   }
 };
@@ -101,7 +102,7 @@ exports.getById = async (req, res) => {
     if (!adjustment) return res.status(404).json({ message: 'Adjustment not found' });
     res.json(adjustment);
   } catch (error) {
-    console.error('Get stock adjustment error:', error);
+    logger.error('Get stock adjustment error:', error);
     res.status(500).json({ message: 'Failed to fetch adjustment' });
   }
 };
@@ -189,7 +190,7 @@ exports.create = async (req, res) => {
     });
   } catch (error) {
     await conn.rollback();
-    console.error('Create stock adjustment error:', error);
+    logger.error('Create stock adjustment error:', error);
     res.status(500).json({ message: 'Failed to create stock adjustment' });
   } finally {
     conn.release();
@@ -231,7 +232,7 @@ exports.getStats = async (req, res) => {
       by_type: stats
     });
   } catch (error) {
-    console.error('Get stats error:', error);
+    logger.error('Get stats error:', error);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 };

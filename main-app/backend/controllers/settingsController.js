@@ -1,4 +1,5 @@
 ﻿const { query } = require('../config/database');
+const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
 const bcrypt = require('bcryptjs');
 const net = require('net');
@@ -27,7 +28,7 @@ exports.getSettings = async (req, res) => {
     }
     res.json(row);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -95,7 +96,7 @@ exports.updateSettings = async (req, res) => {
         [view_completed_orders_password || null, refund_password || null, reports_password || null]
       );
     } catch (pwErr) {
-      console.warn('POS security password columns not found. Run migrate_pos_security.js');
+      logger.warn('POS security password columns not found. Run migrate_pos_security.js');
     }
 
     // Update accounts security password
@@ -104,7 +105,7 @@ exports.updateSettings = async (req, res) => {
       await query(`UPDATE store_settings SET jv_delete_password=? WHERE setting_id=1`,
         [jv_delete_password || null]);
     } catch (jvErr) {
-      console.warn('jv_delete_password column error:', jvErr.message);
+      logger.warn('jv_delete_password column error:', jvErr.message);
     }
 
     // Update default delivery charges (column may not exist on older DBs)
@@ -114,7 +115,7 @@ exports.updateSettings = async (req, res) => {
         [parseFloat(default_delivery_charges) || 0]
       );
     } catch (dcErr) {
-      console.warn('default_delivery_charges column not found. Run migrate_delivery_charges_setting.js');
+      logger.warn('default_delivery_charges column not found. Run migrate_delivery_charges_setting.js');
     }
 
     // Update POS mode and per-category tax configuration
@@ -126,7 +127,7 @@ exports.updateSettings = async (req, res) => {
         [pos_mode || 'simple', pos_tax_config ? JSON.stringify(pos_tax_config) : null]
       );
     } catch (pmErr) {
-      console.warn('pos_mode/pos_tax_config column error:', pmErr.message);
+      logger.warn('pos_mode/pos_tax_config column error:', pmErr.message);
     }
 
     // Update payment-method-specific tax rates
@@ -140,13 +141,13 @@ exports.updateSettings = async (req, res) => {
         [parseFloat(tax_on_cash) || 0, parseFloat(tax_on_card) || 0, parseFloat(tax_on_online) || 0]
       );
     } catch (txErr) {
-      console.warn('tax_on_cash/card/online column error:', txErr.message);
+      logger.warn('tax_on_cash/card/online column error:', txErr.message);
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -179,7 +180,7 @@ exports.changePassword = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PASSWORD_CHANGED', 'users', req.user.user_id, {}, req.ip);
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -221,7 +222,7 @@ exports.printReceipt = async (req, res) => {
 
     res.json({ success: true, message: 'Receipt sent to printer' });
   } catch (err) {
-    console.error('Print error:', err);
+    logger.error('Print error:', err);
     res.status(500).json({ message: err.message || 'Failed to print receipt' });
   }
 };
@@ -246,7 +247,7 @@ exports.printThermalDocument = async (req, res) => {
 
     res.json({ success: true, message: `${purpose} sent to ${printer.name}` });
   } catch (err) {
-    console.error('Thermal doc print error:', err);
+    logger.error('Thermal doc print error:', err);
     res.status(500).json({ message: err.message || 'Failed to print' });
   }
 };
@@ -313,7 +314,7 @@ exports.getPrinters = async (req, res) => {
     }
     res.json(printers);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -344,7 +345,7 @@ exports.createPrinter = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PRINTER_ADDED', 'printers', printerId, { name, type, printer_type: pType }, req.ip);
     res.status(201).json({ message: 'Printer added successfully', printer_id: printerId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -374,7 +375,7 @@ exports.updatePrinter = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PRINTER_UPDATED', 'printers', id, { name, type, printer_type: pType }, req.ip);
     res.json({ message: 'Printer updated successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -388,7 +389,7 @@ exports.deletePrinter = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PRINTER_DELETED', 'printers', id, {}, req.ip);
     res.json({ message: 'Printer deleted successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -419,7 +420,7 @@ exports.testPrinterById = async (req, res) => {
     }
     res.json({ success: true, message: `Test page sent to ${printer.name}` });
   } catch (err) {
-    console.error('Printer test error:', err);
+    logger.error('Printer test error:', err);
     res.status(500).json({ message: `Test failed: ${err.message}` });
   }
 };
@@ -467,7 +468,7 @@ exports.testPrinter = async (req, res) => {
 
     return res.status(400).json({ message: 'Select a printer type first' });
   } catch (err) {
-    console.error('Printer test error:', err);
+    logger.error('Printer test error:', err);
     res.status(500).json({ message: `Printer test failed: ${err.message}` });
   }
 };
@@ -660,7 +661,7 @@ exports.getCategories = async (req, res) => {
     const categories = await query('SELECT category_id, category_name FROM categories WHERE is_active = 1 ORDER BY category_name');
     res.json({ data: categories });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -684,7 +685,7 @@ exports.getSystemInfo = async (req, res) => {
       memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

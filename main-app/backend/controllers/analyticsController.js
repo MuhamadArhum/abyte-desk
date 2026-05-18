@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 function getBranchFilter(req, alias) {
@@ -41,7 +42,7 @@ exports.getCustomerAnalytics = async (req, res) => {
 
     res.json({ top_customers: topCustomers, summary: customerCounts || {} });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -66,7 +67,7 @@ exports.getPaymentMethods = async (req, res) => {
 
     res.json({ data: methods });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -96,7 +97,7 @@ exports.getHourlySales = async (req, res) => {
 
     res.json({ data: allHours });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -144,7 +145,7 @@ exports.getDashboardStats = async (req, res) => {
       topProducts
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -174,7 +175,7 @@ exports.getSalesTrend = async (req, res) => {
 
     res.json({ data: trend });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -198,7 +199,7 @@ exports.getCategoryBreakdown = async (req, res) => {
 
     res.json({ data: breakdown });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

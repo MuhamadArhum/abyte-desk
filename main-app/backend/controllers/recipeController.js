@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -86,7 +87,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data: recipes });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -117,7 +118,7 @@ exports.getById = async (req, res) => {
     );
     res.json(recipe);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -158,7 +159,7 @@ exports.create = async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -204,7 +205,7 @@ exports.update = async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -226,7 +227,7 @@ exports.remove = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'RECIPE_DELETED', 'recipe', parseInt(id), {}, req.ip);
     res.json({ message: 'Recipe deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 function getBranchFilter(req) {
@@ -35,7 +36,7 @@ exports.getSalesSummary = async (req, res) => {
       total_discount: Number(summary.total_discount) || 0,
       total_tax: Number(summary.total_tax) || 0
     });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getHourlySales = async (req, res) => {
@@ -55,7 +56,7 @@ exports.getHourlySales = async (req, res) => {
       return { hour: i, orders: found ? Number(found.orders) : 0, revenue: found ? Number(found.revenue) : 0 };
     });
     res.json({ data: hourly });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getPaymentBreakdown = async (req, res) => {
@@ -75,7 +76,7 @@ exports.getPaymentBreakdown = async (req, res) => {
     const grandTotal = rows.reduce((s, r) => s + Number(r.total), 0);
     const data = rows.map(r => ({ method: r.payment_method, count: Number(r.count), total: Number(r.total), percentage: grandTotal > 0 ? Math.round((Number(r.total) / grandTotal) * 100) : 0 }));
     res.json({ data });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getCashierPerformance = async (req, res) => {
@@ -95,7 +96,7 @@ exports.getCashierPerformance = async (req, res) => {
     `, params);
 
     res.json({ data: rows.map(r => ({ ...r, total_sales: Number(r.total_sales), avg_sale: Number(r.avg_sale), order_count: Number(r.order_count) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getDailyTrend = async (req, res) => {
@@ -113,7 +114,7 @@ exports.getDailyTrend = async (req, res) => {
     `, params);
 
     res.json({ data: rows.map(r => ({ date: r.date, orders: Number(r.orders), revenue: Number(r.revenue) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getTopCustomers = async (req, res) => {
@@ -132,7 +133,7 @@ exports.getTopCustomers = async (req, res) => {
     `, params);
 
     res.json({ data: rows.map(r => ({ ...r, total_spent: Number(r.total_spent), order_count: Number(r.order_count) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getSalesComparison = async (req, res) => {
@@ -159,7 +160,7 @@ exports.getSalesComparison = async (req, res) => {
     const change = prevTotal > 0 ? Math.round(((currentTotal - prevTotal) / prevTotal) * 100) : 0;
 
     res.json({ current_period: { total: currentTotal, orders: Number(current.orders) }, previous_period: { total: prevTotal, orders: Number(previous.orders) }, change_percent: change });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 
@@ -202,5 +203,5 @@ exports.getCategoryBreakdown = async (req, res) => {
         avg_order: Number(r.avg_order),
       }))
     });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 let tableSchemaEnsured = false;

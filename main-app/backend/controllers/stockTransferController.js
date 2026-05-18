@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -42,7 +43,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
-    console.error('Get transfers error:', error);
+    logger.error('Get transfers error:', error);
     res.status(500).json({ message: 'Failed to fetch transfers' });
   }
 };
@@ -64,7 +65,7 @@ exports.getById = async (req, res) => {
     if (!transfer) return res.status(404).json({ message: 'Transfer not found' });
     res.json(transfer);
   } catch (error) {
-    console.error('Get transfer error:', error);
+    logger.error('Get transfer error:', error);
     res.status(500).json({ message: 'Failed to fetch transfer' });
   }
 };
@@ -103,7 +104,7 @@ exports.create = async (req, res) => {
 
     res.status(201).json({ message: 'Transfer created (pending approval)', transfer_id: result.insertId });
   } catch (error) {
-    console.error('Create transfer error:', error);
+    logger.error('Create transfer error:', error);
     res.status(500).json({ message: 'Failed to create transfer' });
   }
 };
@@ -153,7 +154,7 @@ exports.approve = async (req, res) => {
     res.json({ message: 'Transfer approved and completed' });
   } catch (error) {
     await conn.rollback();
-    console.error('Approve transfer error:', error);
+    logger.error('Approve transfer error:', error);
     res.status(500).json({ message: 'Failed to approve transfer' });
   } finally {
     conn.release();
@@ -171,7 +172,7 @@ exports.cancel = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'TRANSFER_CANCELLED', 'stock_transfer', id, {}, req.ip);
     res.json({ message: 'Transfer cancelled' });
   } catch (error) {
-    console.error('Cancel transfer error:', error);
+    logger.error('Cancel transfer error:', error);
     res.status(500).json({ message: 'Failed to cancel transfer' });
   }
 };
@@ -186,7 +187,7 @@ exports.getStats = async (req, res) => {
     const total = stats.reduce((sum, s) => sum + Number(s.count), 0);
     res.json({ total, by_status: stats });
   } catch (error) {
-    console.error('Get transfer stats error:', error);
+    logger.error('Get transfer stats error:', error);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 };

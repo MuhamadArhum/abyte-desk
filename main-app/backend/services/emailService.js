@@ -6,7 +6,7 @@ let nodemailer;
 try {
   nodemailer = require('nodemailer');
 } catch {
-  console.warn('[EmailService] nodemailer not installed. Run: npm install nodemailer');
+  logger.warn('[EmailService] nodemailer not installed. Run: npm install nodemailer');
 }
 
 const logger = require('../config/logger');

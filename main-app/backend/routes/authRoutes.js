@@ -9,12 +9,13 @@
 // =============================================================
 
 const express = require('express');
-const router = express.Router();  // Create a new router instance
-const authController = require('../controllers/authController');  // Controller with the actual logic
-const { authenticate } = require('../middleware/auth');            // JWT verification middleware
+const router = express.Router();
+const authController = require('../controllers/authController');
+const { authenticate } = require('../middleware/auth');
+const { validateLogin, handleValidation } = require('../middleware/validate');
 
-// POST /api/auth/login - No middleware needed (public endpoint)
-router.post('/login', authController.login);
+// POST /api/auth/login - validate input before controller
+router.post('/login', validateLogin, handleValidation, authController.login);
 
 // GET /api/auth/verify - Requires valid JWT token (authenticate middleware checks it)
 router.get('/verify', authenticate, authController.verify);

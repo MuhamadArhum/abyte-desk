@@ -5,6 +5,7 @@
 // Used by: /api/audit routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 // Build WHERE clause from query params (shared by getLogs and exportLogs)
@@ -44,31 +45,25 @@ function buildWhereClause(queryParams) {
 
 exports.getLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit) || 50));
     const where = buildWhereClause(req.query);
 
-    // Get total count
     const countResult = await query(`SELECT COUNT(*) as total FROM audit_logs${where.sql}`, where.params);
     const total = Number(countResult[0].total);
 
-    // Add pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const offset = (page - 1) * limit;
     const logs = await query(
       `SELECT * FROM audit_logs${where.sql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...where.params, parseInt(limit), offset]
+      [...where.params, limit, offset]
     );
 
     res.json({
       logs,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total,
-        totalPages: Math.ceil(total / parseInt(limit))
-      }
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('Get audit logs error:', error);
+    logger.error('Get audit logs error:', error);
     res.status(500).json({ message: 'Failed to fetch audit logs' });
   }
 };
@@ -105,7 +100,7 @@ exports.exportLogs = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=audit-log-${new Date().toISOString().split('T')[0]}.csv`);
     res.send(csv);
   } catch (error) {
-    console.error('Export audit logs error:', error);
+    logger.error('Export audit logs error:', error);
     res.status(500).json({ message: 'Failed to export audit logs' });
   }
 };
@@ -118,7 +113,7 @@ exports.getLogById = async (req, res) => {
     }
     res.json(rows[0]);
   } catch (error) {
-    console.error('Get audit log error:', error);
+    logger.error('Get audit log error:', error);
     res.status(500).json({ message: 'Failed to fetch audit log' });
   }
 };
@@ -128,7 +123,7 @@ exports.getActions = async (req, res) => {
     const rows = await query('SELECT DISTINCT action FROM audit_logs ORDER BY action');
     res.json(rows.map(r => r.action));
   } catch (error) {
-    console.error('Get audit actions error:', error);
+    logger.error('Get audit actions error:', error);
     res.status(500).json({ message: 'Failed to fetch actions' });
   }
 };

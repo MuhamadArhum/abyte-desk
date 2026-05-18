@@ -5,6 +5,7 @@
 // Used by: /api/inventory routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -93,7 +94,7 @@ exports.getAll = async (req, res) => {
     );
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -130,7 +131,7 @@ exports.getStats = async (req, res) => {
 
     res.json({ overview: overviewRows[0] || {}, by_type: byType });
   } catch (err) {
-    console.error('getStats error:', err.message);
+    logger.error('getStats error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -160,7 +161,7 @@ exports.getLowStock = async (req, res) => {
     );
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -188,7 +189,7 @@ exports.updateStock = async (req, res) => {
 
     res.json({ message: 'Stock updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

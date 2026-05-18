@@ -4,6 +4,7 @@
 // Used by: /api/credit-sales routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -91,7 +92,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data: creditSales, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -128,7 +129,7 @@ exports.getById = async (req, res) => {
 
     res.json({ data: { ...creditSales[0], payments } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -199,7 +200,7 @@ exports.create = async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -266,7 +267,7 @@ exports.recordPayment = async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -287,7 +288,7 @@ exports.getCustomerBalance = async (req, res) => {
 
     res.json({ data: result[0] });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -310,7 +311,7 @@ exports.getOverdue = async (req, res) => {
 
     res.json({ data: overdue });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -344,7 +345,7 @@ exports.getStats = async (req, res) => {
       collected_this_month: collected.collected_this_month
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

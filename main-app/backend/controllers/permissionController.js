@@ -1,4 +1,5 @@
 // permissionController.js - RBAC permission management
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 
 // GET /api/permissions  → { Manager: [...], Cashier: [...], CustomRole: [...] }
@@ -20,7 +21,7 @@ exports.getAllPermissions = async (req, res) => {
     }
     res.json(result);
   } catch (err) {
-    console.error('getAllPermissions error:', err);
+    logger.error('getAllPermissions error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -39,7 +40,7 @@ exports.getPermissionsByRole = async (req, res) => {
     );
     res.json({ role, permissions: rows.map(r => r.module_key) });
   } catch (err) {
-    console.error('getPermissionsByRole error:', err);
+    logger.error('getPermissionsByRole error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -55,7 +56,7 @@ exports.updatePermissions = async (req, res) => {
       return res.status(400).json({ message: 'Invalid role.' });
     }
   } catch (err) {
-    console.error('updatePermissions role check error:', err);
+    logger.error('updatePermissions role check error:', err);
     return res.status(500).json({ message: 'Server error' });
   }
 
@@ -83,7 +84,7 @@ exports.updatePermissions = async (req, res) => {
     res.json({ message: `Permissions updated for ${role}` });
   } catch (err) {
     await conn.rollback();
-    console.error('updatePermissions error:', err);
+    logger.error('updatePermissions error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();

@@ -5,6 +5,7 @@
 // Used by: /api/products routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -119,7 +120,7 @@ exports.getAll = async (req, res) => {
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -178,7 +179,7 @@ exports.getById = async (req, res) => {
 
     res.json(product);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -221,7 +222,7 @@ exports.create = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Barcode already exists' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -253,7 +254,7 @@ exports.update = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Barcode already exists' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -284,7 +285,7 @@ exports.remove = async (req, res) => {
 
     res.json({ message: 'Product deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -311,7 +312,7 @@ exports.getCategories = async (req, res) => {
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -341,7 +342,7 @@ exports.createCategory = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: resolvedType, parent_id: parent_id || null }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -371,7 +372,7 @@ exports.updateCategory = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_UPDATED', 'category', id, { category_name, category_type: catType }, req.ip);
     res.json({ message: 'Category updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -392,7 +393,7 @@ exports.deleteCategory = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_DELETED', 'category', id, {}, req.ip);
     res.json({ message: 'Category deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -425,7 +426,7 @@ exports.generateBarcode = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Barcode collision. Please try again.' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

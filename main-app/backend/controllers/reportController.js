@@ -6,6 +6,7 @@
 // Used by: /api/reports routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');  // Database query helper
 
 // --- Daily Report ---
@@ -25,7 +26,7 @@ exports.dailyReport = async (req, res) => {
     );
     res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -71,7 +72,7 @@ exports.dateRangeReport = async (req, res) => {
 
     res.json({ summary: summary[0], daily });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -114,7 +115,7 @@ exports.productReport = async (req, res) => {
 
     res.json({ data: withPercentage });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -152,7 +153,7 @@ exports.inventoryReport = async (req, res) => {
       total_products: all.length,           // Count of products
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -206,7 +207,7 @@ exports.dashboardSummary = async (req, res) => {
       chart: chartRows
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

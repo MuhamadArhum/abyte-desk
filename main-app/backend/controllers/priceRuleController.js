@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -51,7 +52,7 @@ exports.getAll = async (req, res) => {
       pagination: { total: countResult.total, page, limit, totalPages: Math.ceil(countResult.total / limit) }
     });
   } catch (err) {
-    console.error('Get price rules error:', err);
+    logger.error('Get price rules error:', err);
     res.status(500).json({ message: 'Failed to fetch price rules' });
   }
 };
@@ -75,7 +76,7 @@ exports.getStats = async (req, res) => {
 
     res.json({ ...stats, savings_this_month: usage.savings_this_month });
   } catch (err) {
-    console.error('Get price rule stats error:', err);
+    logger.error('Get price rule stats error:', err);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 };
@@ -109,7 +110,7 @@ exports.getById = async (req, res) => {
 
     res.json({ ...rules[0], products, usage_history: usage });
   } catch (err) {
-    console.error('Get price rule error:', err);
+    logger.error('Get price rule error:', err);
     res.status(500).json({ message: 'Failed to fetch price rule' });
   }
 };
@@ -162,7 +163,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ message: 'Price rule created', rule_id });
   } catch (err) {
     await conn.rollback();
-    console.error('Create price rule error:', err);
+    logger.error('Create price rule error:', err);
     res.status(500).json({ message: 'Failed to create price rule' });
   } finally {
     conn.release();
@@ -214,7 +215,7 @@ exports.update = async (req, res) => {
     res.json({ message: 'Price rule updated' });
   } catch (err) {
     await conn.rollback();
-    console.error('Update price rule error:', err);
+    logger.error('Update price rule error:', err);
     res.status(500).json({ message: 'Failed to update price rule' });
   } finally {
     conn.release();
@@ -244,7 +245,7 @@ exports.delete = async (req, res) => {
 
     res.json({ message: 'Price rule deleted' });
   } catch (err) {
-    console.error('Delete price rule error:', err);
+    logger.error('Delete price rule error:', err);
     res.status(500).json({ message: 'Failed to delete price rule' });
   }
 };
@@ -342,7 +343,7 @@ exports.evaluate = async (req, res) => {
 
     res.json({ rules: applicableRules, total_discount: round2(totalDiscount) });
   } catch (err) {
-    console.error('Evaluate price rules error:', err);
+    logger.error('Evaluate price rules error:', err);
     res.status(500).json({ message: 'Failed to evaluate price rules' });
   }
 };

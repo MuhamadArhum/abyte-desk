@@ -5,6 +5,7 @@
 // Used by: /api/backup routes
 // =============================================================
 
+const logger = require('../config/logger');
 const path = require('path');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
@@ -19,7 +20,7 @@ exports.createBackup = async (req, res) => {
 
     res.status(201).json({ message: 'Backup created successfully', filename: result.filename });
   } catch (error) {
-    console.error('Create backup error:', error);
+    logger.error('Create backup error:', error);
     res.status(500).json({ message: error.message || 'Failed to create backup' });
   }
 };
@@ -48,7 +49,7 @@ exports.listBackups = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('List backups error:', error);
+    logger.error('List backups error:', error);
     res.status(500).json({ message: 'Failed to list backups' });
   }
 };
@@ -64,7 +65,7 @@ exports.restoreBackup = async (req, res) => {
     try {
       await backupService.createBackup(req.user.user_id, 'manual');
     } catch (preBackupErr) {
-      console.error('Pre-restore backup failed:', preBackupErr);
+      logger.error('Pre-restore backup failed:', preBackupErr);
     }
 
     await backupService.restoreBackup(filename);
@@ -74,7 +75,7 @@ exports.restoreBackup = async (req, res) => {
 
     res.json({ message: 'Backup restored successfully' });
   } catch (error) {
-    console.error('Restore backup error:', error);
+    logger.error('Restore backup error:', error);
     res.status(500).json({ message: error.message || 'Failed to restore backup' });
   }
 };
@@ -96,7 +97,7 @@ exports.downloadBackup = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Download backup error:', error);
+    logger.error('Download backup error:', error);
     res.status(500).json({ message: 'Failed to download backup' });
   }
 };
@@ -113,7 +114,7 @@ exports.deleteBackup = async (req, res) => {
 
     res.json({ message: 'Backup deleted' });
   } catch (error) {
-    console.error('Delete backup error:', error);
+    logger.error('Delete backup error:', error);
     res.status(500).json({ message: error.message || 'Failed to delete backup' });
   }
 };

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -7,7 +8,7 @@ exports.getAll = async (req, res) => {
     const rows = await query('SELECT * FROM sections ORDER BY section_name');
     res.json({ data: rows });
   } catch (err) {
-    console.error('getAll sections error:', err);
+    logger.error('getAll sections error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };
@@ -19,7 +20,7 @@ exports.getById = async (req, res) => {
     if (!row) return res.status(404).json({ message: 'Section not found' });
     res.json(row);
   } catch (err) {
-    console.error('getById section error:', err);
+    logger.error('getById section error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };
@@ -37,7 +38,7 @@ exports.create = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SECTION_CREATED', 'sections', newId, { section_name }, req.ip);
     res.status(201).json({ message: 'Section created', section_id: newId });
   } catch (err) {
-    console.error('create section error:', err);
+    logger.error('create section error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };
@@ -53,7 +54,7 @@ exports.update = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SECTION_UPDATED', 'sections', parseInt(req.params.id), { section_name }, req.ip);
     res.json({ message: 'Section updated' });
   } catch (err) {
-    console.error('update section error:', err);
+    logger.error('update section error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };
@@ -72,7 +73,7 @@ exports.remove = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SECTION_DELETED', 'sections', parseInt(req.params.id), {}, req.ip);
     res.json({ message: 'Section deleted' });
   } catch (err) {
-    console.error('delete section error:', err);
+    logger.error('delete section error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   }
 };

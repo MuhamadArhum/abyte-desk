@@ -5,6 +5,7 @@
 // Used by: /api/email routes
 // =============================================================
 
+const logger = require('../config/logger');
 const emailService = require('../services/emailService');
 
 exports.getStatus = async (req, res) => {
@@ -39,7 +40,7 @@ exports.sendTest = async (req, res) => {
 
     res.json({ message: `Test email sent to ${to}` });
   } catch (err) {
-    console.error('Test email error:', err);
+    logger.error('Test email error:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -67,7 +68,7 @@ exports.sendLowStockAlert = async (req, res) => {
     await emailService.sendLowStockAlert({ to: adminEmail, products });
     res.json({ message: `Low stock alert sent to ${adminEmail} for ${products.length} products` });
   } catch (err) {
-    console.error('Low stock alert error:', err);
+    logger.error('Low stock alert error:', err);
     res.status(500).json({ message: err.message });
   }
 };

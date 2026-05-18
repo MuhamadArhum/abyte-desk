@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -15,7 +16,7 @@ exports.getAll = async (req, res) => {
       ' WHERE p.is_active = 1 ORDER BY p.product_name'
     );
     res.json({ data: rows.map(r => ({ ...r, current_stock: Number(r.current_stock), avg_cost: Number(r.avg_cost), opening_qty: Number(r.opening_qty) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // POST - save opening stock entries (bulk)
@@ -62,7 +63,7 @@ exports.save = async (req, res) => {
     res.status(201).json({ message: 'Opening stock saved', count: entries.length });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };
@@ -77,5 +78,5 @@ exports.getHistory = async (req, res) => {
       ' ORDER BY os.created_at DESC LIMIT 100'
     );
     res.json({ data: rows });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };

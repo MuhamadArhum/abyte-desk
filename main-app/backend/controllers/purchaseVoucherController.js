@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -172,7 +173,7 @@ exports.getAll = async (req, res) => {
       query(countSql, params)
     ]);
     res.json({ data: rows, pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) } });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // GET purchase voucher by ID
@@ -199,7 +200,7 @@ exports.getById = async (req, res) => {
        WHERE pvi.pv_id = ?`, [req.params.id]
     );
     res.json({ ...pv, items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // GET PO items for receiving (pre-fill purchase voucher from PO)
@@ -214,7 +215,7 @@ exports.getPOItems = async (req, res) => {
        WHERE poi.po_id = ?`, [po_id]
     );
     res.json({ data: items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // CREATE purchase voucher
@@ -279,7 +280,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ message: 'Purchase voucher created', pv_id: pvId, pv_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };
@@ -333,7 +334,7 @@ exports.update = async (req, res) => {
     res.json({ message: 'Purchase voucher updated', pv_number: pv.pv_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };
@@ -357,7 +358,7 @@ exports.remove = async (req, res) => {
     res.json({ message: 'Purchase voucher deleted and stock reversed' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };

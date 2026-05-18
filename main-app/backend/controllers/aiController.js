@@ -3,6 +3,7 @@
 // Full business context from ALL modules for Groq AI.
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require("../config/database");
 
 let groq = null;
@@ -16,11 +17,23 @@ function getGroqClient() {
 
 const sq = async (sql, params = []) => {
   try { return await query(sql, params); }
-  catch (e) { console.error('[AI query error]', e.message.slice(0, 120)); return []; }
+  catch (e) { logger.error('[AI query error]', { error: e.message.slice(0, 120) }); return []; }
 };
 
+// ── Context cache: rebuild at most once every 2 minutes per tenant ────────
+const contextCache = new Map(); // key: tenantDb, value: { context, builtAt }
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
+function getCachedContext(tenantDb) {
+  const cached = contextCache.get(tenantDb);
+  if (cached && Date.now() - cached.builtAt < CACHE_TTL_MS) return cached.context;
+  return null;
+}
+
 // ── Build full business context ────────────────────────────────────────────
-async function getSystemContext() {
+async function getSystemContext(tenantDb) {
+  const cached = getCachedContext(tenantDb);
+  if (cached) return cached;
   try {
     const [
       // ── SALES ──────────────────────────────────────────────────────
@@ -288,7 +301,7 @@ async function getSystemContext() {
       ? `${reg.status==='open'?'OPEN':'CLOSED'} | Opening: Rs.${reg.opening_amount||0} | Opened: ${reg.opened_at ? new Date(reg.opened_at).toLocaleTimeString() : 'N/A'}`
       : 'No register data';
 
-    return `
+    const contextStr = `
 === AByte ERP — COMPLETE LIVE BUSINESS DATA ===
 Date: ${new Date().toLocaleDateString('en-PK',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
 Time: ${new Date().toLocaleTimeString('en-PK')}
@@ -428,9 +441,12 @@ ${usersList.map(u=>`• ${u.name} | ${u.email} | ${u.role_name}`).join('\n')||'�
 
 === END OF BUSINESS DATA ===`;
 
+    contextCache.set(tenantDb, { context: contextStr, builtAt: Date.now() });
+    return contextStr;
+
   } catch (error) {
-    console.error("AI context error:", error);
-    return `=== AByte ERP — PARTIAL DATA ===\nDate: ${new Date().toLocaleDateString()}\nError: ${error.message}\n===`;
+    logger.error('AI context build error', { error: error.message });
+    return `=== AByte ERP — PARTIAL DATA ===\nDate: ${new Date().toLocaleDateString()}\nError loading business data\n===`;
   }
 }
 
@@ -439,11 +455,19 @@ exports.chat = async (req, res) => {
   try {
     const { message, history } = req.body;
 
-    if (!getGroqClient()) {
-      return res.status(500).json({ error: "Groq API Key not configured. Add GROQ_API_KEY to .env.production" });
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    if (message.length > 2000) {
+      return res.status(400).json({ error: 'Message too long (max 2000 characters)' });
     }
 
-    const systemContext = await getSystemContext();
+    if (!getGroqClient()) {
+      return res.status(503).json({ error: 'AI feature not configured. Contact administrator.' });
+    }
+
+    const tenantDb = req.tenantDb || process.env.DB_NAME || 'abyte_pos';
+    const systemContext = await getSystemContext(tenantDb);
 
     const messages = [
       {
@@ -486,7 +510,7 @@ Instructions:
 
     res.json({ reply: completion.choices[0].message.content });
   } catch (error) {
-    console.error("AI Chat Error:", error.message);
+    logger.error("AI Chat Error:", error.message);
     let errorMessage = "Failed to process AI request";
     if (error.status === 401) errorMessage = "Invalid Groq API key.";
     else if (error.status === 429) errorMessage = "Rate limit exceeded. Please wait.";

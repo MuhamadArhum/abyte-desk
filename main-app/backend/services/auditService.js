@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 /**
@@ -22,7 +23,7 @@ async function logAction(userId, userName, action, entityType, entityId, details
     return true;
   } catch (err) {
     // Log with full context for debugging
-    console.error('Audit log error:', {
+    logger.error('Audit log error:', {
       error: err.message,
       action,
       entityType,

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -56,7 +57,7 @@ exports.getAll = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Get suppliers error:', err);
+    logger.error('Get suppliers error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -96,7 +97,7 @@ exports.getById = async (req, res) => {
       stats: stats || { payment_count: 0, total_paid: 0 }
     });
   } catch (err) {
-    console.error('Get supplier by ID error:', err);
+    logger.error('Get supplier by ID error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -146,7 +147,7 @@ exports.create = async (req, res) => {
       supplier_id: result.insertId
     });
   } catch (err) {
-    console.error('Create supplier error:', err);
+    logger.error('Create supplier error:', err);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Duplicate supplier name or email' });
     }
@@ -217,7 +218,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: 'Supplier updated successfully' });
   } catch (err) {
-    console.error('Update supplier error:', err);
+    logger.error('Update supplier error:', err);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Duplicate supplier name or email' });
     }
@@ -251,7 +252,7 @@ exports.delete = async (req, res) => {
 
     res.json({ message: 'Supplier deactivated successfully' });
   } catch (err) {
-    console.error('Delete supplier error:', err);
+    logger.error('Delete supplier error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -305,7 +306,7 @@ exports.addPayment = async (req, res) => {
       payment_id: result.insertId
     });
   } catch (err) {
-    console.error('Add payment error:', err);
+    logger.error('Add payment error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -338,7 +339,7 @@ exports.getPayments = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Get payments error:', err);
+    logger.error('Get payments error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

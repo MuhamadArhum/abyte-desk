@@ -5,6 +5,7 @@
 // Used by: /api/inventory-reports routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');
 
 function branchWhere(req, alias = 'p') {
@@ -33,7 +34,7 @@ exports.getStockSummary = async (req, res) => {
       WHERE p.is_active = 1${branch.clause}
     `, branch.params);
     res.json(row || {});
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getTopProducts = async (req, res) => {
@@ -59,7 +60,7 @@ exports.getTopProducts = async (req, res) => {
       LIMIT ?
     `, params);
     res.json({ data: rows.map(r => ({ ...r, units_sold: Number(r.units_sold), revenue: Number(r.revenue) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getCategoryBreakdown = async (req, res) => {
@@ -78,7 +79,7 @@ exports.getCategoryBreakdown = async (req, res) => {
       ORDER BY stock_value DESC
     `, branch.params);
     res.json({ data: rows.map(r => ({ ...r, product_count: Number(r.product_count), total_stock: Number(r.total_stock), stock_value: Number(r.stock_value) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getSlowMovers = async (req, res) => {
@@ -105,7 +106,7 @@ exports.getSlowMovers = async (req, res) => {
       LIMIT 50
     `, [...branch.params, parseInt(days)]);
     res.json({ data: rows.map(r => ({ ...r, current_stock: Number(r.current_stock), value_at_risk: Number(r.value_at_risk) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.itemsLedger = async (req, res) => {
@@ -177,7 +178,7 @@ exports.itemsLedger = async (req, res) => {
     });
     const [product] = await query('SELECT product_name, barcode, stock_quantity FROM products WHERE product_id = ?', [product_id]);
     res.json({ product: product || null, ledger });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.itemWisePurchase = async (req, res) => {
@@ -208,7 +209,7 @@ exports.itemWisePurchase = async (req, res) => {
       data: rows.map(r => ({ ...r, total_qty: Number(r.total_qty), total_amount: Number(r.total_amount), avg_unit_price: Number(r.avg_unit_price) })),
       totals: { grand_total: Number((totals || {}).grand_total || 0), grand_qty: Number((totals || {}).grand_qty || 0) }
     });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.supplierWise = async (req, res) => {
@@ -235,7 +236,7 @@ exports.supplierWise = async (req, res) => {
       returned: retMap[p.supplier_id] || 0,
       net: Number(p.purchased) - (retMap[p.supplier_id] || 0),
     })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.issuanceSummary = async (req, res) => {
@@ -271,7 +272,7 @@ exports.issuanceSummary = async (req, res) => {
       },
       top_issued_products: topIssued.map(r => ({ ...r, total_qty: Number(r.total_qty), total_cost: Number(r.total_cost) })),
     });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.stockReconciliation = async (req, res) => {
@@ -300,7 +301,7 @@ exports.stockReconciliation = async (req, res) => {
       total_issue_returns: Number(r.total_issue_returns),
       total_raw_sold: Number(r.total_raw_sold),
     })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 exports.getLowStock = async (req, res) => {
@@ -322,5 +323,5 @@ exports.getLowStock = async (req, res) => {
       LIMIT ?
     `, [...branch.params, parseInt(limit)]);
     res.json({ data: rows.map(r => ({ ...r, stock_quantity: Number(r.stock_quantity), min_stock_level: Number(r.min_stock_level) })) });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };

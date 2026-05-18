@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -42,7 +43,7 @@ exports.getAll = async (req, res) => {
       query(countSql, params)
     ]);
     res.json({ data: rows, pagination: { total: Number(total), page, limit, totalPages: Math.ceil(Number(total) / limit) } });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // GET by ID
@@ -64,7 +65,7 @@ exports.getById = async (req, res) => {
        WHERE pri.pr_id = ?`, [req.params.id]
     );
     res.json({ ...pr, items });
-  } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
 // CREATE purchase return (deducts stock)
@@ -102,7 +103,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ message: 'Purchase return created', pr_id: prId, pr_number });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };
@@ -122,7 +123,7 @@ exports.remove = async (req, res) => {
     res.json({ message: 'Purchase return deleted and stock restored' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };

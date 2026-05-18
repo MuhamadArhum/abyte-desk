@@ -5,6 +5,7 @@
 // Used by: /api/users routes
 // =============================================================
 
+const logger = require('../config/logger');
 const bcrypt = require('bcryptjs');          // Library to hash passwords before storing
 const { query } = require('../config/database');  // Database query helper
 const { logAction } = require('../services/auditService');
@@ -50,7 +51,7 @@ exports.getAll = async (req, res) => {
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -103,7 +104,7 @@ exports.create = async (req, res) => {
     // Return success with the new user's ID
     res.status(201).json({ message: 'User created', user_id: newUserId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -173,7 +174,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: 'User updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -197,7 +198,7 @@ exports.remove = async (req, res) => {
 
     res.json({ message: 'User deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -216,7 +217,7 @@ exports.assignBranch = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'USER_BRANCH_CHANGED', 'users', id, { branch_id }, req.ip);
     res.json({ message: 'Branch assignment updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -227,7 +228,7 @@ exports.getRoles = async (req, res) => {
     const rows = await query('SELECT * FROM roles ORDER BY role_id');
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -248,7 +249,7 @@ exports.createRole = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ROLE_CREATED', 'roles', result.insertId, { role_name: name }, req.ip);
     res.status(201).json({ message: 'Role created', role_id: result.insertId, role_name: name });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -273,7 +274,7 @@ exports.deleteRole = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ROLE_DELETED', 'roles', parseInt(id), { role_name: role.role_name }, req.ip);
     res.json({ message: 'Role deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

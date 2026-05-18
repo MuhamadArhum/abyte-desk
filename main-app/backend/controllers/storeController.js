@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection, tenantStorage } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -45,7 +46,7 @@ exports.getAll = async (req, res) => {
     const stores = await query('SELECT s.store_id, s.store_name, s.store_code, s.address, s.phone, s.email, s.manager_id, s.monthly_charge, COALESCE(s.is_active, 1) as is_active, s.created_at, s.updated_at, u.name as manager_name FROM stores s LEFT JOIN users u ON s.manager_id = u.user_id ORDER BY s.store_name');
     res.json({ data: stores });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -64,7 +65,7 @@ exports.create = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STORE_CREATED', 'store', result.insertId, { store_name, monthly_charge }, req.ip);
     res.status(201).json({ message: 'Store created', store_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Store code already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -80,7 +81,7 @@ exports.getById = async (req, res) => {
     if (!store) return res.status(404).json({ message: 'Store not found' });
     res.json(store);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -103,7 +104,7 @@ exports.update = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STORE_UPDATED', 'store', id, { store_name }, req.ip);
     res.json({ message: 'Store updated successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Store code already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -126,7 +127,7 @@ exports.deleteStore = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STORE_DELETED', 'store', id, { store_name: store.store_name }, req.ip);
     res.json({ message: 'Store deleted successfully' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -201,7 +202,7 @@ exports.getConsolidatedSummary = async (req, res) => {
 
     res.json({ data: summary, totals });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -229,7 +230,7 @@ exports.transferStock = async (req, res) => {
     res.json({ message: 'Stock transferred' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();

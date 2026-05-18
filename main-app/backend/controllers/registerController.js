@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -68,7 +69,7 @@ exports.getCurrentRegister = async (req, res) => {
 
     res.json({ ...register[0], movements, shift_expenses, shift_sales });
   } catch (error) {
-    console.error('Get current register error:', error);
+    logger.error('Get current register error:', error);
     res.status(500).json({ message: 'Failed to fetch register' });
   }
 };
@@ -103,7 +104,7 @@ exports.openRegister = async (req, res) => {
     const newRegister = await query('SELECT * FROM cash_registers WHERE register_id = ?', [registerId]);
     res.status(201).json(newRegister[0]);
   } catch (error) {
-    console.error('Open register error:', error);
+    logger.error('Open register error:', error);
     res.status(500).json({ message: 'Failed to open register' });
   }
 };
@@ -173,7 +174,7 @@ exports.closeRegister = async (req, res) => {
     res.json(updated[0]);
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Close register error:', error);
+    logger.error('Close register error:', error);
     res.status(500).json({ message: 'Failed to close register' });
   } finally {
     if (conn) conn.release();
@@ -224,7 +225,7 @@ exports.addCashMovement = async (req, res) => {
     res.status(201).json({ message: 'Cash movement recorded' });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Cash movement error:', error);
+    logger.error('Cash movement error:', error);
     res.status(500).json({ message: 'Failed to record cash movement' });
   } finally {
     if (conn) conn.release();
@@ -262,7 +263,7 @@ exports.forceReset = async (req, res) => {
     res.json({ message: `${open.length} stuck register(s) force-closed successfully.`, reset_count: open.length });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Force reset error:', error);
+    logger.error('Force reset error:', error);
     res.status(500).json({ message: 'Failed to force-reset register' });
   } finally {
     if (conn) conn.release();
@@ -305,7 +306,7 @@ exports.getHistory = async (req, res) => {
       pagination: { page: pg.page, limit: pg.limit, total, totalPages: Math.ceil(total / pg.limit) }
     });
   } catch (error) {
-    console.error('Register history error:', error);
+    logger.error('Register history error:', error);
     res.status(500).json({ message: 'Failed to fetch register history' });
   }
 };
@@ -336,7 +337,7 @@ exports.getById = async (req, res) => {
 
     res.json({ ...register[0], movements });
   } catch (error) {
-    console.error('Get register error:', error);
+    logger.error('Get register error:', error);
     res.status(500).json({ message: 'Failed to fetch register details' });
   }
 };

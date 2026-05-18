@@ -5,6 +5,7 @@
 // Used by: /api/deliveries routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -74,7 +75,7 @@ exports.getStats = async (req, res) => {
       monthly_charges: charges[0].total,
     });
   } catch (err) {
-    console.error('deliveryStats:', err);
+    logger.error('deliveryStats:', err);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 };
@@ -167,7 +168,7 @@ exports.getAll = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getDeliveries:', err);
+    logger.error('getDeliveries:', err);
     res.status(500).json({ message: 'Failed to fetch deliveries' });
   }
 };
@@ -192,7 +193,7 @@ exports.getById = async (req, res) => {
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
     res.json(rows[0]);
   } catch (err) {
-    console.error('getDelivery:', err);
+    logger.error('getDelivery:', err);
     res.status(500).json({ message: 'Failed to fetch delivery' });
   }
 };
@@ -251,7 +252,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ message: 'Delivery created', delivery_id: newId, delivery_number });
   } catch (err) {
     await conn.rollback();
-    console.error('createDelivery:', err);
+    logger.error('createDelivery:', err);
     res.status(500).json({ message: 'Failed to create delivery' });
   } finally {
     conn.release();
@@ -316,7 +317,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: 'Delivery updated' });
   } catch (err) {
-    console.error('updateDelivery:', err);
+    logger.error('updateDelivery:', err);
     res.status(500).json({ message: 'Failed to update delivery' });
   }
 };
@@ -354,7 +355,7 @@ exports.updateStatus = async (req, res) => {
 
     res.json({ message: 'Status updated' });
   } catch (err) {
-    console.error('updateStatus:', err);
+    logger.error('updateStatus:', err);
     res.status(500).json({ message: 'Failed to update status' });
   }
 };
@@ -383,7 +384,7 @@ exports.remove = async (req, res) => {
 
     res.json({ message: 'Delivery deleted' });
   } catch (err) {
-    console.error('deleteDelivery:', err);
+    logger.error('deleteDelivery:', err);
     res.status(500).json({ message: 'Failed to delete delivery' });
   }
 };

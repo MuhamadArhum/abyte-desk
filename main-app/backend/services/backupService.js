@@ -1,11 +1,11 @@
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { query } = require('../config/database');
+const logger = require('../config/logger');
 
 const BACKUP_DIR = path.join(__dirname, '..', 'backups');
 
-// Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
@@ -20,6 +20,31 @@ function getTimestamp() {
     String(now.getSeconds()).padStart(2, '0');
 }
 
+// Validate filename: only allow safe backup filenames (no path traversal)
+function validateFilename(filename) {
+  if (!filename || typeof filename !== 'string') throw new Error('Invalid filename');
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    throw new Error('Invalid filename: path traversal detected');
+  }
+  if (!/^[\w\-\.]+\.sql$/.test(filename)) {
+    throw new Error('Invalid filename: only alphanumeric, hyphens, underscores allowed');
+  }
+}
+
+// Run a command safely using spawn (no shell interpolation)
+function runCommand(executable, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(executable, args, { ...options, shell: false });
+    let stderr = '';
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${executable} exited with code ${code}: ${stderr.slice(0, 200)}`));
+    });
+    proc.on('error', reject);
+  });
+}
+
 async function createBackup(userId, type = 'manual') {
   const filename = `abyte_pos_backup_${getTimestamp()}.sql`;
   const filepath = path.join(BACKUP_DIR, filename);
@@ -30,37 +55,52 @@ async function createBackup(userId, type = 'manual') {
   const dbPass = process.env.DB_PASSWORD || '';
   const dbName = process.env.DB_NAME || 'abyte_pos';
 
+  // Build args array — no shell expansion, each arg is passed literally
+  const buildArgs = (extraFlags = []) => [
+    `-h${dbHost}`,
+    `-P${dbPort}`,
+    `-u${dbUser}`,
+    ...(dbPass ? [`-p${dbPass}`] : []),
+    ...extraFlags,
+    dbName,
+  ];
+
   const dumpPath = process.env.MARIADB_DUMP_PATH || 'mariadb-dump';
-  const passArg = dbPass ? `-p"${dbPass}"` : '';
 
-  const cmd = `"${dumpPath}" -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passArg} ${dbName} > "${filepath}"`;
-
-  return new Promise((resolve, reject) => {
-    exec(cmd, { shell: true }, async (error) => {
-      if (error) {
-        // Try mysqldump as fallback
-        const fallbackCmd = `mysqldump -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passArg} ${dbName} > "${filepath}"`;
-        exec(fallbackCmd, { shell: true }, async (err2) => {
-          if (err2) {
-            try {
-              await query(
-                'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, 0, ?, ?, ?)',
-                [filename, userId, type, 'failed']
-              );
-            } catch (dbErr) {
-              console.error('Failed to log backup failure:', dbErr);
-            }
-            return reject(new Error('Backup failed. Ensure mariadb-dump or mysqldump is available in PATH.'));
-          }
-          await finishBackup(filename, filepath, userId, type);
-          resolve({ filename, filepath });
-        });
-        return;
-      }
-      await finishBackup(filename, filepath, userId, type);
-      resolve({ filename, filepath });
+  const runDump = (executable) =>
+    new Promise((resolve, reject) => {
+      const args = buildArgs();
+      const proc = spawn(executable, args, { shell: false });
+      const out = fs.createWriteStream(filepath);
+      proc.stdout.pipe(out);
+      let stderr = '';
+      proc.stderr.on('data', (d) => { stderr += d.toString(); });
+      proc.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`${executable} failed (code ${code}): ${stderr.slice(0, 200)}`));
+      });
+      proc.on('error', reject);
     });
-  });
+
+  try {
+    try {
+      await runDump(dumpPath);
+    } catch {
+      await runDump('mysqldump');
+    }
+    await finishBackup(filename, filepath, userId, type);
+    return { filename, filepath };
+  } catch (err) {
+    try {
+      await query(
+        'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, 0, ?, ?, ?)',
+        [filename, userId, type, 'failed']
+      );
+    } catch (dbErr) {
+      logger.error('Failed to log backup failure', { error: dbErr.message });
+    }
+    throw new Error('Backup failed. Ensure mariadb-dump or mysqldump is available in PATH.');
+  }
 }
 
 async function finishBackup(filename, filepath, userId, type) {
@@ -72,16 +112,10 @@ async function finishBackup(filename, filepath, userId, type) {
 }
 
 async function restoreBackup(filename) {
+  validateFilename(filename);
+
   const filepath = path.join(BACKUP_DIR, filename);
-
-  if (!fs.existsSync(filepath)) {
-    throw new Error('Backup file not found');
-  }
-
-  // Validate filename to prevent path traversal
-  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-    throw new Error('Invalid filename');
-  }
+  if (!fs.existsSync(filepath)) throw new Error('Backup file not found');
 
   const dbHost = process.env.DB_HOST || 'localhost';
   const dbPort = process.env.DB_PORT || '3306';
@@ -89,25 +123,33 @@ async function restoreBackup(filename) {
   const dbPass = process.env.DB_PASSWORD || '';
   const dbName = process.env.DB_NAME || 'abyte_pos';
 
-  const passArg = dbPass ? `-p"${dbPass}"` : '';
-  const cmd = `mysql -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passArg} ${dbName} < "${filepath}"`;
+  const buildArgs = () => [
+    `-h${dbHost}`,
+    `-P${dbPort}`,
+    `-u${dbUser}`,
+    ...(dbPass ? [`-p${dbPass}`] : []),
+    dbName,
+  ];
 
-  return new Promise((resolve, reject) => {
-    exec(cmd, { shell: true }, (error) => {
-      if (error) {
-        // Try mariadb client as fallback
-        const fallbackCmd = `mariadb -h ${dbHost} -P ${dbPort} -u ${dbUser} ${passArg} ${dbName} < "${filepath}"`;
-        exec(fallbackCmd, { shell: true }, (err2) => {
-          if (err2) {
-            return reject(new Error('Restore failed. Ensure mysql or mariadb client is available.'));
-          }
-          resolve();
-        });
-        return;
-      }
-      resolve();
+  const runRestore = (executable) =>
+    new Promise((resolve, reject) => {
+      const proc = spawn(executable, buildArgs(), { shell: false });
+      const inp = fs.createReadStream(filepath);
+      inp.pipe(proc.stdin);
+      let stderr = '';
+      proc.stderr.on('data', (d) => { stderr += d.toString(); });
+      proc.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`${executable} failed (code ${code}): ${stderr.slice(0, 200)}`));
+      });
+      proc.on('error', reject);
     });
-  });
+
+  try {
+    await runRestore('mysql');
+  } catch {
+    await runRestore('mariadb');
+  }
 }
 
 function listBackupFiles() {
@@ -122,13 +164,9 @@ function listBackupFiles() {
 }
 
 function deleteBackupFile(filename) {
-  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-    throw new Error('Invalid filename');
-  }
+  validateFilename(filename);
   const filepath = path.join(BACKUP_DIR, filename);
-  if (fs.existsSync(filepath)) {
-    fs.unlinkSync(filepath);
-  }
+  if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
 }
 
 function getBackupDir() {

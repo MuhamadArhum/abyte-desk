@@ -21,6 +21,22 @@ require('dotenv').config({
 
 const logger = require('./config/logger');
 
+// ── JWT Secret Safety Check ──────────────────────────────────
+const INSECURE_JWT_DEFAULTS = [
+  'your-super-secret-jwt-key-change-in-production',
+  'secret',
+  'changeme',
+  'jwt_secret',
+];
+if (!process.env.JWT_SECRET || INSECURE_JWT_DEFAULTS.includes(process.env.JWT_SECRET)) {
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('FATAL: JWT_SECRET is not set or is using a default insecure value. Set a strong random secret in .env.production and restart.');
+    process.exit(1);
+  } else {
+    logger.warn('WARNING: JWT_SECRET is insecure. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+  }
+}
+
 // ── Global Process Error Handlers ────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Promise Rejection', {
@@ -122,6 +138,24 @@ const authLimiter = rateLimit({
   message: { message: 'Too many login attempts. Please wait 15 minutes.' },
 });
 
+// Heavy endpoint limiter: 60 requests per 15 minutes per IP
+const heavyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests to this endpoint. Please slow down.' },
+});
+
+// AI limiter: 30 requests per 15 minutes (expensive AI calls)
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'AI request limit reached. Please wait before asking again.' },
+});
+
 // ── Global Middleware ────────────────────────────────────────
 app.use(helmet());
 app.use(cors(corsOptions));
@@ -134,11 +168,18 @@ app.use(express.json({ limit: '10mb' }));
 // Apply rate limiting
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', authLimiter);
+app.use('/api/reports',           heavyLimiter);
+app.use('/api/sales-reports',     heavyLimiter);
+app.use('/api/inventory-reports', heavyLimiter);
+app.use('/api/analytics',         heavyLimiter);
+app.use('/api/accounting',        heavyLimiter);
+app.use('/api/ai',                aiLimiter);
 
 // ── API Routes ───────────────────────────────────────────────
 
 // Health check — public, no auth (used to wake up Render free tier)
-app.get('/api/ping', (_req, res) => res.json({ ok: true }));
+app.get('/api/ping',    (_req, res) => res.json({ ok: true }));
+app.get('/api/v1/ping', (_req, res) => res.json({ ok: true, version: 'v1' }));
 
 // Auth (no tenant guard needed — login resolves tenant itself)
 app.use('/api/auth',    authRoutes);
@@ -291,4 +332,13 @@ app.listen(PORT, async () => {
   });
   // Run after server is accepting requests so DB pool is ready
   runStartupMigrations();
+
+  // Initialize DB-backed token blacklist table
+  const { ensureTable, cleanExpired } = require('./services/tokenBlacklist');
+  await ensureTable();
+
+  // Clean expired blacklisted tokens every hour
+  cron.schedule('0 * * * *', () => {
+    cleanExpired().catch(() => {});
+  });
 });

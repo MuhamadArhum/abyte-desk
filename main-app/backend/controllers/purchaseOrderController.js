@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -77,7 +78,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data: orders, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -99,7 +100,7 @@ exports.getById = async (req, res) => {
 
     res.json({ ...po, items });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -134,7 +135,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ message: 'PO created', po_id: poResult.insertId });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -174,7 +175,7 @@ exports.update = async (req, res) => {
     res.json({ message: 'PO updated' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally { conn.release(); }
 };
@@ -191,7 +192,7 @@ exports.remove = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PO_DELETED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
     res.json({ message: 'PO deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -217,7 +218,7 @@ exports.receive = async (req, res) => {
     res.json({ message: 'PO received successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -236,7 +237,7 @@ exports.cancel = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'PO_CANCELLED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
     res.json({ message: 'Purchase order cancelled' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -282,7 +283,7 @@ exports.getStockAlerts = async (req, res) => {
 
     res.json({ data: alerts, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -304,7 +305,7 @@ exports.getAlertStats = async (req, res) => {
       overstock: Number(stats.overstock) || 0
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -320,7 +321,7 @@ exports.resolveAlert = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ALERT_RESOLVED', 'stock_alert', id, { product_id: alert.product_id, alert_type: alert.alert_type }, req.ip);
     res.json({ message: 'Alert resolved' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

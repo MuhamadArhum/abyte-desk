@@ -6,6 +6,7 @@
 // Used by: /api/customers routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query } = require('../config/database');  // Database query helper
 const { logAction } = require('../services/auditService');
 
@@ -90,7 +91,7 @@ exports.getAll = async (req, res) => {
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -142,7 +143,7 @@ exports.create = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Phone number already exists for another customer' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -208,7 +209,7 @@ exports.getById = async (req, res) => {
     // Return customer data with purchases array attached
     res.json({ ...rows[0], purchases });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -262,7 +263,7 @@ exports.update = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Phone number already exists for another customer' });
     }
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -296,7 +297,7 @@ exports.remove = async (req, res) => {
 
     res.json({ message: 'Customer deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -310,7 +311,7 @@ exports.getAddresses = async (req, res) => {
     );
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -327,7 +328,7 @@ exports.addAddress = async (req, res) => {
     );
     res.status(201).json({ address_id: Number(result.insertId), message: 'Address added' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -59,7 +60,7 @@ exports.getAll = async (req, res) => {
       pagination: { total: countResult.total, page, limit, totalPages: Math.ceil(countResult.total / limit) }
     });
   } catch (err) {
-    console.error('Get sales targets error:', err);
+    logger.error('Get sales targets error:', err);
     res.status(500).json({ message: 'Failed to fetch sales targets' });
   }
 };
@@ -106,7 +107,7 @@ exports.getStats = async (req, res) => {
       lowest_performer: lowestPerformer
     });
   } catch (err) {
-    console.error('Get sales target stats error:', err);
+    logger.error('Get sales target stats error:', err);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 };
@@ -154,7 +155,7 @@ exports.getDashboard = async (req, res) => {
 
     res.json(dashboard);
   } catch (err) {
-    console.error('Get dashboard error:', err);
+    logger.error('Get dashboard error:', err);
     res.status(500).json({ message: 'Failed to fetch dashboard' });
   }
 };
@@ -192,7 +193,7 @@ exports.getById = async (req, res) => {
 
     res.json(target);
   } catch (err) {
-    console.error('Get target error:', err);
+    logger.error('Get target error:', err);
     res.status(500).json({ message: 'Failed to fetch target' });
   }
 };
@@ -219,7 +220,7 @@ exports.create = async (req, res) => {
 
     res.status(201).json({ message: 'Sales target created', target_id });
   } catch (err) {
-    console.error('Create sales target error:', err);
+    logger.error('Create sales target error:', err);
     res.status(500).json({ message: 'Failed to create target' });
   }
 };
@@ -245,7 +246,7 @@ exports.update = async (req, res) => {
 
     res.json({ message: 'Sales target updated' });
   } catch (err) {
-    console.error('Update sales target error:', err);
+    logger.error('Update sales target error:', err);
     res.status(500).json({ message: 'Failed to update target' });
   }
 };
@@ -264,7 +265,7 @@ exports.delete = async (req, res) => {
 
     res.json({ message: 'Sales target deleted' });
   } catch (err) {
-    console.error('Delete sales target error:', err);
+    logger.error('Delete sales target error:', err);
     res.status(500).json({ message: 'Failed to delete target' });
   }
 };

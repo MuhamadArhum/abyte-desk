@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -28,7 +29,7 @@ exports.getAll = async (req, res) => {
     const rows = await query(sql);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -121,7 +122,7 @@ exports.create = async (req, res) => {
       conn.release();
     }
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -153,7 +154,7 @@ exports.getById = async (req, res) => {
 
     res.json(po);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -5,6 +5,7 @@
 // Used by: /api/accounting routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -27,7 +28,7 @@ exports.getAccountGroups = async (req, res) => {
     const groups = await query(sql, params);
     res.json({ data: groups });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -80,7 +81,7 @@ exports.getAccounts = async (req, res) => {
     const [accounts, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: accounts, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -117,7 +118,7 @@ exports.getNextCode = async (req, res) => {
 
     res.json({ next_code: nextCode, parent_code: parent.account_code, child_level: childLevel });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -134,7 +135,7 @@ exports.getAccountById = async (req, res) => {
     if (!account) return res.status(404).json({ message: 'Account not found' });
     res.json(account);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -169,7 +170,7 @@ exports.createAccount = async (req, res) => {
       { account_code, account_name, parent: parent.account_name, level }, req.ip);
     res.status(201).json({ message: 'Account created', account_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ message: 'Account code already exists' });
     }
@@ -196,7 +197,7 @@ exports.updateAccount = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ACCOUNT_UPDATED', 'accounts', id, { account_name }, req.ip);
     res.json({ message: 'Account updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -221,7 +222,7 @@ exports.deleteAccount = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ACCOUNT_DELETED', 'accounts', id, {}, req.ip);
     res.json({ message: 'Account deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -252,7 +253,7 @@ exports.getJournalEntries = async (req, res) => {
     const [entries, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: entries, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -278,7 +279,7 @@ exports.getJournalEntryById = async (req, res) => {
 
     res.json({ ...entry, lines });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -345,7 +346,7 @@ exports.createJournalEntry = async (req, res) => {
     res.status(201).json({ message: 'Journal entry created', entry_id: entryId, entry_number: entryNumber });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -397,7 +398,7 @@ exports.postJournalEntry = async (req, res) => {
     res.json({ message: 'Journal entry posted successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -451,7 +452,7 @@ exports.deleteJournalEntry = async (req, res) => {
     res.json({ message: 'Journal entry deleted' });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -602,7 +603,7 @@ exports.getGeneralLedger = async (req, res) => {
       account: accountInfo
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -651,7 +652,7 @@ exports.getTrialBalance = async (req, res) => {
 
     res.json({ as_of_date: asOfDate, trial_balance: trial, totals });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -743,7 +744,7 @@ exports.getTrialBalance6Col = async (req, res) => {
 
     res.json({ from_date, to_date, data: rows, totals });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -780,7 +781,7 @@ exports.getProfitLoss = async (req, res) => {
       net_profit: netProfit
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -898,7 +899,7 @@ exports.getBalanceSheet = async (req, res) => {
       total_liabilities_equity: totalLiabilities + totalEquity + netProfit
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -918,7 +919,7 @@ exports.getBankAccounts = async (req, res) => {
     const accounts = await query(sql, params);
     res.json({ data: accounts });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -934,7 +935,7 @@ exports.getBankAccountById = async (req, res) => {
     if (!account) return res.status(404).json({ message: 'Bank account not found' });
     res.json(account);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -954,7 +955,7 @@ exports.createBankAccount = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'BANK_ACCOUNT_CREATED', 'bank_accounts', result.insertId, { bank_name, account_number }, req.ip);
     res.status(201).json({ message: 'Bank account created', bank_account_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -975,7 +976,7 @@ exports.updateBankAccount = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'BANK_ACCOUNT_UPDATED', 'bank_accounts', id, { bank_name }, req.ip);
     res.json({ message: 'Bank account updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -987,7 +988,7 @@ exports.deleteBankAccount = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'BANK_ACCOUNT_DELETED', 'bank_accounts', id, {}, req.ip);
     res.json({ message: 'Bank account deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1023,7 +1024,7 @@ exports.getPaymentVouchers = async (req, res) => {
     const [vouchers, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: vouchers, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1083,7 +1084,7 @@ exports.createPaymentVoucher = async (req, res) => {
     res.status(201).json({ message: 'Payment voucher created', voucher_id: result.insertId, voucher_number: voucherNumber });
   } catch (err) {
     await conn.rollback();
-    console.error('createPaymentVoucher error:', err);
+    logger.error('createPaymentVoucher error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   } finally {
     conn.release();
@@ -1141,7 +1142,7 @@ exports.deletePaymentVoucher = async (req, res) => {
     res.json({ message: 'Payment voucher deleted' });
   } catch (err) {
     await conn.rollback();
-    console.error('deletePaymentVoucher error:', err);
+    logger.error('deletePaymentVoucher error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1179,7 +1180,7 @@ exports.getReceiptVouchers = async (req, res) => {
     const [vouchers, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: vouchers, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1239,7 +1240,7 @@ exports.createReceiptVoucher = async (req, res) => {
     res.status(201).json({ message: 'Receipt voucher created', voucher_id: result.insertId, voucher_number: voucherNumber });
   } catch (err) {
     await conn.rollback();
-    console.error('createReceiptVoucher error:', err);
+    logger.error('createReceiptVoucher error:', err);
     res.status(500).json({ message: err.message || 'Server error' });
   } finally {
     conn.release();
@@ -1297,7 +1298,7 @@ exports.deleteReceiptVoucher = async (req, res) => {
     res.json({ message: 'Receipt voucher deleted' });
   } catch (err) {
     await conn.rollback();
-    console.error('deleteReceiptVoucher error:', err);
+    logger.error('deleteReceiptVoucher error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1385,7 +1386,7 @@ exports.getAccountingAnalytics = async (req, res) => {
       journal_summary: jvSummary
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1427,7 +1428,7 @@ exports.getCashPosition = async (req, res) => {
 
     res.json({ data, totals: { dr: totalDr, cr: totalCr, net: totalDr - totalCr } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };

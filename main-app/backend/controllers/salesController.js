@@ -6,6 +6,7 @@
 // Used by: /api/sales routes
 // =============================================================
 
+const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
@@ -286,7 +287,7 @@ exports.createSale = async (req, res) => {
 
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Create sale error:', error.message || error);
+    logger.error('Create sale error:', error.message || error);
     const msg = error.code === 'ER_BAD_FIELD_ERROR'
       ? `DB column missing: ${error.sqlMessage} — run ensureSalesColumns migration`
       : error.code === 'ER_NO_SUCH_TABLE'
@@ -370,7 +371,7 @@ exports.getPending = async (req, res) => {
     const sales = await query(sql, params);
     res.json({ data: sales, summary });
   } catch (error) {
-    console.error('Get pending sales error:', error);
+    logger.error('Get pending sales error:', error);
     res.status(500).json({ message: 'Failed to fetch pending sales' });
   }
 };
@@ -429,7 +430,7 @@ exports.completeSale = async (req, res) => {
 
     res.json({ message: 'Sale completed successfully', sale_id: id, invoice_no });
   } catch (error) {
-    console.error('Complete sale error:', error);
+    logger.error('Complete sale error:', error);
     res.status(500).json({ message: 'Failed to complete sale' });
   }
 };
@@ -517,7 +518,7 @@ exports.updateSaleItems = async (req, res) => {
     res.json({ message: 'Sale updated successfully', sale: updated[0] });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Update sale items error:', error);
+    logger.error('Update sale items error:', error);
     res.status(500).json({ message: 'Failed to update sale' });
   } finally {
     if (conn) conn.release();
@@ -569,7 +570,7 @@ exports.deleteSale = async (req, res) => {
     res.json({ message: 'Sale deleted and stock restored' });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Delete sale error:', error);
+    logger.error('Delete sale error:', error);
     res.status(500).json({ message: 'Failed to delete sale' });
   } finally {
     if (conn) conn.release();
@@ -591,7 +592,7 @@ exports.syncTax = async (req, res) => {
 
     res.json({ message: 'Invoice synced to tax system', synced_at: new Date().toISOString() });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -618,7 +619,7 @@ exports.getToday = async (req, res) => {
     `, [today, today, ...branchParam]);
     res.json(sales);
   } catch (error) {
-    console.error('Get today sales error:', error);
+    logger.error('Get today sales error:', error);
     res.status(500).json({ message: 'Failed to fetch today sales' });
   }
 };
@@ -795,7 +796,7 @@ exports.getAll = async (req, res) => {
     const sales = await query(sql, params);
     res.json(sales);
   } catch (error) {
-    console.error('Get all sales error:', error);
+    logger.error('Get all sales error:', error);
     res.status(500).json({ message: 'Failed to fetch sales' });
   }
 };
@@ -824,7 +825,7 @@ exports.getById = async (req, res) => {
 
     res.json({ ...sale[0], items });
   } catch (error) {
-    console.error('Get sale error:', error);
+    logger.error('Get sale error:', error);
     res.status(500).json({ message: 'Failed to fetch sale details' });
   }
 };
@@ -874,7 +875,7 @@ exports.refundSale = async (req, res) => {
     res.json({ message: 'Sale refunded and stock restored' });
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error('Refund sale error:', error);
+    logger.error('Refund sale error:', error);
     res.status(500).json({ message: 'Failed to refund sale' });
   } finally {
     if (conn) conn.release();

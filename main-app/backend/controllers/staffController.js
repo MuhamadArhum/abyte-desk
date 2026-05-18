@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
@@ -98,7 +99,7 @@ exports.getAll = async (req, res) => {
 
     res.json({ data: staff, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -109,7 +110,7 @@ exports.getById = async (req, res) => {
     if (!staff) return res.status(404).json({ message: 'Staff not found' });
     res.json(staff);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -141,7 +142,7 @@ exports.create = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STAFF_CREATED', 'staff', result.insertId, { full_name, branch_id: assignedBranch }, req.ip);
     res.status(201).json({ message: 'Staff created', staff_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -173,7 +174,7 @@ exports.update = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STAFF_UPDATED', 'staff', id, { full_name }, req.ip);
     res.json({ message: 'Staff updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -206,7 +207,7 @@ exports.markAttendance = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ATTENDANCE_MARKED', 'attendance', staff_id, { attendance_date, status: newStatus }, req.ip);
     res.json({ message: 'Attendance marked' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -289,7 +290,7 @@ exports.getAttendance = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -330,7 +331,7 @@ exports.markBulkAttendance = async (req, res) => {
     res.json({ message: `Attendance marked for ${records.length} staff members` });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -344,7 +345,7 @@ exports.delete = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'STAFF_DEACTIVATED', 'staff', id, {}, req.ip);
     res.json({ message: 'Staff deactivated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -359,7 +360,7 @@ exports.getStaffAttendance = async (req, res) => {
     );
     res.json({ data: attendance });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -374,7 +375,7 @@ exports.getSalaryPayments = async (req, res) => {
     );
     res.json({ data: payments });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -405,7 +406,7 @@ exports.paySalary = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SALARY_PAID', 'salary_payment', result.insertId, { staff_id: id, amount: net_amount }, req.ip);
     res.status(201).json({ message: 'Salary payment recorded' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -440,7 +441,7 @@ exports.updateAttendance = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ATTENDANCE_UPDATED', 'attendance', id, { staff_id: record.staff_id, old_status: oldStatus, new_status: newStatus, attendance_date: record.attendance_date }, req.ip);
     res.json({ message: 'Attendance updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -460,7 +461,7 @@ exports.deleteAttendance = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ATTENDANCE_DELETED', 'attendance', id, { staff_id: record.staff_id, attendance_date: record.attendance_date }, req.ip);
     res.json({ message: 'Attendance deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -494,7 +495,7 @@ exports.updateSalaryPayment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SALARY_PAYMENT_UPDATED', 'salary_payment', id, { staff_id: record.staff_id, amount: net_amount }, req.ip);
     res.json({ message: 'Salary payment updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -509,7 +510,7 @@ exports.deleteSalaryPayment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SALARY_PAYMENT_DELETED', 'salary_payment', id, { staff_id: record.staff_id, amount: record.net_amount }, req.ip);
     res.json({ message: 'Salary payment deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -570,7 +571,7 @@ exports.getMonthlyAttendanceReport = async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -669,7 +670,7 @@ exports.getSalarySummaryReport = async (req, res) => {
       totals
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -804,7 +805,7 @@ exports.getSalarySheet = async (req, res) => {
       meta: { month: m, year: y, holidays, days_in_month: daysInMonth }
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -828,7 +829,7 @@ exports.setSalaryAdjustment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SALARY_ADJUSTMENT', 'salary_adjustments', staff_id, { month, year, days, reason }, req.ip);
     res.json({ message: 'Adjustment saved' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -922,7 +923,7 @@ exports.getSalaryVoucher = async (req, res) => {
       net_pay,
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -955,7 +956,7 @@ exports.getDailyAttendance = async (req, res) => {
 
     res.json({ date, data, summary });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1033,7 +1034,7 @@ exports.getEmployeeLedger = async (req, res) => {
       totals: { totalEarned, totalLoans, totalRepaid, outstandingLoanBalance }
     });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1060,7 +1061,7 @@ exports.getLoans = async (req, res) => {
     const [loans, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: loans, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1136,7 +1137,7 @@ exports.createLoan = async (req, res) => {
     res.status(201).json({ message: 'Loan issued', loan_id: result.insertId });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1189,7 +1190,7 @@ exports.repayLoan = async (req, res) => {
     res.json({ message: newBalance <= 0 ? 'Loan fully repaid' : 'Repayment recorded', remaining_balance: newBalance });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1207,7 +1208,7 @@ exports.cancelLoan = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'LOAN_CANCELLED', 'staff_loans', loanId, { staff_id: loan.staff_id }, req.ip);
     res.json({ message: 'Loan cancelled' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1220,7 +1221,7 @@ exports.getLoanRepayments = async (req, res) => {
     );
     res.json({ data: repayments });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1247,7 +1248,7 @@ exports.getIncrements = async (req, res) => {
     const [increments, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: increments, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1282,7 +1283,7 @@ exports.createIncrement = async (req, res) => {
     res.status(201).json({ message: 'Salary increment applied', old_salary: oldSalary, new_salary: newSal, increment_amount: incrementAmount });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1343,7 +1344,7 @@ exports.getPayrollPreview = async (req, res) => {
 
     res.json({ preview, totals });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1393,7 +1394,7 @@ exports.processPayroll = async (req, res) => {
     res.json({ message: `Payroll processed: ${successCount} payments recorded`, successCount, errors });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -1421,7 +1422,7 @@ exports.getAdvancePayments = async (req, res) => {
     const [advances, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: advances, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1443,7 +1444,7 @@ exports.createAdvancePayment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'ADVANCE_PAYMENT', 'advance_payments', result.insertId, { staff_id, amount, staff_name: staff.full_name }, req.ip);
     res.status(201).json({ message: 'Advance payment recorded', advance_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1461,7 +1462,7 @@ exports.getHolidays = async (req, res) => {
     const holidays = await query(sql, params);
     res.json({ data: holidays });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1479,7 +1480,7 @@ exports.createHoliday = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'HOLIDAY_CREATED', 'holidays', result.insertId, { holiday_name, holiday_date }, req.ip);
     res.status(201).json({ message: 'Holiday created', holiday_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1498,7 +1499,7 @@ exports.updateHoliday = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'HOLIDAY_UPDATED', 'holidays', id, { holiday_name }, req.ip);
     res.json({ message: 'Holiday updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1510,7 +1511,7 @@ exports.deleteHoliday = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'HOLIDAY_DELETED', 'holidays', id, {}, req.ip);
     res.json({ message: 'Holiday deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1540,7 +1541,7 @@ exports.getLeaveRequests = async (req, res) => {
     const [requests, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: requests, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1564,7 +1565,7 @@ exports.createLeaveRequest = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'LEAVE_REQUESTED', 'leave_requests', result.insertId, { staff_id, days, staff_name: staff.full_name }, req.ip);
     res.status(201).json({ message: 'Leave request submitted', request_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1592,7 +1593,7 @@ exports.reviewLeaveRequest = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, `LEAVE_${status.toUpperCase()}`, 'leave_requests', id, { staff_id: request.staff_id, days: request.days }, req.ip);
     res.json({ message: `Leave request ${status}` });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1609,7 +1610,7 @@ exports.getDepartments = async (req, res) => {
     const depts = await query(sql, params);
     res.json({ data: depts });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1625,7 +1626,7 @@ exports.createDepartment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DEPT_CREATED', 'departments', result.insertId, { name }, req.ip);
     res.status(201).json({ message: 'Department created', department_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Department name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1643,7 +1644,7 @@ exports.updateDepartment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DEPT_UPDATED', 'departments', id, { name }, req.ip);
     res.json({ message: 'Department updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Department name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1660,7 +1661,7 @@ exports.deleteDepartment = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DEPT_DELETED', 'departments', id, { name: dept.name }, req.ip);
     res.json({ message: 'Department deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1681,7 +1682,7 @@ exports.getDesignations = async (req, res) => {
     sql += ' ORDER BY d.name ASC';
     res.json({ data: await query(sql, params) });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1698,7 +1699,7 @@ exports.createDesignation = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DESIGNATION_CREATED', 'designations', result.insertId, { name }, req.ip);
     res.status(201).json({ message: 'Designation created', designation_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Designation name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1716,7 +1717,7 @@ exports.updateDesignation = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DESIGNATION_UPDATED', 'designations', id, { name }, req.ip);
     res.json({ message: 'Designation updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Designation name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1733,7 +1734,7 @@ exports.deleteDesignation = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'DESIGNATION_DELETED', 'designations', id, { name: desig.name }, req.ip);
     res.json({ message: 'Designation deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1745,7 +1746,7 @@ exports.getSalaryComponents = async (req, res) => {
     const components = await query('SELECT * FROM salary_components ORDER BY type, name');
     res.json({ data: components });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1761,7 +1762,7 @@ exports.createSalaryComponent = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SALARY_COMPONENT_CREATED', 'salary_components', result.insertId, { name, type }, req.ip);
     res.status(201).json({ message: 'Component created', component_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Component name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1778,7 +1779,7 @@ exports.updateSalaryComponent = async (req, res) => {
     );
     res.json({ message: 'Component updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1789,7 +1790,7 @@ exports.deleteSalaryComponent = async (req, res) => {
     await query('DELETE FROM salary_components WHERE component_id = ?', [id]);
     res.json({ message: 'Component deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1806,7 +1807,7 @@ exports.getStaffComponents = async (req, res) => {
     `, [staffId]);
     res.json({ data: rows });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1826,7 +1827,7 @@ exports.saveStaffComponents = async (req, res) => {
     }
     res.json({ message: 'Staff components saved' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1838,7 +1839,7 @@ exports.getShifts = async (req, res) => {
     const shifts = await query('SELECT * FROM shifts ORDER BY name');
     res.json({ data: shifts });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1854,7 +1855,7 @@ exports.createShift = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'SHIFT_CREATED', 'shifts', result.insertId, { name }, req.ip);
     res.status(201).json({ message: 'Shift created', shift_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ message: 'Shift name already exists' });
     res.status(500).json({ message: 'Server error' });
   }
@@ -1871,7 +1872,7 @@ exports.updateShift = async (req, res) => {
     );
     res.json({ message: 'Shift updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1884,7 +1885,7 @@ exports.deleteShift = async (req, res) => {
     await query('DELETE FROM shifts WHERE shift_id = ?', [id]);
     res.json({ message: 'Shift deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1910,7 +1911,7 @@ exports.getAppraisals = async (req, res) => {
     const [appraisals, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: appraisals, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1930,7 +1931,7 @@ exports.createAppraisal = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'APPRAISAL_CREATED', 'performance_appraisals', result.insertId, { staff_id, rating, staff_name: staff.full_name }, req.ip);
     res.status(201).json({ message: 'Appraisal created', appraisal_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1946,7 +1947,7 @@ exports.updateAppraisal = async (req, res) => {
     );
     res.json({ message: 'Appraisal updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1957,7 +1958,7 @@ exports.deleteAppraisal = async (req, res) => {
     await query('DELETE FROM performance_appraisals WHERE appraisal_id = ?', [id]);
     res.json({ message: 'Appraisal deleted' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -1984,7 +1985,7 @@ exports.getExitRequests = async (req, res) => {
     const [exits, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
     res.json({ data: exits, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -2008,7 +2009,7 @@ exports.createExitRequest = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'EXIT_REQUESTED', 'exit_requests', result.insertId, { staff_id, exit_type, staff_name: staff.full_name }, req.ip);
     res.status(201).json({ message: 'Exit request created', exit_id: result.insertId });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -2040,7 +2041,7 @@ exports.reviewExitRequest = async (req, res) => {
     res.json({ message: `Exit request ${status}` });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
@@ -2054,7 +2055,7 @@ exports.getLeavePolicies = async (req, res) => {
     const policies = await query('SELECT * FROM leave_policies ORDER BY leave_type');
     res.json({ data: policies });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -2069,7 +2070,7 @@ exports.updateLeavePolicy = async (req, res) => {
     );
     res.json({ message: 'Policy updated' });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -2096,7 +2097,7 @@ exports.processLeaveCarryForward = async (req, res) => {
     res.json({ message: `Leave carry-forward processed for ${processed} staff`, processed });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();

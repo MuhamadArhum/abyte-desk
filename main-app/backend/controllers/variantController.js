@@ -1,3 +1,4 @@
+const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const auditService = require('../services/auditService');
 
@@ -12,7 +13,7 @@ exports.getVariantTypes = async (req, res) => {
     const types = await query('SELECT * FROM variant_types ORDER BY variant_name');
     res.json(types);
   } catch (err) {
-    console.error('Get variant types error:', err);
+    logger.error('Get variant types error:', err);
     res.status(500).json({ message: 'Failed to fetch variant types', error: err.message });
   }
 };
@@ -46,7 +47,7 @@ exports.createVariantType = async (req, res) => {
       variant_type_id: result.insertId
     });
   } catch (err) {
-    console.error('Create variant type error:', err);
+    logger.error('Create variant type error:', err);
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'Variant type already exists' });
     }
@@ -72,7 +73,7 @@ exports.getVariantValues = async (req, res) => {
 
     res.json(values);
   } catch (err) {
-    console.error('Get variant values error:', err);
+    logger.error('Get variant values error:', err);
     res.status(500).json({ message: 'Failed to fetch variant values', error: err.message });
   }
 };
@@ -106,7 +107,7 @@ exports.createVariantValue = async (req, res) => {
       variant_value_id: result.insertId
     });
   } catch (err) {
-    console.error('Create variant value error:', err);
+    logger.error('Create variant value error:', err);
     res.status(500).json({ message: 'Failed to create variant value', error: err.message });
   }
 };
@@ -143,7 +144,7 @@ exports.getProductVariants = async (req, res) => {
 
     res.json(variants);
   } catch (err) {
-    console.error('Get product variants error:', err);
+    logger.error('Get product variants error:', err);
     res.status(500).json({ message: 'Failed to fetch product variants', error: err.message });
   }
 };
@@ -183,7 +184,7 @@ exports.getVariantById = async (req, res) => {
 
     res.json(variant);
   } catch (err) {
-    console.error('Get variant by ID error:', err);
+    logger.error('Get variant by ID error:', err);
     res.status(500).json({ message: 'Failed to fetch variant', error: err.message });
   }
 };
@@ -270,7 +271,7 @@ exports.createProductVariant = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error('Create product variant error:', err);
+    logger.error('Create product variant error:', err);
     res.status(500).json({ message: 'Failed to create product variant', error: err.message });
   } finally {
     conn.release();
@@ -391,7 +392,7 @@ exports.updateProductVariant = async (req, res) => {
     res.json({ message: 'Product variant updated successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error('Update product variant error:', err);
+    logger.error('Update product variant error:', err);
     res.status(500).json({ message: 'Failed to update product variant', error: err.message });
   } finally {
     conn.release();
@@ -459,7 +460,7 @@ exports.deleteProductVariant = async (req, res) => {
     res.json({ message: 'Product variant deleted successfully' });
   } catch (err) {
     await conn.rollback();
-    console.error('Delete product variant error:', err);
+    logger.error('Delete product variant error:', err);
     res.status(500).json({ message: 'Failed to delete product variant', error: err.message });
   } finally {
     conn.release();
@@ -535,7 +536,7 @@ exports.adjustVariantStock = async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error('Adjust variant stock error:', err);
+    logger.error('Adjust variant stock error:', err);
     res.status(500).json({ message: 'Failed to adjust variant stock', error: err.message });
   } finally {
     conn.release();
