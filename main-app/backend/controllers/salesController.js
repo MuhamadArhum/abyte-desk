@@ -10,26 +10,7 @@ const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
-// Ensure all required columns exist on older DBs (runs once per server start)
-let salesColumnsEnsured = false;
-async function ensureSalesColumns() {
-  if (salesColumnsEnsured) return;
-  salesColumnsEnsured = true;
-  const cols = [
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS table_id INT NULL`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS order_type VARCHAR(30) NULL DEFAULT 'on_spot'`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS token_no VARCHAR(20) NULL`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS invoice_no VARCHAR(20) NULL`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS bundle_discount DECIMAL(10,2) DEFAULT 0.00`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS bundle_count INT DEFAULT 0`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS net_amount DECIMAL(10,2) DEFAULT 0.00`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS sub_total DECIMAL(10,2) DEFAULT 0.00`,
-  ];
-  for (const sql of cols) {
-    try { await query(sql); } catch (e) { /* column already exists */ }
-  }
-}
+// Column migrations are now handled by migrationService.js (runs at server startup)
 
 // Helper: Round to 2 decimal places for currency
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
@@ -47,7 +28,6 @@ const parsePagination = (page, limit) => {
 
 // --- Create Sale (Checkout) ---
 exports.createSale = async (req, res) => {
-  await ensureSalesColumns();
   let conn;  // Database connection for the transaction
   try {
     const {

@@ -107,7 +107,7 @@ INSERT IGNORE INTO account_groups (group_id, group_name, group_type, description
 -- Users
 CREATE TABLE IF NOT EXISTS users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(100) NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -116,7 +116,10 @@ CREATE TABLE IF NOT EXISTS users (
     branch_id INT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(role_id)
+    FOREIGN KEY (role_id) REFERENCES roles(role_id),
+    INDEX idx_user_username (username),
+    INDEX idx_user_active (is_active),
+    INDEX idx_user_branch (branch_id)
     -- branch_id FK added after stores table: FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL
 );
 
@@ -175,10 +178,14 @@ CREATE TABLE IF NOT EXISTS customers (
     address_2 TEXT,
     address_3 TEXT,
     address_4 TEXT,
+    balance DECIMAL(12,2) DEFAULT 0.00,
+    credit_limit DECIMAL(12,2) DEFAULT 0.00,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE INDEX idx_customer_phone (phone_number),
     INDEX idx_customer_name (customer_name),
+    INDEX idx_customer_deleted (deleted_at),
     FULLTEXT INDEX idx_customer_search (customer_name)
 );
 
@@ -204,20 +211,28 @@ CREATE TABLE IF NOT EXISTS products (
     product_type ENUM('finished_good','raw_material','semi_finished') NOT NULL DEFAULT 'finished_good',
     unit VARCHAR(50) DEFAULT 'pcs',
     price DECIMAL(10, 2) NOT NULL,
+    selling_price DECIMAL(10, 2) DEFAULT NULL,
     cost_price DECIMAL(15, 2) DEFAULT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
+    reorder_level INT DEFAULT NULL,
     min_stock_level INT DEFAULT NULL,
     has_variants TINYINT(1) DEFAULT 0,
     sku VARCHAR(100) DEFAULT NULL,
     barcode VARCHAR(100) UNIQUE,
     description TEXT,
     is_active TINYINT(1) DEFAULT 1,
+    deleted_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(category_id),
     INDEX idx_product_name (product_name),
     INDEX idx_product_category (category_id),
-    FULLTEXT INDEX idx_product_search (product_name)
+    INDEX idx_product_active (is_active),
+    INDEX idx_product_deleted (deleted_at),
+    INDEX idx_product_sku (sku),
+    FULLTEXT INDEX idx_product_search (product_name),
+    CONSTRAINT chk_product_price CHECK (price >= 0),
+    CONSTRAINT chk_product_cost CHECK (cost_price IS NULL OR cost_price >= 0)
 );
 
 -- Suppliers
@@ -345,10 +360,13 @@ CREATE TABLE IF NOT EXISTS expenses (
     expense_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     description TEXT,
     user_id INT,
+    branch_id INT NULL,
     FOREIGN KEY (category_id) REFERENCES expense_categories(category_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     INDEX idx_expense_date (expense_date),
-    INDEX idx_expense_category (category_id)
+    INDEX idx_expense_category (category_id),
+    INDEX idx_expense_branch (branch_id),
+    CONSTRAINT chk_expense_amount CHECK (amount > 0)
 );
 
 -- Audit Logs
@@ -1025,9 +1043,15 @@ CREATE TABLE IF NOT EXISTS sale_details (
     unit_price DECIMAL(10, 2) NOT NULL,
     discount DECIMAL(10,2) DEFAULT 0,
     total_price DECIMAL(10, 2) NOT NULL,
+    profit DECIMAL(10,2) DEFAULT NULL,
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id),
     FOREIGN KEY (product_id) REFERENCES products(product_id),
-    INDEX idx_sale_details_variant_id (variant_id)
+    INDEX idx_sale_details_sale_id (sale_id),
+    INDEX idx_sale_details_product_id (product_id),
+    INDEX idx_sale_details_variant_id (variant_id),
+    CONSTRAINT chk_sd_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_sd_price CHECK (unit_price >= 0),
+    CONSTRAINT chk_sd_total CHECK (total_price >= 0)
 );
 
 -- Sale Bundles
@@ -1172,6 +1196,7 @@ CREATE TABLE IF NOT EXISTS credit_sales (
     customer_id INT NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
     paid_amount DECIMAL(10,2) DEFAULT 0,
+    balance DECIMAL(10,2) NOT NULL,
     balance_due DECIMAL(10,2) NOT NULL,
     due_date DATE NOT NULL,
     status ENUM('pending', 'partial', 'paid', 'overdue') DEFAULT 'pending',
@@ -1181,7 +1206,9 @@ CREATE TABLE IF NOT EXISTS credit_sales (
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
     FOREIGN KEY (created_by) REFERENCES users(user_id),
     INDEX idx_credit_status (status),
-    INDEX idx_credit_customer (customer_id)
+    INDEX idx_credit_customer (customer_id),
+    INDEX idx_credit_due_date (due_date),
+    CONSTRAINT chk_credit_amounts CHECK (total_amount >= 0 AND paid_amount >= 0)
 );
 
 -- Credit Payments

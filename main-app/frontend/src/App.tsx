@@ -1,253 +1,277 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
-import Layout from './components/Layout';
-import PermissionGuard from './components/PermissionGuard';
-// Root Pages
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import NotFound from './pages/NotFound';
-import HelpSupport from './pages/HelpSupport';
-
-// Sales Module
-import POS from './pages/sales/POS';
-import Orders from './pages/sales/Orders';
-import CashRegister from './pages/sales/CashRegister';
-import Returns from './pages/sales/Returns';
-import Quotations from './pages/sales/Quotations';
-import CreditSales from './pages/sales/CreditSales';
-import PriceRules from './pages/sales/PriceRules';
-import SalesTargets from './pages/sales/SalesTargets';
-import Deliveries from './pages/sales/Deliveries';
-import WalkInOrders from './pages/sales/WalkInOrders';
-import DoneOrders from './pages/sales/DoneOrders';
-import SalesReports from './pages/sales/SalesReports';
-
-// Inventory Module
-import Inventory from './pages/inventory/Inventory';
-import FinishedGoods from './pages/inventory/FinishedGoods';
-import RawMaterials from './pages/inventory/RawMaterials';
-import Categories from './pages/inventory/Categories';
-import PurchaseOrders from './pages/inventory/PurchaseOrders';
-import StockTransfers from './pages/inventory/StockTransfers';
-import StockAdjustments from './pages/inventory/StockAdjustments';
-import StockAlerts from './pages/inventory/StockAlerts';
-import Suppliers from './pages/inventory/Suppliers';
-import InventoryReports from './pages/inventory/InventoryReports';
-import Bundles from './pages/inventory/Bundles';
-import ProductVariants from './pages/inventory/ProductVariants';
-import StockCount from './pages/inventory/StockCount';
-import Products from './pages/inventory/Products';
-import PurchaseVoucher from './pages/inventory/PurchaseVoucher';
-import PurchaseReturn from './pages/inventory/PurchaseReturn';
-import StockIssue from './pages/inventory/StockIssue';
-import StockReturnIssuance from './pages/inventory/StockReturnIssuance';
-import RawSale from './pages/inventory/RawSale';
-import Sections from './pages/inventory/Sections';
-import ItemsLedger from './pages/inventory/ItemsLedger';
-import ItemWisePurchase from './pages/inventory/ItemWisePurchase';
-import SupplierWisePurchase from './pages/inventory/SupplierWisePurchase';
-import IssuanceReports from './pages/inventory/IssuanceReports';
-import StockReconciliation from './pages/inventory/StockReconciliation';
-import OpeningStock from './pages/inventory/OpeningStock';
-import Recipes from './pages/inventory/Recipes';
-import ProductionOrders from './pages/inventory/ProductionOrders';
-
-// HR Module
-import Customers from './pages/hr/Customers';
-import Staff from './pages/hr/Staff';
-import Attendance from './pages/hr/Attendance';
-import DailyAttendance from './pages/hr/DailyAttendance';
-import SalarySheet from './pages/hr/SalarySheet';
-import PayrollProcessing from './pages/hr/PayrollProcessing';
-import SalaryVoucher from './pages/hr/SalaryVoucher';
-import AdvancePayments from './pages/hr/AdvancePayments';
-import LoanManagement from './pages/hr/LoanManagement';
-import IncrementHistory from './pages/hr/IncrementHistory';
-import EmployeeLedger from './pages/hr/EmployeeLedger';
-import HolidayCalendar from './pages/hr/HolidayCalendar';
-import LeaveRequests from './pages/hr/LeaveRequests';
-import StaffReports from './pages/hr/StaffReports';
-import Departments from './pages/hr/Departments';
-import SalaryComponents from './pages/hr/SalaryComponents';
-import Appraisals from './pages/hr/Appraisals';
-import ExitManagement from './pages/hr/ExitManagement';
-import LeavePolicies from './pages/hr/LeavePolicies';
-
-// Accounts Module
-import ChartOfAccounts from './pages/accounts/ChartOfAccounts';
-import JournalEntries from './pages/accounts/JournalEntries';
-import GeneralLedger from './pages/accounts/GeneralLedger';
-import TrialBalance from './pages/accounts/TrialBalance';
-import TrialBalance6Col from './pages/accounts/TrialBalance6Col';
-import ProfitLoss from './pages/accounts/ProfitLoss';
-import BalanceSheet from './pages/accounts/BalanceSheet';
-import BankAccounts from './pages/accounts/BankAccounts';
-import PaymentVouchers from './pages/accounts/PaymentVouchers';
-import ReceiptVouchers from './pages/accounts/ReceiptVouchers';
-import Analytics from './pages/accounts/Analytics';
-import Reports from './pages/accounts/Reports';
-import SalesAnalytics from './pages/SalesAnalytics';
-
-// Restaurant Module
-import TableManagement from './pages/restaurant/TableManagement';
-
-// System Module
-import Stores from './pages/system/Stores';
-import AccessControl from './pages/system/AccessControl';
-import AuditLog from './pages/system/AuditLog';
-import Backup from './pages/system/Backup';
-import SettingsPage from './pages/system/Settings';
-import EmailSettings from './pages/system/EmailSettings';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { SettingsProvider } from './context/SettingsContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
+// Eagerly loaded — always needed on startup
+const Layout           = lazy(() => import('./components/Layout'));
+const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'));
+const PermissionGuard  = lazy(() => import('./components/PermissionGuard'));
 
-// Protected Route Component
+// ── Lazy page imports ─────────────────────────────────────────
+const Login          = lazy(() => import('./pages/Login'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword  = lazy(() => import('./pages/ResetPassword'));
+const NotFound       = lazy(() => import('./pages/NotFound'));
+const Dashboard      = lazy(() => import('./pages/Dashboard'));
+const HelpSupport    = lazy(() => import('./pages/HelpSupport'));
+const SalesAnalytics = lazy(() => import('./pages/SalesAnalytics'));
+
+// Sales
+const POS          = lazy(() => import('./pages/sales/POS'));
+const Orders       = lazy(() => import('./pages/sales/Orders'));
+const CashRegister = lazy(() => import('./pages/sales/CashRegister'));
+const Returns      = lazy(() => import('./pages/sales/Returns'));
+const Quotations   = lazy(() => import('./pages/sales/Quotations'));
+const CreditSales  = lazy(() => import('./pages/sales/CreditSales'));
+const PriceRules   = lazy(() => import('./pages/sales/PriceRules'));
+const SalesTargets = lazy(() => import('./pages/sales/SalesTargets'));
+const Deliveries   = lazy(() => import('./pages/sales/Deliveries'));
+const WalkInOrders = lazy(() => import('./pages/sales/WalkInOrders'));
+const DoneOrders   = lazy(() => import('./pages/sales/DoneOrders'));
+const SalesReports = lazy(() => import('./pages/sales/SalesReports'));
+
+// Inventory
+const Inventory           = lazy(() => import('./pages/inventory/Inventory'));
+const FinishedGoods       = lazy(() => import('./pages/inventory/FinishedGoods'));
+const RawMaterials        = lazy(() => import('./pages/inventory/RawMaterials'));
+const Categories          = lazy(() => import('./pages/inventory/Categories'));
+const PurchaseOrders      = lazy(() => import('./pages/inventory/PurchaseOrders'));
+const StockTransfers      = lazy(() => import('./pages/inventory/StockTransfers'));
+const StockAdjustments    = lazy(() => import('./pages/inventory/StockAdjustments'));
+const StockAlerts         = lazy(() => import('./pages/inventory/StockAlerts'));
+const Suppliers           = lazy(() => import('./pages/inventory/Suppliers'));
+const InventoryReports    = lazy(() => import('./pages/inventory/InventoryReports'));
+const Bundles             = lazy(() => import('./pages/inventory/Bundles'));
+const ProductVariants     = lazy(() => import('./pages/inventory/ProductVariants'));
+const StockCount          = lazy(() => import('./pages/inventory/StockCount'));
+const Products            = lazy(() => import('./pages/inventory/Products'));
+const PurchaseVoucher     = lazy(() => import('./pages/inventory/PurchaseVoucher'));
+const PurchaseReturn      = lazy(() => import('./pages/inventory/PurchaseReturn'));
+const StockIssue          = lazy(() => import('./pages/inventory/StockIssue'));
+const StockReturnIssuance = lazy(() => import('./pages/inventory/StockReturnIssuance'));
+const RawSale             = lazy(() => import('./pages/inventory/RawSale'));
+const Sections            = lazy(() => import('./pages/inventory/Sections'));
+const ItemsLedger         = lazy(() => import('./pages/inventory/ItemsLedger'));
+const ItemWisePurchase    = lazy(() => import('./pages/inventory/ItemWisePurchase'));
+const SupplierWisePurchase= lazy(() => import('./pages/inventory/SupplierWisePurchase'));
+const IssuanceReports     = lazy(() => import('./pages/inventory/IssuanceReports'));
+const StockReconciliation = lazy(() => import('./pages/inventory/StockReconciliation'));
+const OpeningStock        = lazy(() => import('./pages/inventory/OpeningStock'));
+const Recipes             = lazy(() => import('./pages/inventory/Recipes'));
+const ProductionOrders    = lazy(() => import('./pages/inventory/ProductionOrders'));
+
+// HR
+const Customers        = lazy(() => import('./pages/hr/Customers'));
+const Staff            = lazy(() => import('./pages/hr/Staff'));
+const Attendance       = lazy(() => import('./pages/hr/Attendance'));
+const DailyAttendance  = lazy(() => import('./pages/hr/DailyAttendance'));
+const SalarySheet      = lazy(() => import('./pages/hr/SalarySheet'));
+const PayrollProcessing= lazy(() => import('./pages/hr/PayrollProcessing'));
+const SalaryVoucher    = lazy(() => import('./pages/hr/SalaryVoucher'));
+const AdvancePayments  = lazy(() => import('./pages/hr/AdvancePayments'));
+const LoanManagement   = lazy(() => import('./pages/hr/LoanManagement'));
+const IncrementHistory = lazy(() => import('./pages/hr/IncrementHistory'));
+const EmployeeLedger   = lazy(() => import('./pages/hr/EmployeeLedger'));
+const HolidayCalendar  = lazy(() => import('./pages/hr/HolidayCalendar'));
+const LeaveRequests    = lazy(() => import('./pages/hr/LeaveRequests'));
+const StaffReports     = lazy(() => import('./pages/hr/StaffReports'));
+const Departments      = lazy(() => import('./pages/hr/Departments'));
+const SalaryComponents = lazy(() => import('./pages/hr/SalaryComponents'));
+const Appraisals       = lazy(() => import('./pages/hr/Appraisals'));
+const ExitManagement   = lazy(() => import('./pages/hr/ExitManagement'));
+const LeavePolicies    = lazy(() => import('./pages/hr/LeavePolicies'));
+
+// Accounts
+const ChartOfAccounts  = lazy(() => import('./pages/accounts/ChartOfAccounts'));
+const JournalEntries   = lazy(() => import('./pages/accounts/JournalEntries'));
+const GeneralLedger    = lazy(() => import('./pages/accounts/GeneralLedger'));
+const TrialBalance     = lazy(() => import('./pages/accounts/TrialBalance'));
+const TrialBalance6Col = lazy(() => import('./pages/accounts/TrialBalance6Col'));
+const ProfitLoss       = lazy(() => import('./pages/accounts/ProfitLoss'));
+const BalanceSheet     = lazy(() => import('./pages/accounts/BalanceSheet'));
+const BankAccounts     = lazy(() => import('./pages/accounts/BankAccounts'));
+const PaymentVouchers  = lazy(() => import('./pages/accounts/PaymentVouchers'));
+const ReceiptVouchers  = lazy(() => import('./pages/accounts/ReceiptVouchers'));
+const Analytics        = lazy(() => import('./pages/accounts/Analytics'));
+const Reports          = lazy(() => import('./pages/accounts/Reports'));
+
+// Restaurant
+const TableManagement = lazy(() => import('./pages/restaurant/TableManagement'));
+
+// System
+const Stores        = lazy(() => import('./pages/system/Stores'));
+const AccessControl = lazy(() => import('./pages/system/AccessControl'));
+const AuditLog      = lazy(() => import('./pages/system/AuditLog'));
+const Backup        = lazy(() => import('./pages/system/Backup'));
+const SettingsPage  = lazy(() => import('./pages/system/Settings'));
+const EmailSettings = lazy(() => import('./pages/system/EmailSettings'));
+
+// ── Page-level loading fallback ───────────────────────────────
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600" />
+  </div>
+);
+
+// ── Protected Route ───────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" />
       </div>
     );
   }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
+
+// ── Guard shorthand ───────────────────────────────────────────
+const G = ({ k, children }: { k: string; children: React.ReactNode }) => (
+  <Suspense fallback={<PageLoader />}>
+    <PermissionGuard moduleKey={k}>{children}</PermissionGuard>
+  </Suspense>
+);
 
 function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-      <ToastProvider>
-      <CartProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Routes>
-                      {/* Unguarded - all authenticated users */}
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/pos" element={<POS />} />
-                      <Route path="/walk-in-orders" element={<WalkInOrders />} />
-                      <Route path="/cash-register" element={<CashRegister />} />
+        <ToastProvider>
+          <CartProvider>
+            <Router>
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/login"            element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
+                  <Route path="/forgot-password"  element={<Suspense fallback={<PageLoader />}><ForgotPassword /></Suspense>} />
+                  <Route path="/reset-password"   element={<Suspense fallback={<PageLoader />}><ResetPassword /></Suspense>} />
 
-                      {/* Sales */}
-                      <Route path="/orders" element={<PermissionGuard moduleKey="sales.orders"><Orders /></PermissionGuard>} />
-                      <Route path="/customers" element={<PermissionGuard moduleKey="sales.customers"><Customers /></PermissionGuard>} />
-                      <Route path="/returns" element={<PermissionGuard moduleKey="sales.returns"><Returns /></PermissionGuard>} />
-                      <Route path="/quotations" element={<PermissionGuard moduleKey="sales.quotations"><Quotations /></PermissionGuard>} />
-                      <Route path="/credit-sales" element={<PermissionGuard moduleKey="sales.credit"><CreditSales /></PermissionGuard>} />
-                      <Route path="/price-rules" element={<PermissionGuard moduleKey="sales.pricerules"><PriceRules /></PermissionGuard>} />
-                      <Route path="/sales-targets" element={<PermissionGuard moduleKey="sales.targets"><SalesTargets /></PermissionGuard>} />
-                      <Route path="/deliveries" element={<PermissionGuard moduleKey="sales.deliveries"><Deliveries /></PermissionGuard>} />
-                      <Route path="/done-orders" element={<PermissionGuard moduleKey="sales.orders"><DoneOrders /></PermissionGuard>} />
-                      <Route path="/sales-reports" element={<PermissionGuard moduleKey="sales.reports"><SalesReports /></PermissionGuard>} />
-                      <Route path="/sales-analytics" element={<PermissionGuard moduleKey="sales.reports"><SalesAnalytics /></PermissionGuard>} />
-                      {/* Restaurant */}
-                      <Route path="/restaurant/tables" element={<PermissionGuard moduleKey="restaurant.tables"><TableManagement /></PermissionGuard>} />
+                  <Route
+                    path="/*"
+                    element={
+                      <ProtectedRoute>
+                        <Suspense fallback={<PageLoader />}>
+                          <Layout>
+                            <ErrorBoundary>
+                              <Suspense fallback={<PageLoader />}>
+                                <Routes>
+                                  {/* Unguarded */}
+                                  <Route path="/"                   element={<Dashboard />} />
+                                  <Route path="/pos"                element={<POS />} />
+                                  <Route path="/walk-in-orders"     element={<WalkInOrders />} />
+                                  <Route path="/cash-register"      element={<CashRegister />} />
 
-                      {/* Inventory */}
-                      <Route path="/inventory" element={<PermissionGuard moduleKey="inventory.products"><Inventory /></PermissionGuard>} />
-                      <Route path="/finished-goods" element={<PermissionGuard moduleKey="inventory.products"><FinishedGoods /></PermissionGuard>} />
-                      <Route path="/raw-materials" element={<PermissionGuard moduleKey="inventory.products"><RawMaterials /></PermissionGuard>} />
-                      <Route path="/categories" element={<PermissionGuard moduleKey="inventory.categories"><Categories /></PermissionGuard>} />
-                      <Route path="/purchase-orders" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseOrders /></PermissionGuard>} />
-                      <Route path="/stock-transfers" element={<PermissionGuard moduleKey="inventory.transfers"><StockTransfers /></PermissionGuard>} />
-                      <Route path="/stock-adjustments" element={<PermissionGuard moduleKey="inventory.adjustments"><StockAdjustments /></PermissionGuard>} />
-                      <Route path="/stock-alerts" element={<PermissionGuard moduleKey="inventory.alerts"><StockAlerts /></PermissionGuard>} />
-                      <Route path="/suppliers" element={<PermissionGuard moduleKey="inventory.suppliers"><Suppliers /></PermissionGuard>} />
-                      <Route path="/inventory-reports" element={<PermissionGuard moduleKey="inventory.reports"><InventoryReports /></PermissionGuard>} />
-                      <Route path="/bundles" element={<PermissionGuard moduleKey="inventory.bundles"><Bundles /></PermissionGuard>} />
-                      <Route path="/product-variants" element={<PermissionGuard moduleKey="inventory.variants"><ProductVariants /></PermissionGuard>} />
-                      <Route path="/stock-count" element={<PermissionGuard moduleKey="inventory.stockcount"><StockCount /></PermissionGuard>} />
-                      <Route path="/products" element={<PermissionGuard moduleKey="inventory.products"><Products /></PermissionGuard>} />
-                      <Route path="/purchase-voucher" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseVoucher /></PermissionGuard>} />
-                      <Route path="/purchase-return" element={<PermissionGuard moduleKey="inventory.purchases"><PurchaseReturn /></PermissionGuard>} />
-                      <Route path="/stock-issue" element={<PermissionGuard moduleKey="inventory.adjustments"><StockIssue /></PermissionGuard>} />
-                      <Route path="/stock-return-issuance" element={<PermissionGuard moduleKey="inventory.adjustments"><StockReturnIssuance /></PermissionGuard>} />
-                      <Route path="/raw-sale" element={<PermissionGuard moduleKey="inventory.adjustments"><RawSale /></PermissionGuard>} />
-                      <Route path="/sections" element={<PermissionGuard moduleKey="inventory.adjustments"><Sections /></PermissionGuard>} />
-                      <Route path="/items-ledger" element={<PermissionGuard moduleKey="inventory.reports"><ItemsLedger /></PermissionGuard>} />
-                      <Route path="/item-wise-purchase" element={<PermissionGuard moduleKey="inventory.reports"><ItemWisePurchase /></PermissionGuard>} />
-                      <Route path="/supplier-wise-purchase" element={<PermissionGuard moduleKey="inventory.reports"><SupplierWisePurchase /></PermissionGuard>} />
-                      <Route path="/issuance-reports" element={<PermissionGuard moduleKey="inventory.reports"><IssuanceReports /></PermissionGuard>} />
-                      <Route path="/stock-reconciliation" element={<PermissionGuard moduleKey="inventory.reports"><StockReconciliation /></PermissionGuard>} />
-                      <Route path="/opening-stock" element={<PermissionGuard moduleKey="inventory.products"><OpeningStock /></PermissionGuard>} />
-                      <Route path="/recipes" element={<PermissionGuard moduleKey="inventory.products"><Recipes /></PermissionGuard>} />
-                      <Route path="/production-orders" element={<PermissionGuard moduleKey="inventory.products"><ProductionOrders /></PermissionGuard>} />
+                                  {/* Sales */}
+                                  <Route path="/orders"         element={<G k="sales.orders"><Orders /></G>} />
+                                  <Route path="/customers"      element={<G k="sales.customers"><Customers /></G>} />
+                                  <Route path="/returns"        element={<G k="sales.returns"><Returns /></G>} />
+                                  <Route path="/quotations"     element={<G k="sales.quotations"><Quotations /></G>} />
+                                  <Route path="/credit-sales"   element={<G k="sales.credit"><CreditSales /></G>} />
+                                  <Route path="/price-rules"    element={<G k="sales.pricerules"><PriceRules /></G>} />
+                                  <Route path="/sales-targets"  element={<G k="sales.targets"><SalesTargets /></G>} />
+                                  <Route path="/deliveries"     element={<G k="sales.deliveries"><Deliveries /></G>} />
+                                  <Route path="/done-orders"    element={<G k="sales.orders"><DoneOrders /></G>} />
+                                  <Route path="/sales-reports"  element={<G k="sales.reports"><SalesReports /></G>} />
+                                  <Route path="/sales-analytics"element={<G k="sales.reports"><SalesAnalytics /></G>} />
 
-                      {/* HR */}
-                      <Route path="/staff" element={<PermissionGuard moduleKey="hr.staff"><Staff /></PermissionGuard>} />
-                      <Route path="/attendance" element={<PermissionGuard moduleKey="hr.attendance"><Attendance /></PermissionGuard>} />
-                      <Route path="/daily-attendance" element={<PermissionGuard moduleKey="hr.daily-attendance"><DailyAttendance /></PermissionGuard>} />
-                      <Route path="/salary-sheet" element={<PermissionGuard moduleKey="hr.salary-sheet"><SalarySheet /></PermissionGuard>} />
-                      <Route path="/salary-voucher" element={<PermissionGuard moduleKey="hr.salary-sheet"><SalaryVoucher /></PermissionGuard>} />
-                      <Route path="/payroll" element={<PermissionGuard moduleKey="hr.payroll"><PayrollProcessing /></PermissionGuard>} />
-                      <Route path="/advance-payments" element={<PermissionGuard moduleKey="hr.advances"><AdvancePayments /></PermissionGuard>} />
-                      <Route path="/loans" element={<PermissionGuard moduleKey="hr.loans"><LoanManagement /></PermissionGuard>} />
-                      <Route path="/increments" element={<PermissionGuard moduleKey="hr.increments"><IncrementHistory /></PermissionGuard>} />
-                      <Route path="/employee-ledger" element={<PermissionGuard moduleKey="hr.ledger"><EmployeeLedger /></PermissionGuard>} />
-                      <Route path="/holidays" element={<PermissionGuard moduleKey="hr.holidays"><HolidayCalendar /></PermissionGuard>} />
-                      <Route path="/leave-requests" element={<PermissionGuard moduleKey="hr.leaves"><LeaveRequests /></PermissionGuard>} />
-                      <Route path="/staff-reports" element={<PermissionGuard moduleKey="hr.reports"><StaffReports /></PermissionGuard>} />
-                      <Route path="/departments" element={<PermissionGuard moduleKey="hr.departments"><Departments /></PermissionGuard>} />
-                      <Route path="/salary-components" element={<PermissionGuard moduleKey="hr.salary-components"><SalaryComponents /></PermissionGuard>} />
-                      <Route path="/appraisals" element={<PermissionGuard moduleKey="hr.appraisals"><Appraisals /></PermissionGuard>} />
-                      <Route path="/exit-management" element={<PermissionGuard moduleKey="hr.exit"><ExitManagement /></PermissionGuard>} />
-                      <Route path="/leave-policies" element={<PermissionGuard moduleKey="hr.leaves"><LeavePolicies /></PermissionGuard>} />
+                                  {/* Restaurant */}
+                                  <Route path="/restaurant/tables" element={<G k="restaurant.tables"><TableManagement /></G>} />
 
-                      {/* Accounts */}
-                      <Route path="/chart-of-accounts" element={<PermissionGuard moduleKey="accounts.chart"><ChartOfAccounts /></PermissionGuard>} />
-                      <Route path="/journal-entries" element={<PermissionGuard moduleKey="accounts.journal"><JournalEntries /></PermissionGuard>} />
-                      <Route path="/general-ledger" element={<PermissionGuard moduleKey="accounts.ledger"><GeneralLedger /></PermissionGuard>} />
-                      <Route path="/trial-balance" element={<PermissionGuard moduleKey="accounts.trial-balance"><TrialBalance /></PermissionGuard>} />
-                      <Route path="/trial-balance-6col" element={<PermissionGuard moduleKey="accounts.trial-balance-6col"><TrialBalance6Col /></PermissionGuard>} />
-                      <Route path="/profit-loss" element={<PermissionGuard moduleKey="accounts.profit-loss"><ProfitLoss /></PermissionGuard>} />
-                      <Route path="/balance-sheet" element={<PermissionGuard moduleKey="accounts.balance-sheet"><BalanceSheet /></PermissionGuard>} />
-                      <Route path="/bank-accounts" element={<PermissionGuard moduleKey="accounts.bank-accounts"><BankAccounts /></PermissionGuard>} />
-                      <Route path="/payment-vouchers" element={<PermissionGuard moduleKey="accounts.payment-vouchers"><PaymentVouchers /></PermissionGuard>} />
-                      <Route path="/receipt-vouchers" element={<PermissionGuard moduleKey="accounts.receipt-vouchers"><ReceiptVouchers /></PermissionGuard>} />
-                      <Route path="/analytics" element={<PermissionGuard moduleKey="accounts.analytics"><Analytics /></PermissionGuard>} />
-                      <Route path="/reports" element={<PermissionGuard moduleKey="accounts.reports"><Reports /></PermissionGuard>} />
+                                  {/* Inventory */}
+                                  <Route path="/inventory"             element={<G k="inventory.products"><Inventory /></G>} />
+                                  <Route path="/finished-goods"        element={<G k="inventory.products"><FinishedGoods /></G>} />
+                                  <Route path="/raw-materials"         element={<G k="inventory.products"><RawMaterials /></G>} />
+                                  <Route path="/categories"            element={<G k="inventory.categories"><Categories /></G>} />
+                                  <Route path="/purchase-orders"       element={<G k="inventory.purchases"><PurchaseOrders /></G>} />
+                                  <Route path="/stock-transfers"       element={<G k="inventory.transfers"><StockTransfers /></G>} />
+                                  <Route path="/stock-adjustments"     element={<G k="inventory.adjustments"><StockAdjustments /></G>} />
+                                  <Route path="/stock-alerts"          element={<G k="inventory.alerts"><StockAlerts /></G>} />
+                                  <Route path="/suppliers"             element={<G k="inventory.suppliers"><Suppliers /></G>} />
+                                  <Route path="/inventory-reports"     element={<G k="inventory.reports"><InventoryReports /></G>} />
+                                  <Route path="/bundles"               element={<G k="inventory.bundles"><Bundles /></G>} />
+                                  <Route path="/product-variants"      element={<G k="inventory.variants"><ProductVariants /></G>} />
+                                  <Route path="/stock-count"           element={<G k="inventory.stockcount"><StockCount /></G>} />
+                                  <Route path="/products"              element={<G k="inventory.products"><Products /></G>} />
+                                  <Route path="/purchase-voucher"      element={<G k="inventory.purchases"><PurchaseVoucher /></G>} />
+                                  <Route path="/purchase-return"       element={<G k="inventory.purchases"><PurchaseReturn /></G>} />
+                                  <Route path="/stock-issue"           element={<G k="inventory.adjustments"><StockIssue /></G>} />
+                                  <Route path="/stock-return-issuance" element={<G k="inventory.adjustments"><StockReturnIssuance /></G>} />
+                                  <Route path="/raw-sale"              element={<G k="inventory.adjustments"><RawSale /></G>} />
+                                  <Route path="/sections"              element={<G k="inventory.adjustments"><Sections /></G>} />
+                                  <Route path="/items-ledger"          element={<G k="inventory.reports"><ItemsLedger /></G>} />
+                                  <Route path="/item-wise-purchase"    element={<G k="inventory.reports"><ItemWisePurchase /></G>} />
+                                  <Route path="/supplier-wise-purchase"element={<G k="inventory.reports"><SupplierWisePurchase /></G>} />
+                                  <Route path="/issuance-reports"      element={<G k="inventory.reports"><IssuanceReports /></G>} />
+                                  <Route path="/stock-reconciliation"  element={<G k="inventory.reports"><StockReconciliation /></G>} />
+                                  <Route path="/opening-stock"         element={<G k="inventory.products"><OpeningStock /></G>} />
+                                  <Route path="/recipes"               element={<G k="inventory.products"><Recipes /></G>} />
+                                  <Route path="/production-orders"     element={<G k="inventory.products"><ProductionOrders /></G>} />
 
-                      {/* System */}
-                      <Route path="/stores" element={<PermissionGuard moduleKey="system.stores"><Stores /></PermissionGuard>} />
-                      <Route path="/access-control" element={<PermissionGuard moduleKey="system.settings"><AccessControl /></PermissionGuard>} />
-                      <Route path="/audit-log" element={<PermissionGuard moduleKey="system.audit"><AuditLog /></PermissionGuard>} />
-                      <Route path="/backup" element={<PermissionGuard moduleKey="system.backup"><Backup /></PermissionGuard>} />
-                      <Route path="/settings" element={<PermissionGuard moduleKey="system.settings"><SettingsPage /></PermissionGuard>} />
-                      <Route path="/email-settings" element={<PermissionGuard moduleKey="system.settings"><EmailSettings /></PermissionGuard>} />
-                      <Route path="/help" element={<HelpSupport />} />
-                    </Routes>
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Router>
-      </CartProvider>
-      </ToastProvider>
+                                  {/* HR */}
+                                  <Route path="/staff"             element={<G k="hr.staff"><Staff /></G>} />
+                                  <Route path="/attendance"        element={<G k="hr.attendance"><Attendance /></G>} />
+                                  <Route path="/daily-attendance"  element={<G k="hr.daily-attendance"><DailyAttendance /></G>} />
+                                  <Route path="/salary-sheet"      element={<G k="hr.salary-sheet"><SalarySheet /></G>} />
+                                  <Route path="/salary-voucher"    element={<G k="hr.salary-sheet"><SalaryVoucher /></G>} />
+                                  <Route path="/payroll"           element={<G k="hr.payroll"><PayrollProcessing /></G>} />
+                                  <Route path="/advance-payments"  element={<G k="hr.advances"><AdvancePayments /></G>} />
+                                  <Route path="/loans"             element={<G k="hr.loans"><LoanManagement /></G>} />
+                                  <Route path="/increments"        element={<G k="hr.increments"><IncrementHistory /></G>} />
+                                  <Route path="/employee-ledger"   element={<G k="hr.ledger"><EmployeeLedger /></G>} />
+                                  <Route path="/holidays"          element={<G k="hr.holidays"><HolidayCalendar /></G>} />
+                                  <Route path="/leave-requests"    element={<G k="hr.leaves"><LeaveRequests /></G>} />
+                                  <Route path="/staff-reports"     element={<G k="hr.reports"><StaffReports /></G>} />
+                                  <Route path="/departments"       element={<G k="hr.departments"><Departments /></G>} />
+                                  <Route path="/salary-components" element={<G k="hr.salary-components"><SalaryComponents /></G>} />
+                                  <Route path="/appraisals"        element={<G k="hr.appraisals"><Appraisals /></G>} />
+                                  <Route path="/exit-management"   element={<G k="hr.exit"><ExitManagement /></G>} />
+                                  <Route path="/leave-policies"    element={<G k="hr.leaves"><LeavePolicies /></G>} />
+
+                                  {/* Accounts */}
+                                  <Route path="/chart-of-accounts"  element={<G k="accounts.chart"><ChartOfAccounts /></G>} />
+                                  <Route path="/journal-entries"    element={<G k="accounts.journal"><JournalEntries /></G>} />
+                                  <Route path="/general-ledger"     element={<G k="accounts.ledger"><GeneralLedger /></G>} />
+                                  <Route path="/trial-balance"      element={<G k="accounts.trial-balance"><TrialBalance /></G>} />
+                                  <Route path="/trial-balance-6col" element={<G k="accounts.trial-balance-6col"><TrialBalance6Col /></G>} />
+                                  <Route path="/profit-loss"        element={<G k="accounts.profit-loss"><ProfitLoss /></G>} />
+                                  <Route path="/balance-sheet"      element={<G k="accounts.balance-sheet"><BalanceSheet /></G>} />
+                                  <Route path="/bank-accounts"      element={<G k="accounts.bank-accounts"><BankAccounts /></G>} />
+                                  <Route path="/payment-vouchers"   element={<G k="accounts.payment-vouchers"><PaymentVouchers /></G>} />
+                                  <Route path="/receipt-vouchers"   element={<G k="accounts.receipt-vouchers"><ReceiptVouchers /></G>} />
+                                  <Route path="/analytics"          element={<G k="accounts.analytics"><Analytics /></G>} />
+                                  <Route path="/reports"            element={<G k="accounts.reports"><Reports /></G>} />
+
+                                  {/* System */}
+                                  <Route path="/stores"         element={<G k="system.stores"><Stores /></G>} />
+                                  <Route path="/access-control" element={<G k="system.settings"><AccessControl /></G>} />
+                                  <Route path="/audit-log"      element={<G k="system.audit"><AuditLog /></G>} />
+                                  <Route path="/backup"         element={<G k="system.backup"><Backup /></G>} />
+                                  <Route path="/settings"       element={<G k="system.settings"><SettingsPage /></G>} />
+                                  <Route path="/email-settings" element={<G k="system.settings"><EmailSettings /></G>} />
+                                  <Route path="/help"           element={<HelpSupport />} />
+                                </Routes>
+                              </Suspense>
+                            </ErrorBoundary>
+                          </Layout>
+                        </Suspense>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
+            </Router>
+            <Suspense fallback={null}>
+              <PWAInstallPrompt />
+            </Suspense>
+          </CartProvider>
+        </ToastProvider>
       </SettingsProvider>
-      <PWAInstallPrompt />
     </AuthProvider>
   );
 }

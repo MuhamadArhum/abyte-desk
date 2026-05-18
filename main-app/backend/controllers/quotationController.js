@@ -2,12 +2,6 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 const parsePagination = (page, limit) => {
   const p = Math.max(1, parseInt(page) || 1);
   const l = Math.min(Math.max(1, parseInt(limit) || 20), 100);
@@ -19,7 +13,6 @@ const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 // GET /api/quotations?page=&limit=&status=&customer_id=&search=
 const getAll = async (req, res) => {
   try {
-    await ensureColumns();
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
     const { status, customer_id, search } = req.query;
 

@@ -2,12 +2,6 @@ const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE cash_registers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 // Helper: Round to 2 decimal places for currency
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
@@ -24,7 +18,6 @@ const parsePagination = (page, limit) => {
 
 exports.getCurrentRegister = async (req, res) => {
   try {
-    await ensureColumns();
     const branchId = req.user.branch_id || null;
     const branchClause = branchId ? ' AND cr.branch_id = ?' : '';
     const branchParam = branchId ? [branchId] : [];

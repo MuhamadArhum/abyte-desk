@@ -8,12 +8,6 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE credit_sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -24,7 +18,6 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
-    await ensureColumns();
     const { status, customer_id, overdue, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 

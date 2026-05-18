@@ -4,18 +4,7 @@ const { logAction } = require('../services/auditService');
 
 const pad = (n) => String(n).padStart(6, '0');
 
-// Ensure purchase_account_id column exists for existing tenants
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS purchase_account_id INT DEFAULT NULL`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS payable_account_id INT DEFAULT NULL`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS journal_entry_id INT DEFAULT NULL`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS shipping_cost DECIMAL(15,2) NOT NULL DEFAULT 0`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS extra_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS other_charges DECIMAL(15,2) NOT NULL DEFAULT 0`);
-    await query(`ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) { /* columns already exist */ }
-}
+// Column migrations handled by migrationService.js at server startup
 
 async function nextPVNumber() {
   const [last] = await query('SELECT pv_number FROM inv_purchase_vouchers ORDER BY pv_id DESC LIMIT 1');
@@ -131,7 +120,6 @@ async function applyStockForItems(conn, pvId, items, voucher_date) {
 // GET all purchase vouchers
 exports.getAll = async (req, res) => {
   try {
-    await ensureColumns();
     const { from_date, to_date, po_id } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);

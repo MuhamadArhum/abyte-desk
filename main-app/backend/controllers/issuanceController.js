@@ -4,14 +4,6 @@ const { logAction } = require('../services/auditService');
 
 const pad = (n, len = 6) => String(n).padStart(len, '0');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE stock_issues ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    await query(`ALTER TABLE stock_issue_returns ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    await query(`ALTER TABLE raw_sales ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 function getBranch(req) {
   if (req.user.role_name !== 'Admin' && req.user.branch_id) return { clause: ' AND branch_id = ?', params: [req.user.branch_id] };
   if (req.user.role_name === 'Admin' && req.query.filter_branch)  return { clause: ' AND branch_id = ?', params: [req.query.filter_branch] };
@@ -32,7 +24,6 @@ async function nextNumber(prefix, table, column) {
 
 exports.getIssues = async (req, res) => {
   try {
-    await ensureColumns();
     const { section_id, from_date, to_date } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);

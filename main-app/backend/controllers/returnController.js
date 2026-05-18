@@ -2,12 +2,6 @@ const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE returns ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 exports.createReturn = async (req, res) => {
   let conn;
   try {
@@ -146,7 +140,6 @@ exports.createReturn = async (req, res) => {
 
 exports.getReturns = async (req, res) => {
   try {
-    await ensureColumns();
     const { page = 1, limit = 50, date_start, date_end } = req.query;
 
     let sql = `SELECT r.*, u.name as processed_by, s.total_amount as original_sale_amount

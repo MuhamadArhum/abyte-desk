@@ -4,12 +4,6 @@ const { logAction } = require('../services/auditService');
 
 const pad = (n) => String(n).padStart(6, '0');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 async function nextPONumber() {
   const [last] = await query('SELECT po_number FROM purchase_orders ORDER BY po_id DESC LIMIT 1');
   if (last?.po_number) {
@@ -27,7 +21,6 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
-    await ensureColumns();
     const { status, supplier_id, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 

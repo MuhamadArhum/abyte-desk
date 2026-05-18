@@ -9,12 +9,6 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 const parsePagination = (q) => {
   const page  = Math.max(1, parseInt(q.page)  || 1);
   const limit = Math.min(100, Math.max(1, parseInt(q.limit) || 20));
@@ -37,7 +31,6 @@ async function generateDeliveryNumber() {
 // GET /api/deliveries/stats
 exports.getStats = async (req, res) => {
   try {
-    await ensureColumns();
     const today = new Date().toISOString().split('T')[0];
 
     let branchWhere = '';

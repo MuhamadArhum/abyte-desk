@@ -297,27 +297,19 @@ cron.schedule('0 2 * * *', async () => {
   }
 });
 
-// ── Startup Migration: add multi-branch columns to all tenant DBs ──
+// ── Startup Migration: run numbered migrations on all tenant DBs ──
 const { queryDb } = require('./config/database');
+const { runMigrationsForDb } = require('./services/migrationService');
 const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
 async function runStartupMigrations() {
   try {
-    // Get all active tenant DBs from master
     const tenants = await queryDb(MASTER_DB, 'SELECT db_name FROM tenants WHERE is_active = 1');
     for (const t of tenants) {
-      try {
-        await queryDb(t.db_name, `ALTER TABLE stores ADD COLUMN IF NOT EXISTS monthly_charge DECIMAL(10,2) DEFAULT 0.00`);
-        await queryDb(t.db_name, `ALTER TABLE users  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-        await queryDb(t.db_name, `ALTER TABLE sales  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-        await queryDb(t.db_name, `ALTER TABLE staff  ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-      } catch (e) {
-        logger.warn(`[Migration] Could not migrate ${t.db_name}: ${e.message}`);
-      }
+      await runMigrationsForDb(t.db_name);
     }
-    logger.info('[Migration] Multi-branch column migration complete');
+    logger.info('[Migration] All tenant migrations complete');
   } catch (e) {
-    // Non-fatal — if master DB unreachable, skip
     logger.warn('[Migration] Startup migration skipped', { error: e.message });
   }
 }

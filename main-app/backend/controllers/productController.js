@@ -9,40 +9,7 @@ const logger = require('../config/logger');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-let productBranchEnsured = false;
-async function ensureProductBranch() {
-  if (productBranchEnsured) return;
-  productBranchEnsured = true;
-  try { await query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS branch_id INT NULL`); } catch (_) {}
-}
-
-let categoryBranchEnsured = false;
-async function ensureCategoryBranch() {
-  if (categoryBranchEnsured) return;
-  categoryBranchEnsured = true;
-  try {
-    const [col] = await query(
-      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'branch_id'`
-    );
-    if (!col) {
-      await query(`ALTER TABLE categories ADD COLUMN branch_id INT NULL`);
-    }
-    // Fix old single-column unique constraint on category_name → make it per-branch
-    const [oldKey] = await query(
-      `SELECT kcu.CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
-       JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-         ON kcu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND kcu.TABLE_SCHEMA = tc.TABLE_SCHEMA
-       WHERE kcu.TABLE_SCHEMA = DATABASE() AND kcu.TABLE_NAME = 'categories'
-         AND tc.CONSTRAINT_TYPE = 'UNIQUE' AND kcu.COLUMN_NAME = 'category_name'
-         AND kcu.CONSTRAINT_NAME != 'unique_category_per_branch'`
-    );
-    if (oldKey) {
-      await query(`ALTER TABLE categories DROP INDEX \`${oldKey.CONSTRAINT_NAME}\``);
-      await query(`ALTER TABLE categories ADD UNIQUE KEY unique_category_per_branch (category_name, branch_id)`);
-    }
-  } catch (_) {}
-}
+// Column migrations handled by migrationService.js at server startup
 
 // Branch filter helper — works for any aliased table with a branch_id column
 function branchWhere(req, alias = 'p') {
@@ -64,7 +31,6 @@ function branchWhere(req, alias = 'p') {
 //   ?stock=out       - Show only out of stock (0 units)
 exports.getAll = async (req, res) => {
   try {
-    await ensureProductBranch();
     const { search, category, stock, type } = req.query;
     const branch = branchWhere(req, 'p');
 
@@ -200,7 +166,6 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Price is required for finished goods' });
     }
 
-    await ensureProductBranch();
     const branch_id = req.user.branch_id || null;
     const result = await query(
       'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -294,8 +259,6 @@ exports.remove = async (req, res) => {
 // Returns categories filtered by branch (non-admin sees only their branch).
 exports.getCategories = async (req, res) => {
   try {
-    await ensureCategoryBranch();
-    await ensureProductBranch();
     const { type } = req.query;
     const branch = branchWhere(req, 'c');
 
@@ -320,7 +283,6 @@ exports.getCategories = async (req, res) => {
 // --- Create New Category ---
 exports.createCategory = async (req, res) => {
   try {
-    await ensureCategoryBranch();
     const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
