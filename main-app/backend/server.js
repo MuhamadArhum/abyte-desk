@@ -20,6 +20,8 @@ require('dotenv').config({
 });
 
 const logger = require('./config/logger');
+const { validateEnv } = require('./config/validateEnv');
+validateEnv();
 
 // ── JWT Secret Safety Check ──────────────────────────────────
 const INSECURE_JWT_DEFAULTS = [
