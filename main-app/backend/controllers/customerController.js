@@ -93,8 +93,8 @@ exports.getAll = async (req, res) => {
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {
-    logger.error(err);
-    res.status(500).json({ message: 'Server error' });
+    logger.error('getAll customers error', { message: err.message, code: err.code, sql: err.sql });
+    res.status(500).json({ message: 'Server error', detail: err.message });
   }
 };
 
