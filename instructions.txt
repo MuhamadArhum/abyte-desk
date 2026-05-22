@@ -7,9 +7,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-Ok Ab Hum Mobile App Bhi Bnaty hain Iska 
-1: Mobile App Just Waiter k Liye hogi 
-2: App Sy Just Order Create ho skta hai / Edit Krty hue Sirf items add ho skti hain lkin Minus ni honi chaye usky liye usko Cashier / Manager k pass jana hoga
-3: App Main Just Us User k Orders jo Usny Write kiye hain wo hi show hongy
-4: App main Tables Show hongi Jo table free hogi Uska Status wagera show krwana hai Yani AIk Floor Plan main Jo Tables reserve hain unko Status Reserve krwao ya occupied 
-5: 

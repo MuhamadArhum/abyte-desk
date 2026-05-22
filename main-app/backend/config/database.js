@@ -103,4 +103,4 @@ async function getConnection() {
   return getPool(getCurrentDb()).getConnection();
 }
 
-module.exports = { query, queryDb, getConnection, tenantStorage, getPool };
+module.exports = { query, queryDb, getConnection, tenantStorage, getPool, getCurrentDb };

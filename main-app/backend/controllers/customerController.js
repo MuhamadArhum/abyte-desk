@@ -7,13 +7,12 @@
 // =============================================================
 
 const logger = require('../config/logger');
-const { query } = require('../config/database');  // Database query helper
+const { query, getCurrentDb } = require('../config/database');
 const { logAction } = require('../services/auditService');
-
-let addressTableEnsured = false;
+const addressTableEnsuredPerTenant = new Set();
 async function ensureAddressTable() {
-  if (addressTableEnsured) return;
-  addressTableEnsured = true;
+  const db = getCurrentDb();
+  if (addressTableEnsuredPerTenant.has(db)) return;
   try {
     const rows = await query(
       `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
@@ -33,7 +32,10 @@ async function ensureAddressTable() {
         )
       `);
     }
-  } catch (_) {}
+    addressTableEnsuredPerTenant.add(db);
+  } catch (err) {
+    logger.error('ensureAddressTable error', { error: err.message });
+  }
 }
 
 // Helper: Validate and parse pagination params
