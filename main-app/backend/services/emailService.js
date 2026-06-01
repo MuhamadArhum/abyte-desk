@@ -2,14 +2,14 @@
 // Requires: npm install nodemailer (in backend folder)
 // Configure in .env: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS, EMAIL_FROM
 
+const logger = require('../config/logger');
+
 let nodemailer;
 try {
   nodemailer = require('nodemailer');
 } catch {
   logger.warn('[EmailService] nodemailer not installed. Run: npm install nodemailer');
 }
-
-const logger = require('../config/logger');
 
 const getTransporter = () => {
   if (!nodemailer) return null;
