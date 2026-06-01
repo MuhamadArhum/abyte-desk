@@ -866,7 +866,7 @@ export async function printToThermalPrinter(
   };
 
   // ── 1. Local Printer Agent — highest priority ──────────────────────
-  const printerAgentUrl = 'http://localhost:3001';
+  const printerAgentUrl = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
   try {
     const agentRes = await fetch(`${printerAgentUrl}/health`, { signal: AbortSignal.timeout(1000) });
     if (agentRes.ok) {

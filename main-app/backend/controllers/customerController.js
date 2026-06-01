@@ -89,7 +89,7 @@ exports.getAll = async (req, res) => {
       });
     }
 
-    sql += ' ORDER BY c.customer_name';
+    sql += ' ORDER BY c.customer_name LIMIT 50';
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {

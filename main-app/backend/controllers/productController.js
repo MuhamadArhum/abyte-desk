@@ -82,7 +82,7 @@ exports.getAll = async (req, res) => {
       return res.json({ data: rows, pagination: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) } });
     }
 
-    sql += ' ORDER BY p.created_at DESC';
+    sql += ' ORDER BY p.created_at DESC LIMIT 200';
     const rows = await query(sql, params);
     res.json({ data: rows });
   } catch (err) {

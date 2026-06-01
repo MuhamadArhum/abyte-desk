@@ -145,10 +145,12 @@ const Settings = () => {
   const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentInfo, setAgentInfo] = useState<any>(null);
 
+  const AGENT_URL = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
+
   const checkAgentStatus = async () => {
     setAgentStatus('checking');
     try {
-      const res = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${AGENT_URL}/health`, { signal: AbortSignal.timeout(2000) });
       if (res.ok) { setAgentInfo(await res.json()); setAgentStatus('available'); }
       else setAgentStatus('unavailable');
     } catch { setAgentStatus('unavailable'); }
@@ -931,7 +933,7 @@ const Settings = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-gray-800">AByte Printer Agent</p>
-                      <code className="px-2 py-0.5 bg-white border border-gray-200 text-gray-600 text-xs rounded-md">localhost:3001</code>
+                      <code className="px-2 py-0.5 bg-white border border-gray-200 text-gray-600 text-xs rounded-md">{AGENT_URL.replace('http://', '')}</code>
                       {agentStatus === 'available'   && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">● RUNNING</span>}
                       {agentStatus === 'unavailable' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">○ NOT RUNNING</span>}
                     </div>
@@ -955,7 +957,7 @@ const Settings = () => {
 
                     {agentStatus === 'available' && (
                       <div className="mt-3 flex items-center gap-3 flex-wrap">
-                        <a href="http://localhost:3001" target="_blank" rel="noreferrer"
+                        <a href={AGENT_URL} target="_blank" rel="noreferrer"
                           className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition">
                           <Printer size={15} /> Open Printer Dashboard
                         </a>
@@ -971,14 +973,14 @@ const Settings = () => {
                           <p className="text-xs text-gray-600">1. Copy the <code className="bg-gray-100 px-1 rounded">printer-agent/</code> folder to the cashier PC</p>
                           <p className="text-xs text-gray-600">2. Install Node.js from <span className="font-medium">nodejs.org</span></p>
                           <p className="text-xs text-gray-600">3. Run <code className="bg-gray-100 px-1 rounded">install-service.bat</code> as Administrator</p>
-                          <p className="text-xs text-gray-600">4. Add printers at <code className="bg-gray-100 px-1 rounded">http://localhost:3001</code></p>
+                          <p className="text-xs text-gray-600">4. Add printers at <code className="bg-gray-100 px-1 rounded">{AGENT_URL}</code></p>
                         </div>
                         <button onClick={checkAgentStatus} className="text-xs text-gray-500 underline hover:no-underline">Re-check</button>
                       </div>
                     )}
 
                     {agentStatus === 'checking' && (
-                      <p className="text-xs text-gray-500 mt-2">Checking agent on localhost:3001...</p>
+                      <p className="text-xs text-gray-500 mt-2">Checking agent on {AGENT_URL}...</p>
                     )}
                   </div>
                 </div>
@@ -993,8 +995,8 @@ const Settings = () => {
                   <p className="text-sm font-semibold text-blue-800">Printers are managed in the Agent Dashboard</p>
                   <p className="text-sm text-blue-700 mt-0.5">
                     To add, edit or test printers — open the Agent Dashboard at{' '}
-                    <a href="http://localhost:3001" target="_blank" rel="noreferrer"
-                      className="font-semibold underline">http://localhost:3001</a>.
+                    <a href={AGENT_URL} target="_blank" rel="noreferrer"
+                      className="font-semibold underline">{AGENT_URL}</a>.
                     The agent must be running on the cashier PC.
                   </p>
                 </div>

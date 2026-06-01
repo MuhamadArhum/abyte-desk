@@ -32,10 +32,11 @@ if (isRemote) {
     try {
       sslConfig = { ssl: { ca: fs.readFileSync(process.env.DB_SSL_CA), rejectUnauthorized: true } };
     } catch (e) {
-      // CA file not found (e.g. on cloud server) — fallback to skip cert verification
+      console.error('[DB SSL] CA cert file not found at:', process.env.DB_SSL_CA, '— SSL certificate verification DISABLED. Fix DB_SSL_CA path to secure the connection.');
       sslConfig = { ssl: { rejectUnauthorized: false } };
     }
   } else {
+    console.warn('[DB SSL] DB_SSL_CA is not set for a remote database — SSL certificate verification is DISABLED. Set DB_SSL_CA to a valid CA cert path to prevent MITM attacks.');
     sslConfig = { ssl: { rejectUnauthorized: false } };
   }
 }

@@ -77,24 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     _setActiveBranchId(id);
   }, []);
 
-  // Restore session from localStorage on app load, then refresh permissions from server
+  // Restore session from localStorage on app load — only token is persisted, user data always fetched fresh
   useEffect(() => {
-    const storedToken       = localStorage.getItem('token');
-    const storedUser        = localStorage.getItem('user');
-    const storedPermissions = localStorage.getItem('permissions');
-    const storedConfig      = localStorage.getItem('tenantConfig');
-    const storedModules     = localStorage.getItem('modules');
+    const storedToken = localStorage.getItem('token');
 
-    if (storedToken && storedUser) {
+    if (storedToken) {
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setPermissions(storedPermissions === 'null' ? null : storedPermissions ? JSON.parse(storedPermissions) : []);
-      setModules(storedModules ? JSON.parse(storedModules) : []);
-      if (storedConfig) {
-        try { setTenantConfig(JSON.parse(storedConfig)); } catch {}
-      }
-
-      // Silently refresh permissions from server so Access Control changes take effect immediately
       const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
       fetch(`${apiBase}/auth/verify`, {
         headers: { Authorization: `Bearer ${storedToken}` },
@@ -105,12 +93,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(data.user);
             setPermissions(data.permissions);
             setModules(data.modules || []);
-            localStorage.setItem('user',        JSON.stringify(data.user));
-            localStorage.setItem('permissions', JSON.stringify(data.permissions));
-            localStorage.setItem('modules',     JSON.stringify(data.modules || []));
+          } else {
+            localStorage.removeItem('token');
+            setToken(null);
           }
         })
-        .catch(() => { /* silently ignore — cached data still works */ })
+        .catch(() => { /* network failure — token kept, user loads on retry */ })
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -130,9 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(data.user);
           setPermissions(data.permissions);
           setModules(data.modules || []);
-          localStorage.setItem('user',        JSON.stringify(data.user));
-          localStorage.setItem('permissions', JSON.stringify(data.permissions));
-          localStorage.setItem('modules',     JSON.stringify(data.modules || []));
         }
       })
       .catch(() => {});
@@ -157,10 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [token, refreshPermissions]);
 
   const login = useCallback((newToken: string, newUser: User, newPermissions: string[] | null, newModules: string[] = []) => {
-    localStorage.setItem('token',       newToken);
-    localStorage.setItem('user',        JSON.stringify(newUser));
-    localStorage.setItem('permissions', JSON.stringify(newPermissions));
-    localStorage.setItem('modules',     JSON.stringify(newModules));
+    localStorage.setItem('token', newToken);
     setToken(newToken);
     setUser(newUser);
     setPermissions(newPermissions);
@@ -170,9 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = useCallback((patch: Partial<User>) => {
     setUser(prev => {
       if (!prev) return prev;
-      const updated = { ...prev, ...patch };
-      localStorage.setItem('user', JSON.stringify(updated));
-      return updated;
+      return { ...prev, ...patch };
     });
   }, []);
 
@@ -187,10 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('permissions');
-    localStorage.removeItem('modules');
-    localStorage.removeItem('tenantConfig');
     setToken(null);
     setUser(null);
     setPermissions(null);
@@ -199,7 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const saveTenantConfig = useCallback((config: TenantConfig) => {
-    localStorage.setItem('tenantConfig', JSON.stringify(config));
     setTenantConfig(config);
   }, []);
 

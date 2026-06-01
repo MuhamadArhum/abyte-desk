@@ -1,7 +1,7 @@
 // AByte Printer Agent bridge
 // Communicates with the local print agent running at localhost:3001
 
-const AGENT_URL = 'http://localhost:3001';
+const AGENT_URL = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
 const TIMEOUT_MS = 8000;
 
 async function agentFetch(path: string, options?: RequestInit) {
