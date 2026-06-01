@@ -160,6 +160,7 @@ const aiLimiter = rateLimit({
 
 // ── Global Middleware ────────────────────────────────────────
 app.use(helmet());
+app.set('trust proxy', 1);
 app.use(cors(corsOptions));
 
 app.use(morgan('combined', {
