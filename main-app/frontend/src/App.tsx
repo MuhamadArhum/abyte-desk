@@ -110,22 +110,31 @@ const Backup        = lazy(() => import('./pages/system/Backup'));
 const SettingsPage  = lazy(() => import('./pages/system/Settings'));
 const EmailSettings = lazy(() => import('./pages/system/EmailSettings'));
 
-// ── Page-level loading fallback ───────────────────────────────
-const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600" />
+// ── Logo Loader ───────────────────────────────────────────────
+const LogoLoader = ({ fullScreen = false }: { fullScreen?: boolean }) => (
+  <div className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? 'min-h-screen bg-white' : 'min-h-[60vh]'}`}>
+    <div className="relative">
+      <img
+        src="/logo.png"
+        alt="AByte"
+        className="w-16 h-16 object-contain animate-pulse"
+      />
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+      </div>
+    </div>
   </div>
 );
+
+const PageLoader = () => <LogoLoader />;
 
 // ── Protected Route ───────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" />
-      </div>
-    );
+    return <LogoLoader fullScreen />;
   }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;

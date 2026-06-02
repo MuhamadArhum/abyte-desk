@@ -11,9 +11,22 @@ import Revenue from './pages/Revenue';
 import ActivityPage from './pages/Activity';
 import Settings from './pages/Settings';
 
+const LogoLoader = () => (
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
+    <div className="relative">
+      <img src="/logo.png" alt="AByte" className="w-16 h-16 object-contain animate-pulse" />
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+      </div>
+    </div>
+  </div>
+);
+
 function PrivateRoute({ children }: { children: React.ReactElement }) {
   const { admin, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
+  if (loading) return <LogoLoader />;
   return admin ? children : <Navigate to="/login" replace />;
 }
 
