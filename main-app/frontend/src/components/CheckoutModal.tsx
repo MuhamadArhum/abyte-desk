@@ -182,8 +182,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     setPendingTaxRate(rate);
   };
 
-  if (!isOpen) return null;
-
   // GST derived from paymentMethod + settings (each method has its own configured rate)
   const taxOnCash   = parseFloat(settings?.tax_on_cash   ?? 16);
   const taxOnCard   = parseFloat(settings?.tax_on_card   ?? 5);
@@ -445,6 +443,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setSyncLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   if (successSale) {
     const changeDueAmount = paymentMethod === 'credit' ? 0 : Math.max(0, parseFloat(successSale.amount_paid || 0) - parseFloat(successSale.total_amount || 0));
