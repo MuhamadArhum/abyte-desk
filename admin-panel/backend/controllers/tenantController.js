@@ -94,7 +94,7 @@ exports.create = async (req, res) => {
     return res.status(400).json({ message: 'Company code already exists' });
   }
 
-  const dbName = `abyte_pos_${tenant_code}`;
+  const dbName = `abyte_${tenant_code}`;
   const conn   = await getConnection();
 
   try {
