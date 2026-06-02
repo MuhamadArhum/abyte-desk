@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Eye, EyeOff, AlertCircle, ArrowRight,
-  Zap, ShieldCheck, Users, BarChart3, Lock,
+  ShieldCheck, Users, BarChart3, Lock,
 } from 'lucide-react';
 
 const features = [
@@ -57,8 +57,8 @@ export default function Login() {
 
         {/* Logo */}
         <div className="relative flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Zap size={20} className="text-white" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-500/30 bg-white">
+            <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
           </div>
           <span className="text-white font-bold text-lg tracking-tight">AByte POS</span>
         </div>
@@ -104,8 +104,8 @@ export default function Login() {
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 justify-center mb-10">
-            <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-md">
-              <Zap size={18} className="text-white" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-md bg-white">
+              <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
             </div>
             <span className="text-slate-800 font-bold text-lg">AByte POS</span>
           </div>

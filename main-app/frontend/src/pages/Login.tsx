@@ -87,8 +87,8 @@ const Login = () => {
           transition={{ duration: 0.6 }}
           className="relative z-10 flex items-center gap-3"
         >
-          <div className="w-11 h-11 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <span className="text-xl font-black text-white">A</span>
+          <div className="w-11 h-11 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-500/30 bg-white">
+            <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
           </div>
           <div>
             <p className="text-white font-bold text-lg leading-tight">AByte ERP</p>

@@ -463,8 +463,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               animate={{ opacity: 1 }}
               className="flex items-center gap-3 overflow-hidden whitespace-nowrap"
             >
-              <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg shadow-emerald-900/50 flex-shrink-0">
-                A
+              <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-900/50 flex-shrink-0 bg-white">
+                <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
               </div>
               <div>
                 <p className="text-white font-bold text-base leading-tight">AByte <span className="text-emerald-400">ERP</span></p>
@@ -474,8 +474,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
           {isCollapsed && (
             <div className="w-full flex justify-center">
-              <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg shadow-emerald-900/50">
-                A
+              <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-900/50 bg-white">
+                <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
               </div>
             </div>
           )}
@@ -560,8 +560,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
             {/* Mobile logo */}
             <div className="md:hidden flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-black text-white">A</span>
+              <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0 bg-white shadow">
+                <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
               </div>
               <span className="text-sm font-bold text-gray-800 truncate max-w-[120px]">
                 {filteredMenu.flatMap(m => [m, ...(m.children || [])]).find(m => m.path === location.pathname)?.label || 'AByte ERP'}
@@ -780,8 +780,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               {/* Logo */}
               <div className="h-16 flex items-center gap-3 px-4 border-b border-white/8">
-                <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg flex-shrink-0">
-                  A
+                <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg flex-shrink-0 bg-white">
+                  <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <p className="text-white font-bold text-base leading-tight">AByte <span className="text-emerald-400">ERP</span></p>

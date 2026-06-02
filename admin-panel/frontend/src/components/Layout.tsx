@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu, Zap, Activity, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu, Activity, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const navItems = [
@@ -39,8 +39,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Logo */}
       <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-            <Zap size={18} className="text-white" />
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg bg-white">
+            <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-white font-bold text-base leading-tight">AByte POS</h1>
