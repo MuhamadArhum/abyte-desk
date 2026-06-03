@@ -472,7 +472,7 @@ exports.getGeneralLedger = async (req, res) => {
 
     const dateFilter = from_date && to_date;
 
-    // UNION: JV lines + CPV (as debit on line acc, credit on main acc) + CRV (as credit on line acc, debit on main acc)
+    // UNION: JV lines + non-journalized CPV/CRV on account_id side
     const unionSql = `
       SELECT jel.line_id AS tx_id, je.entry_number AS ref_number, je.entry_date AS tx_date,
              COALESCE(jel.description, je.description) AS description,
@@ -493,38 +493,16 @@ exports.getGeneralLedger = async (req, res) => {
 
       UNION ALL
 
-      SELECT pv.voucher_id, pv.voucher_number, pv.voucher_date,
-             COALESCE(pv.description, pv.payment_to),
-             0 AS debit, pv.amount AS credit
-      FROM payment_vouchers pv
-      WHERE pv.main_account_id = ? AND pv.journal_entry_id IS NULL
-      ${dateFilter ? 'AND pv.voucher_date BETWEEN ? AND ?' : ''}
-
-      UNION ALL
-
       SELECT rv.voucher_id, rv.voucher_number, rv.voucher_date,
              COALESCE(rv.description, rv.received_from),
              0 AS debit, rv.amount AS credit
       FROM receipt_vouchers rv
       WHERE rv.account_id = ? AND rv.journal_entry_id IS NULL
       ${dateFilter ? 'AND rv.voucher_date BETWEEN ? AND ?' : ''}
-
-      UNION ALL
-
-      SELECT rv.voucher_id, rv.voucher_number, rv.voucher_date,
-             COALESCE(rv.description, rv.received_from),
-             rv.amount AS debit, 0 AS credit
-      FROM receipt_vouchers rv
-      WHERE rv.main_account_id = ? AND rv.journal_entry_id IS NULL
-      ${dateFilter ? 'AND rv.voucher_date BETWEEN ? AND ?' : ''}
     `;
 
     const buildParams = () => {
       const p = [account_id];
-      if (dateFilter) p.push(from_date, to_date);
-      p.push(account_id);
-      if (dateFilter) p.push(from_date, to_date);
-      p.push(account_id);
       if (dateFilter) p.push(from_date, to_date);
       p.push(account_id);
       if (dateFilter) p.push(from_date, to_date);
@@ -560,28 +538,20 @@ exports.getGeneralLedger = async (req, res) => {
           JOIN journal_entries je ON jel.entry_id = je.entry_id
           WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
         `, [account_id, from_date]);
-        // CPV contribution before from_date (line account = debit, main account = credit)
+        // CPV contribution before from_date
         const [cpvPrev] = await query(`
           SELECT COALESCE(SUM(amount),0) AS dr
           FROM payment_vouchers WHERE account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
         `, [account_id, from_date]);
-        const [cpvMainPrev] = await query(`
-          SELECT COALESCE(SUM(amount),0) AS cr
-          FROM payment_vouchers WHERE main_account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
-        `, [account_id, from_date]);
-        // CRV contribution before from_date (line account = credit, main account = debit)
+        // CRV contribution before from_date
         const [crvPrev] = await query(`
           SELECT COALESCE(SUM(amount),0) AS cr
           FROM receipt_vouchers WHERE account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
         `, [account_id, from_date]);
-        const [crvMainPrev] = await query(`
-          SELECT COALESCE(SUM(amount),0) AS dr
-          FROM receipt_vouchers WHERE main_account_id = ? AND journal_entry_id IS NULL AND voucher_date < ?
-        `, [account_id, from_date]);
 
         const debitIncrease = ['asset', 'expense'].includes(accs[0].account_type);
-        const prevDr = Number(jvPrev.dr || 0) + Number(cpvPrev.dr || 0) + Number(crvMainPrev.dr || 0);
-        const prevCr = Number(jvPrev.cr || 0) + Number(crvPrev.cr || 0) + Number(cpvMainPrev.cr || 0);
+        const prevDr = Number(jvPrev.dr || 0) + Number(cpvPrev.dr || 0);
+        const prevCr = Number(jvPrev.cr || 0) + Number(crvPrev.cr || 0);
         openingBalance += debitIncrease ? (prevDr - prevCr) : (prevCr - prevDr);
       }
     }
