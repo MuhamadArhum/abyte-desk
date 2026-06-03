@@ -1,18 +1,35 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useCartStore from '../../../store/cartStore';
 import useAuthStore from '../../../store/authStore';
+import { C, shadow } from '../../../constants/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_W = (width - 48) / 2;
+const CARD_W = (width - 52) / 2;
 
 const ORDER_TYPES = [
-  { value: 'dine_in',  label: 'Dine In',  icon: 'restaurant',   color: '#059669', bg: '#ECFDF5', border: '#6EE7B7', desc: 'Select a free table' },
-  { value: 'takeaway', label: 'Takeaway', icon: 'bag-handle',   color: '#D97706', bg: '#FFFBEB', border: '#FCD34D', desc: 'Counter pickup' },
-  { value: 'on_spot',  label: 'Walk-in',  icon: 'walk',         color: '#2563EB', bg: '#EFF6FF', border: '#93C5FD', desc: 'Immediate service' },
-  { value: 'delivery', label: 'Delivery', icon: 'bicycle',      color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD', desc: 'Home delivery' },
+  {
+    value: 'dine_in',  label: 'Dine In',  icon: 'restaurant',
+    color: C.primary, bg: C.primaryLt, border: C.primaryBd,
+    desc: 'Select a free table',
+  },
+  {
+    value: 'takeaway', label: 'Takeaway', icon: 'bag-handle',
+    color: C.amber,   bg: C.amberBg,   border: C.amberBd,
+    desc: 'Counter pickup',
+  },
+  {
+    value: 'on_spot',  label: 'Walk-in',  icon: 'walk',
+    color: C.blue,    bg: C.blueBg,    border: C.blueBd,
+    desc: 'Immediate service',
+  },
+  {
+    value: 'delivery', label: 'Delivery', icon: 'bicycle',
+    color: C.purple,  bg: C.purpleBg,  border: C.purpleBd,
+    desc: 'Home delivery',
+  },
 ];
 
 export default function HomeScreen() {
@@ -31,75 +48,123 @@ export default function HomeScreen() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const dateStr = new Date().toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <View style={styles.container}>
-      {/* Welcome bar */}
-      <View style={styles.welcomeBar}>
-        <View style={styles.welcomeAvatar}>
-          <Text style={styles.avatarText}>
-            {(user?.name || user?.username || 'W')[0].toUpperCase()}
-          </Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+      {/* Welcome Banner */}
+      <View style={styles.banner}>
+        {/* Decorative rings */}
+        <View style={styles.bannerRing1} pointerEvents="none" />
+        <View style={styles.bannerRing2} pointerEvents="none" />
+
+        <View style={styles.bannerLeft}>
+          <Text style={styles.bannerGreeting}>{greeting}</Text>
+          <Text style={styles.bannerName}>{user?.name?.split(' ')[0] || 'Waiter'}</Text>
+          <View style={styles.bannerDateRow}>
+            <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.5)" />
+            <Text style={styles.bannerDate}>{dateStr}</Text>
+          </View>
         </View>
+        <View style={styles.bannerAvatarWrap}>
+          <View style={styles.bannerAvatar}>
+            <Text style={styles.bannerAvatarText}>
+              {(user?.name || user?.username || 'W')[0].toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.bannerOnlineDot} />
+        </View>
+      </View>
+
+      {/* Section heading */}
+      <View style={styles.sectionHead}>
         <View>
-          <Text style={styles.greetingText}>{greeting}, {user?.name?.split(' ')[0] || 'Waiter'}</Text>
-          <Text style={styles.greetingDate}>
-            {new Date().toLocaleDateString('en-PK', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </Text>
+          <Text style={styles.sectionTitle}>New Order</Text>
+          <Text style={styles.sectionSub}>Choose how the customer will be served</Text>
+        </View>
+        <View style={styles.sectionBadge}>
+          <Text style={styles.sectionBadgeText}>{ORDER_TYPES.length} types</Text>
         </View>
       </View>
 
-      {/* Heading */}
-      <View style={styles.headingWrap}>
-        <Text style={styles.heading}>New Order</Text>
-        <Text style={styles.headingSub}>Select how the customer will be served</Text>
-      </View>
-
-      {/* Order type grid */}
+      {/* Order Type Cards */}
       <View style={styles.grid}>
         {ORDER_TYPES.map((type) => (
           <TouchableOpacity
             key={type.value}
-            style={[styles.card, { backgroundColor: type.bg, borderColor: type.border }]}
+            style={[styles.card, { borderColor: type.border }]}
             onPress={() => handleSelect(type)}
-            activeOpacity={0.75}
+            activeOpacity={0.8}
           >
-            <View style={[styles.iconCircle, { backgroundColor: type.color }]}>
-              <Ionicons name={type.icon} size={32} color="#FFFFFF" />
+            <View style={[styles.cardIcon, { backgroundColor: type.color }]}>
+              <Ionicons name={type.icon} size={30} color="#FFFFFF" />
             </View>
             <Text style={[styles.cardLabel, { color: type.color }]}>{type.label}</Text>
             <Text style={styles.cardDesc}>{type.desc}</Text>
-            <View style={[styles.cardArrow, { backgroundColor: type.color + '18' }]}>
-              <Ionicons name="arrow-forward" size={13} color={type.color} />
+            <View style={[styles.cardChip, { backgroundColor: type.bg }]}>
+              <Text style={[styles.cardChipText, { color: type.color }]}>Tap to select</Text>
+              <Ionicons name="arrow-forward" size={11} color={type.color} />
             </View>
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: C.bg },
+  content: { paddingBottom: 32 },
 
-  welcomeBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+  banner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: C.primaryHd, overflow: 'hidden',
+    paddingHorizontal: 20, paddingTop: 22, paddingBottom: 26,
   },
-  welcomeAvatar: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: '#ECFDF5', borderWidth: 2, borderColor: '#6EE7B7',
+  bannerRing1: {
+    position: 'absolute', right: -30, top: -30,
+    width: 140, height: 140, borderRadius: 70,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  bannerRing2: {
+    position: 'absolute', right: 40, bottom: -50,
+    width: 100, height: 100, borderRadius: 50,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+  },
+  bannerLeft: { flex: 1 },
+  bannerGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500', marginBottom: 3 },
+  bannerName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.6 },
+  bannerDateRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  bannerDate: { fontSize: 12, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.2 },
+  bannerAvatarWrap: { position: 'relative' },
+  bannerAvatar: {
+    width: 54, height: 54, borderRadius: 27,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 16, fontWeight: 'bold', color: '#059669' },
-  greetingText: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  greetingDate: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
+  bannerAvatarText: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  bannerOnlineDot: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#4ADE80',
+    borderWidth: 2, borderColor: C.primaryHd,
+  },
 
-  headingWrap: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 12 },
-  heading: { fontSize: 22, fontWeight: 'bold', color: '#111827', letterSpacing: -0.3 },
-  headingSub: { fontSize: 13, color: '#6B7280', marginTop: 3 },
+  sectionHead: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 14,
+  },
+  sectionTitle: { fontSize: 20, fontWeight: '800', color: C.t1, letterSpacing: -0.4 },
+  sectionSub: { fontSize: 13, color: C.t2, marginTop: 3 },
+  sectionBadge: {
+    backgroundColor: C.primaryLt, paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1, borderColor: C.primaryBd,
+  },
+  sectionBadgeText: { fontSize: 11, fontWeight: '700', color: C.primary },
 
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
@@ -107,20 +172,21 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_W,
-    borderRadius: 18, borderWidth: 1.5,
+    backgroundColor: C.card,
+    borderRadius: 20, borderWidth: 1.5,
     padding: 18, alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    ...shadow.md,
   },
-  iconCircle: {
-    width: 66, height: 66, borderRadius: 33,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
-  cardLabel: { fontSize: 16, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
-  cardDesc: { fontSize: 12, color: '#6B7280', textAlign: 'center', marginBottom: 10 },
-  cardArrow: {
-    width: 28, height: 28, borderRadius: 14,
+  cardIcon: {
+    width: 64, height: 64, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
   },
+  cardLabel: { fontSize: 16, fontWeight: '800', marginBottom: 4, letterSpacing: -0.2 },
+  cardDesc: { fontSize: 11.5, color: C.t3, textAlign: 'center', marginBottom: 12, lineHeight: 16 },
+  cardChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+  },
+  cardChipText: { fontSize: 11, fontWeight: '700' },
 });

@@ -477,14 +477,14 @@ exports.updateSaleItems = async (req, res) => {
     }
 
     // 4. Update sale header
-    const newSubTotal = round2(items.reduce((sum, item) => sum + round2(parseFloat(item.unit_price) * item.quantity), 0));
-    const newTaxPct = tax_percent !== undefined ? parseFloat(tax_percent) : parseFloat(sale[0].tax_percent || 0);
-    const newTaxAmt = round2(newSubTotal * newTaxPct / 100);
-    const newTotal = round2(parseFloat(total_amount) || (newSubTotal + newTaxAmt));
-    const updates = ['total_amount = ?', 'sub_total = ?', 'net_amount = ?', 'tax_amount = ?'];
-    const values = [newTotal, newSubTotal, newTotal, newTaxAmt];
-    if (tax_percent !== undefined) { updates.push('tax_percent = ?'); values.push(tax_percent); }
-    if (additional_charges_percent !== undefined) { updates.push('additional_charges_percent = ?'); values.push(additional_charges_percent); }
+    const newSubTotal  = round2(items.reduce((sum, item) => sum + round2(parseFloat(item.unit_price) * item.quantity), 0));
+    const newTaxPct    = tax_percent                !== undefined ? parseFloat(tax_percent)                : parseFloat(sale[0].tax_percent                || 0);
+    const newAddPct    = additional_charges_percent !== undefined ? parseFloat(additional_charges_percent) : parseFloat(sale[0].additional_charges_percent || 0);
+    const newTaxAmt    = round2(newSubTotal * newTaxPct / 100);
+    const newAddAmt    = round2(newSubTotal * newAddPct / 100);
+    const newTotal     = round2(parseFloat(total_amount) || (newSubTotal + newTaxAmt + newAddAmt));
+    const updates = ['total_amount = ?', 'sub_total = ?', 'net_amount = ?', 'tax_amount = ?', 'additional_charges_amount = ?', 'tax_percent = ?', 'additional_charges_percent = ?'];
+    const values  = [newTotal, newSubTotal, newTotal, newTaxAmt, newAddAmt, newTaxPct, newAddPct];
     if (customer_id !== undefined) { updates.push('customer_id = ?'); values.push(customer_id); }
     values.push(id);
 

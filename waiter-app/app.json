@@ -9,14 +9,14 @@
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#1E40AF"
+      "backgroundColor": "#065F46"
     },
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1E40AF"
+        "backgroundColor": "#065F46"
       },
       "package": "com.abyte.waiter"
     },
@@ -26,6 +26,12 @@
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "064bc4cb-a96c-4420-8855-ae63df4f452c"
+      }
     }
   }
 }

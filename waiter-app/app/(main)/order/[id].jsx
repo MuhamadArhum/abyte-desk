@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import api from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
+import { C, shadow } from '../../../constants/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -35,6 +36,7 @@ export default function OrderScreen() {
   const [sending, setSending] = useState(false);
   const [cartVisible, setCartVisible] = useState(false);
   const [note, setNote] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     items, addItem, incrementItem, decrementItem,
@@ -44,33 +46,38 @@ export default function OrderScreen() {
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
+  const getCatKey = (ot) => ot === 'on_spot' ? 'walk_in' : (ot || 'dine_in');
+
   const taxPercent = React.useMemo(() => {
     if (!settings) return 0;
-    const fallback = parseFloat(settings.tax_rate || 0);
-
+    const cashRate   = parseFloat(settings.tax_on_cash   || settings.tax_rate || 0);
+    const onlineRate = parseFloat(settings.tax_on_online || settings.tax_rate || 0);
     if (settings.pos_mode === 'category' && settings.pos_tax_config) {
-      const cfg = settings.pos_tax_config;
-      if (!items.length) return 0;
-      let taxedAmount = 0;
-      items.forEach((item) => {
-        const prod = products.find((p) => p.product_id === item.product_id);
-        const catId = String(prod?.category_id || '');
-        const catTax = cfg[catId] != null ? parseFloat(cfg[catId]) : fallback;
-        taxedAmount += (item.unit_price * item.quantity * catTax) / 100;
-      });
-      return subtotal > 0 ? (taxedAmount / subtotal) * 100 : 0;
+      const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
+      if (!cat.tax_enabled) return 0;
+      // Tax enabled for this order type — use payment method rate
     }
+    return orderType === 'delivery' ? onlineRate : cashRate;
+  }, [settings, orderType]);
 
-    if (orderType === 'delivery') return parseFloat(settings.tax_on_online ?? fallback);
-    return parseFloat(settings.tax_on_cash ?? fallback);
-  }, [settings, orderType, items, products, subtotal]);
+  const additionalPercent = React.useMemo(() => {
+    if (!settings?.pos_tax_config) return 0;
+    const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
+    const service = cat.service_enabled ? parseFloat(cat.service_rate || 0) : 0;
+    const other   = cat.other_enabled   ? parseFloat(cat.other_rate   || 0) : 0;
+    return service + other;
+  }, [settings, orderType]);
 
-  const taxAmount = Math.round((subtotal * taxPercent) / 100 * 100) / 100;
-  const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
+  const taxAmount        = Math.round((subtotal * taxPercent)        / 100 * 100) / 100;
+  const additionalAmount = Math.round((subtotal * additionalPercent) / 100 * 100) / 100;
+  const totalAmount      = Math.round((subtotal + taxAmount + additionalAmount) * 100) / 100;
 
-  const displayProducts = selectedCat
-    ? products.filter((p) => p.category_id === selectedCat)
-    : products;
+  const displayProducts = React.useMemo(() => {
+    let list = selectedCat ? products.filter((p) => p.category_id === selectedCat) : products;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) list = list.filter((p) => p.product_name.toLowerCase().includes(q));
+    return list;
+  }, [products, selectedCat, searchQuery]);
 
   const loadData = useCallback(async () => {
     try {
@@ -172,6 +179,7 @@ export default function OrderScreen() {
           })),
           total_amount: totalAmount,
           tax_percent: parseFloat(taxPercent.toFixed(2)),
+          additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
         });
 
         Alert.alert('Updated!', 'Order has been updated.', [
@@ -190,6 +198,7 @@ export default function OrderScreen() {
           status: 'pending',
           payment_method: orderType === 'delivery' ? 'online' : 'cash',
           tax_percent: parseFloat(taxPercent.toFixed(2)),
+          additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
           discount: 0,
           note: note.trim() || null,
         });
@@ -212,7 +221,7 @@ export default function OrderScreen() {
   if (loading) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#1E40AF" />
+        <ActivityIndicator size="large" color={C.primary} />
         <Text style={styles.loadingText}>Loading menu...</Text>
       </View>
     );
@@ -247,7 +256,7 @@ export default function OrderScreen() {
       {/* Edit mode notice */}
       {isEditMode && (
         <View style={styles.editBar}>
-          <Ionicons name="create-outline" size={14} color="#1E40AF" />
+          <Ionicons name="create-outline" size={14} color={C.amber} />
           <Text style={styles.editBarText}>
             You can add items to this order — reducing or deleting is not allowed
           </Text>
@@ -277,6 +286,26 @@ export default function OrderScreen() {
         </ScrollView>
       </View>
 
+      {/* Search bar */}
+      <View style={styles.searchBar}>
+        <Ionicons name="search-outline" size={17} color={C.t3} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search menu items..."
+          placeholderTextColor={C.t3}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={17} color={C.t3} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* Product grid */}
       <FlatList
         data={displayProducts}
@@ -287,6 +316,13 @@ export default function OrderScreen() {
           { paddingBottom: totalItems > 0 ? 100 : 24 },
         ]}
         columnWrapperStyle={styles.productRow}
+        ListEmptyComponent={
+          <View style={styles.searchEmpty}>
+            <Ionicons name="search-outline" size={36} color={C.t3} />
+            <Text style={styles.searchEmptyTitle}>No items found</Text>
+            <Text style={styles.searchEmptySub}>Try a different name or category</Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const inCart = items.find((i) => i.product_id === item.product_id);
           const price = parseFloat(item.selling_price || item.price || 0);
@@ -296,18 +332,26 @@ export default function OrderScreen() {
               onPress={() => addItem(item)}
               activeOpacity={0.85}
             >
-              <Text style={styles.prodName} numberOfLines={2}>{item.product_name}</Text>
-              <Text style={styles.prodPrice}>PKR {price.toFixed(0)}</Text>
+              {inCart && (
+                <View style={styles.prodCheckBadge}>
+                  <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                </View>
+              )}
+              <Text style={[styles.prodName, inCart && styles.prodNameActive]} numberOfLines={2}>
+                {item.product_name}
+              </Text>
+              <Text style={[styles.prodPrice, inCart && styles.prodPriceActive]}>
+                PKR {price.toFixed(0)}
+              </Text>
               {inCart ? (
                 <View style={styles.qtyRow}>
-                  {/* Hide minus in edit mode — no reducing allowed */}
                   {!isEditMode && (
                     <TouchableOpacity
                       style={styles.qtyBtn}
                       onPress={() => decrementItem(item.product_id)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Ionicons name="remove" size={15} color="#1E40AF" />
+                      <Ionicons name="remove" size={15} color={C.primary} />
                     </TouchableOpacity>
                   )}
                   <Text style={styles.qtyNum}>{inCart.quantity}</Text>
@@ -316,12 +360,12 @@ export default function OrderScreen() {
                     onPress={() => incrementItem(item.product_id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="add" size={15} color="#1E40AF" />
+                    <Ionicons name="add" size={15} color={C.primary} />
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.addRow}>
-                  <Ionicons name="add-circle-outline" size={20} color="#1E40AF" />
+                  <Ionicons name="add-circle-outline" size={22} color={C.primary} />
                   <Text style={styles.addText}>Add</Text>
                 </View>
               )}
@@ -373,14 +417,14 @@ export default function OrderScreen() {
 
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Cart</Text>
-              <TouchableOpacity onPress={() => setCartVisible(false)}>
-                <Ionicons name="close" size={22} color="#1E293B" />
+              <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setCartVisible(false)}>
+                <Ionicons name="close" size={18} color={C.t2} />
               </TouchableOpacity>
             </View>
 
             {items.length === 0 ? (
               <View style={styles.cartEmpty}>
-                <Ionicons name="cart-outline" size={52} color="#CBD5E1" />
+                <Ionicons name="cart-outline" size={52} color={C.t3} />
                 <Text style={styles.cartEmptyText}>Cart is empty</Text>
               </View>
             ) : (
@@ -393,12 +437,12 @@ export default function OrderScreen() {
                         {/* Hide minus in edit mode */}
                         {!isEditMode && (
                           <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
-                            <Ionicons name="remove" size={15} color="#1E40AF" />
+                            <Ionicons name="remove" size={15} color={C.primary} />
                           </TouchableOpacity>
                         )}
                         <Text style={styles.qtyNum}>{item.quantity}</Text>
                         <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementItem(item.product_id)}>
-                          <Ionicons name="add" size={15} color="#1E40AF" />
+                          <Ionicons name="add" size={15} color={C.primary} />
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.cartItemTotal}>
@@ -414,7 +458,7 @@ export default function OrderScreen() {
                     <TextInput
                       style={styles.noteInput}
                       placeholder="Special instructions..."
-                      placeholderTextColor="#CBD5E1"
+                      placeholderTextColor={C.t3}
                       value={note}
                       onChangeText={setNote}
                       multiline
@@ -468,134 +512,183 @@ export default function OrderScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: C.bg },
   center: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#F9FAFB', gap: 12,
+    backgroundColor: C.bg, gap: 12,
   },
-  loadingText: { color: '#6B7280', fontSize: 14, marginTop: 8 },
+  loadingText: { color: C.t2, fontSize: 14, marginTop: 8 },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#059669', paddingHorizontal: 14,
-    paddingVertical: 12, gap: 10,
+    backgroundColor: C.primaryHd, paddingHorizontal: 14,
+    paddingVertical: 14, gap: 10,
   },
-  backBtn: { padding: 6 },
-  headerCenter: { flex: 1 },
-  headerTable: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  cartIconBtn: { padding: 6, position: 'relative' },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTable: { fontSize: 17, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.2 },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
+  cartIconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   cartBadge: {
-    position: 'absolute', top: 0, right: 0,
-    backgroundColor: '#DC2626', width: 17, height: 17,
-    borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: C.red, minWidth: 16, height: 16,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5, borderColor: C.primaryHd,
   },
-  cartBadgeText: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
+  cartBadgeText: { fontSize: 9, color: '#FFF', fontWeight: '800' },
 
   editBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#ECFDF5', paddingHorizontal: 14, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#6EE7B7',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: C.amberBg, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: C.amberBd,
   },
-  editBarText: { fontSize: 12, color: '#047857', flex: 1 },
+  editBarText: { fontSize: 12, color: C.amber, flex: 1, fontWeight: '500' },
 
   catBar: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    backgroundColor: C.card,
+    borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  catScroll: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  catScroll: { paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   catTab: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: '#F9FAFB', borderWidth: 1.5, borderColor: '#E5E7EB',
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border,
   },
-  catTabActive: { backgroundColor: '#059669', borderColor: '#059669' },
-  catTabText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  catTabActive: { backgroundColor: C.primary, borderColor: C.primary },
+  catTabText: { fontSize: 13, color: C.t2, fontWeight: '600' },
   catTabTextActive: { color: '#FFFFFF', fontWeight: '700' },
 
   productGrid: { padding: 12 },
   productRow: { gap: 10 },
   prodCard: {
-    flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14,
-    padding: 12, marginBottom: 10, alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    flex: 1, backgroundColor: C.card, borderRadius: 18,
+    padding: 14, marginBottom: 10, alignItems: 'center',
+    borderWidth: 1.5, borderColor: C.border,
+    ...shadow.sm,
   },
-  prodCardActive: { borderColor: '#059669', backgroundColor: '#ECFDF5' },
+  prodCardActive: {
+    borderColor: C.primary, backgroundColor: C.primaryLt,
+    borderWidth: 2,
+  },
+  prodCheckBadge: {
+    position: 'absolute', top: 8, right: 8,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: C.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
   prodName: {
-    fontSize: 13, fontWeight: '600', color: '#111827',
-    textAlign: 'center', marginBottom: 4, minHeight: 36,
+    fontSize: 13, fontWeight: '700', color: C.t1,
+    textAlign: 'center', marginBottom: 5, minHeight: 36, lineHeight: 18,
   },
-  prodPrice: { fontSize: 14, fontWeight: 'bold', color: '#059669', marginBottom: 8 },
+  prodNameActive: { color: C.primaryDk },
+  prodPrice: { fontSize: 15, fontWeight: '800', color: C.primary, marginBottom: 10, letterSpacing: -0.3 },
+  prodPriceActive: { color: C.primaryDk },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   qtyBtn: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#6EE7B7',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: C.primaryLt, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C.primaryBd,
   },
-  qtyNum: { fontSize: 14, fontWeight: 'bold', color: '#111827', minWidth: 20, textAlign: 'center' },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addText: { fontSize: 13, color: '#059669', fontWeight: '600' },
+  qtyNum: { fontSize: 15, fontWeight: '800', color: C.t1, minWidth: 22, textAlign: 'center' },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  addText: { fontSize: 13, color: C.primary, fontWeight: '700' },
 
   bottomBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 6,
+    backgroundColor: C.card, paddingHorizontal: 16, paddingTop: 14,
+    borderTopWidth: 1, borderTopColor: C.border,
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08, shadowRadius: 10, elevation: 8,
     position: 'absolute', bottom: 0, left: 0, right: 0,
   },
-  bottomCount: { fontSize: 12, color: '#9CA3AF' },
-  bottomTotal: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
+  bottomCount: { fontSize: 12, color: C.t3, marginBottom: 2 },
+  bottomTotal: { fontSize: 22, fontWeight: '800', color: C.t1, letterSpacing: -0.5 },
   sendBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#059669', paddingVertical: 12, paddingHorizontal: 18,
-    borderRadius: 12,
+    backgroundColor: C.primary, paddingVertical: 14, paddingHorizontal: 20,
+    borderRadius: 14,
+    shadowColor: C.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
   },
-  sendBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  sendBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
 
   modalWrap: { flex: 1, justifyContent: 'flex-end' },
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
   cartSheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    backgroundColor: C.card,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
     maxHeight: SCREEN_H * 0.85,
   },
   sheetHandle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB',
-    alignSelf: 'center', marginTop: 10,
+    width: 40, height: 4, borderRadius: 2, backgroundColor: C.border,
+    alignSelf: 'center', marginTop: 12,
   },
   sheetHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 20, paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: C.borderLt,
   },
-  sheetTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-  cartEmpty: { alignItems: 'center', padding: 40, gap: 10 },
-  cartEmptyText: { color: '#9CA3AF', fontSize: 15 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: C.t1, letterSpacing: -0.3 },
+  sheetCloseBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
+  },
+  cartEmpty: { alignItems: 'center', padding: 48, gap: 10 },
+  cartEmptyText: { color: C.t2, fontSize: 15, fontWeight: '600' },
   cartItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: '#F9FAFB', gap: 12,
+    paddingVertical: 13, paddingHorizontal: 20,
+    borderBottomWidth: 1, borderBottomColor: C.borderLt, gap: 12,
   },
-  cartItemName: { flex: 1, fontSize: 14, fontWeight: '500', color: '#111827' },
+  cartItemName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.t1, lineHeight: 20 },
   cartItemRight: { alignItems: 'flex-end', gap: 6 },
-  cartItemTotal: { fontSize: 13, fontWeight: 'bold', color: '#059669' },
+  cartItemTotal: { fontSize: 13, fontWeight: '800', color: C.primary },
   noteWrap: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
-  noteLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  noteLabel: {
+    fontSize: 11, fontWeight: '700', color: C.t3,
+    textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+  },
   noteInput: {
-    borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10,
-    padding: 10, fontSize: 14, color: '#111827',
-    minHeight: 60, backgroundColor: '#F9FAFB', textAlignVertical: 'top',
+    borderWidth: 1.5, borderColor: C.border, borderRadius: 12,
+    padding: 12, fontSize: 14, color: C.t1,
+    minHeight: 64, backgroundColor: C.surface, textAlignVertical: 'top',
   },
   sheetFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    borderTopWidth: 1, borderTopColor: C.borderLt,
+    gap: 14,
   },
-  sheetTotalLabel: { fontSize: 13, fontWeight: '700', color: '#111827' },
-  sheetTotalAmount: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
-  taxRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  taxLabel: { fontSize: 12, color: '#9CA3AF' },
-  taxValue: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  sheetTotalLabel: { fontSize: 13, fontWeight: '700', color: C.t1 },
+  sheetTotalAmount: { fontSize: 20, fontWeight: '800', color: C.t1, letterSpacing: -0.4 },
+  taxRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  taxLabel: { fontSize: 12, color: C.t3 },
+  taxValue: { fontSize: 12, color: C.t2, fontWeight: '600' },
+
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card,
+    marginHorizontal: 12, marginTop: 10, marginBottom: 2,
+    borderRadius: 14, borderWidth: 1.5, borderColor: C.border,
+    paddingRight: 10, height: 44,
+    ...shadow.sm,
+  },
+  searchIcon: { paddingHorizontal: 12 },
+  searchInput: { flex: 1, fontSize: 14, color: C.t1, height: 44 },
+  searchClear: { padding: 4 },
+
+  searchEmpty: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingTop: 60, gap: 8,
+  },
+  searchEmptyTitle: { fontSize: 16, fontWeight: '700', color: C.t1 },
+  searchEmptySub: { fontSize: 13, color: C.t3 },
 });

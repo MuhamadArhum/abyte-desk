@@ -8,6 +8,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
+import { C, shadow } from '../../../constants/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -16,29 +17,44 @@ const ORDER_TYPE_LABEL = {
   dine_in: 'Dine In', takeaway: 'Takeaway', on_spot: 'Walk-in', delivery: 'Delivery',
 };
 
+const ORDER_TYPE_COLOR = {
+  dine_in:  { color: C.primary, bg: C.primaryLt, border: C.primaryBd },
+  takeaway: { color: C.amber,   bg: C.amberBg,   border: C.amberBd   },
+  on_spot:  { color: C.blue,    bg: C.blueBg,    border: C.blueBd    },
+  delivery: { color: C.purple,  bg: C.purpleBg,  border: C.purpleBd  },
+};
+
 const PAYMENT_METHODS = [
   { value: 'cash',   label: 'Cash',   icon: 'cash-outline',             color: '#059669', bg: '#ECFDF5', border: '#6EE7B7' },
   { value: 'card',   label: 'Card',   icon: 'card-outline',             color: '#2563EB', bg: '#EFF6FF', border: '#93C5FD' },
   { value: 'online', label: 'Online', icon: 'phone-portrait-outline',   color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD' },
 ];
 
-function calcTax(items, settings, orderType) {
-  if (!settings || !items?.length) return 0;
-  const fallback = parseFloat(settings.tax_rate || 0);
+// pos_tax_config keys: dine_in | takeaway | delivery | walk_in (on_spot maps to walk_in)
+function getCatKey(orderType) {
+  return orderType === 'on_spot' ? 'walk_in' : (orderType || 'dine_in');
+}
+
+function calcTax(settings, orderType, paymentMethod) {
+  if (!settings) return 0;
+  const pm = paymentMethod || 'cash';
+  const cashRate   = parseFloat(settings.tax_on_cash   || settings.tax_rate || 0);
+  const cardRate   = parseFloat(settings.tax_on_card   || settings.tax_rate || 0);
+  const onlineRate = parseFloat(settings.tax_on_online || settings.tax_rate || 0);
+  const rateByPm   = pm === 'card' ? cardRate : pm === 'online' ? onlineRate : cashRate;
   if (settings.pos_mode === 'category' && settings.pos_tax_config) {
-    const cfg = settings.pos_tax_config;
-    const subtotal = items.reduce((s, i) => s + parseFloat(i.unit_price) * i.quantity, 0);
-    if (!subtotal) return 0;
-    let taxAmt = 0;
-    items.forEach((i) => {
-      const catId = String(i.category_id || '');
-      const rate = cfg[catId] != null ? parseFloat(cfg[catId]) : fallback;
-      taxAmt += parseFloat(i.unit_price) * i.quantity * rate / 100;
-    });
-    return subtotal > 0 ? (taxAmt / subtotal) * 100 : 0;
+    const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
+    return cat.tax_enabled ? parseFloat(cat.tax_rate || 0) : rateByPm;
   }
-  if (orderType === 'delivery') return parseFloat(settings.tax_on_online ?? fallback);
-  return parseFloat(settings.tax_on_cash ?? fallback);
+  return rateByPm;
+}
+
+function calcAdditional(settings, orderType) {
+  if (!settings?.pos_tax_config) return 0;
+  const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
+  const service = cat.service_enabled ? parseFloat(cat.service_rate || 0) : 0;
+  const other   = cat.other_enabled   ? parseFloat(cat.other_rate   || 0) : 0;
+  return service + other;
 }
 
 export default function RunningScreen() {
@@ -91,28 +107,22 @@ export default function RunningScreen() {
       const items = sale?.items || sale?.details || [];
       const orderType = sale.order_type || order.order_type;
 
-      // Use stored values (set at order creation) as primary source
-      const storedTaxPct = parseFloat(sale.tax_percent || 0);
-      const storedTaxAmt = parseFloat(sale.tax_amount || 0);
+      // Calculate subtotal and service charges (don't depend on payment method)
+      const storedAddPct   = parseFloat(sale.additional_charges_percent || 0);
+      const storedAddAmt   = parseFloat(sale.additional_charges_amount  || 0);
       const storedSubtotal = parseFloat(sale.sub_total || 0);
-      const storedTotal = parseFloat(sale.net_amount || sale.total_amount || 0);
 
-      // Only recalculate from settings if stored tax is 0 (order created before fix)
-      const calcedTax = storedTaxPct === 0 ? calcTax(items, settings, orderType) : 0;
-      const taxPercent = storedTaxPct > 0 ? storedTaxPct : calcedTax;
-
-      const subtotal = storedSubtotal > 0
+      const subtotal   = storedSubtotal > 0
         ? storedSubtotal
         : round2(items.reduce((s, i) => s + parseFloat(i.unit_price) * i.quantity, 0));
-      const taxAmt = storedTaxPct > 0
-        ? (storedTaxAmt > 0 ? storedTaxAmt : round2(subtotal * storedTaxPct / 100))
-        : round2(subtotal * calcedTax / 100);
-      const total = storedTotal > 0 ? storedTotal : round2(subtotal + taxAmt);
+      const addPercent = storedAddPct > 0 ? storedAddPct : calcAdditional(settings, orderType);
+      const addAmt     = storedAddAmt > 0 ? storedAddAmt : round2(subtotal * addPercent / 100);
 
       // Use table_name from list (order) as fallback if sale doesn't have it
       const tableName = sale.table_name || order.table_name || null;
 
-      setBillData({ sale: { ...sale, table_name: tableName }, items, settings, taxPercent, subtotal, taxAmt, total });
+      // Store raw data — tax is recalculated per payment type in the preview
+      setBillData({ sale: { ...sale, table_name: tableName }, items, settings, orderType, subtotal, addPercent, addAmt });
       setSelectedPayment(null);
       setBillStep('payment');
     } catch (err) {
@@ -144,7 +154,7 @@ export default function RunningScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#059669" />
+        <ActivityIndicator size="large" color={C.primary} />
         <Text style={styles.loadingText}>Loading orders...</Text>
       </View>
     );
@@ -152,14 +162,36 @@ export default function RunningScreen() {
 
   const pm = selectedPayment ? PAYMENT_METHODS.find((p) => p.value === selectedPayment) : null;
 
+  // Tax: in category mode respect tax_enabled; if enabled use payment-method rates
+  const billTaxPercent = (() => {
+    if (!billData?.settings) return 0;
+    const s  = billData.settings;
+    const pm = selectedPayment || 'cash';
+    if (s.pos_mode === 'category' && s.pos_tax_config) {
+      const cat = s.pos_tax_config[getCatKey(billData.orderType)] || {};
+      if (!cat.tax_enabled) return 0;
+    }
+    if (pm === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
+    if (pm === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
+    return parseFloat(s.tax_on_cash || s.tax_rate || 0);
+  })();
+  const billSubtotal  = billData?.subtotal || 0;
+  const billTaxAmt    = round2(billSubtotal * billTaxPercent / 100);
+  const billAddPct    = billData?.addPercent || 0;
+  const billAddAmt    = billData?.addAmt || 0;
+  const billTotal     = round2(billSubtotal + billTaxAmt + billAddAmt);
+
   return (
     <View style={styles.container}>
       <View style={styles.subHeader}>
-        <Text style={styles.subHeaderText}>
-          {orders.length} Running {orders.length === 1 ? 'Order' : 'Orders'}
-        </Text>
+        <View style={styles.subHeaderLeft}>
+          <View style={styles.liveDot} />
+          <Text style={styles.subHeaderText}>
+            {orders.length} Running {orders.length === 1 ? 'Order' : 'Orders'}
+          </Text>
+        </View>
         <TouchableOpacity onPress={fetchOrders} style={styles.refreshIcon}>
-          <Ionicons name="refresh-outline" size={18} color="#6B7280" />
+          <Ionicons name="refresh-outline" size={18} color={C.t2} />
         </TouchableOpacity>
       </View>
 
@@ -183,9 +215,11 @@ export default function RunningScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); fetchOrders(); }}
-              colors={['#059669']} />
+              colors={[C.primary]} />
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const otc = ORDER_TYPE_COLOR[item.order_type] || ORDER_TYPE_COLOR.dine_in;
+            return (
             <View style={styles.card}>
               <View style={styles.cardTop}>
                 <View style={styles.tokenBox}>
@@ -194,8 +228,8 @@ export default function RunningScreen() {
                 </View>
                 <View style={styles.cardMid}>
                   <Text style={styles.cardTable}>{item.table_name || 'No Table'}</Text>
-                  <View style={styles.typeBadge}>
-                    <Text style={styles.typeBadgeText}>
+                  <View style={[styles.typeBadge, { backgroundColor: otc.bg, borderColor: otc.border }]}>
+                    <Text style={[styles.typeBadgeText, { color: otc.color }]}>
                       {ORDER_TYPE_LABEL[item.order_type] || item.order_type || 'Dine In'}
                     </Text>
                   </View>
@@ -230,7 +264,8 @@ export default function RunningScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          )}
+            );
+          }}
         />
       )}
 
@@ -354,17 +389,23 @@ export default function RunningScreen() {
                   <View style={styles.totalsSection}>
                     <View style={styles.totalRow}>
                       <Text style={styles.totalLabel}>Subtotal</Text>
-                      <Text style={styles.totalValue}>PKR {billData.subtotal.toFixed(0)}</Text>
+                      <Text style={styles.totalValue}>PKR {billSubtotal.toFixed(0)}</Text>
                     </View>
-                    {billData.taxPercent > 0 && (
+                    {billTaxPercent > 0 && (
                       <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Tax ({billData.taxPercent.toFixed(1)}%)</Text>
-                        <Text style={styles.totalValue}>PKR {billData.taxAmt.toFixed(0)}</Text>
+                        <Text style={styles.totalLabel}>Tax ({billTaxPercent.toFixed(1)}%)</Text>
+                        <Text style={styles.totalValue}>PKR {billTaxAmt.toFixed(0)}</Text>
+                      </View>
+                    )}
+                    {billAddPct > 0 && (
+                      <View style={styles.totalRow}>
+                        <Text style={styles.totalLabel}>Service Charges ({billAddPct.toFixed(1)}%)</Text>
+                        <Text style={styles.totalValue}>PKR {billAddAmt.toFixed(0)}</Text>
                       </View>
                     )}
                     <View style={[styles.totalRow, styles.grandTotalRow]}>
                       <Text style={styles.grandTotalLabel}>TOTAL PAYABLE</Text>
-                      <Text style={styles.grandTotalValue}>PKR {billData.total.toFixed(0)}</Text>
+                      <Text style={styles.grandTotalValue}>PKR {billTotal.toFixed(0)}</Text>
                     </View>
                   </View>
 
@@ -389,181 +430,194 @@ export default function RunningScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: C.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  loadingText: { color: '#6B7280', fontSize: 14, marginTop: 8 },
+  loadingText: { color: C.t2, fontSize: 14, marginTop: 8 },
   emptyIcon: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center',
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: C.primaryLt, alignItems: 'center', justifyContent: 'center',
   },
-  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
-  emptySub: { fontSize: 13, color: '#6B7280' },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.t1 },
+  emptySub: { fontSize: 13, color: C.t2 },
   refreshBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#059669', paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 10, marginTop: 4,
+    backgroundColor: C.primary, paddingHorizontal: 22, paddingVertical: 12,
+    borderRadius: 12, marginTop: 6,
   },
-  refreshBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
+  refreshBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 
   subHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    backgroundColor: C.card, paddingHorizontal: 18, paddingVertical: 13,
+    borderBottomWidth: 1, borderBottomColor: C.border,
   },
-  subHeaderText: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  refreshIcon: { padding: 4 },
+  subHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  subHeaderText: { fontSize: 14, fontWeight: '700', color: C.t1 },
+  liveDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: C.primary,
+    shadowColor: C.primary, shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6, shadowRadius: 4, elevation: 2,
+  },
+  refreshIcon: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
+  },
 
-  list: { padding: 12, gap: 10, paddingBottom: 24 },
+  list: { padding: 14, gap: 12, paddingBottom: 28 },
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    backgroundColor: C.card, borderRadius: 18, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.border,
+    ...shadow.md,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   tokenBox: {
-    backgroundColor: '#ECFDF5', borderRadius: 10, borderWidth: 1, borderColor: '#6EE7B7',
-    paddingHorizontal: 10, paddingVertical: 8, minWidth: 62, alignItems: 'center',
+    backgroundColor: C.primaryLt, borderRadius: 14,
+    borderWidth: 1.5, borderColor: C.primaryBd,
+    paddingHorizontal: 10, paddingVertical: 10, minWidth: 64, alignItems: 'center',
   },
-  tokenLabel: { fontSize: 9, fontWeight: '700', color: '#059669', letterSpacing: 0.5 },
-  tokenText: { fontSize: 13, fontWeight: 'bold', color: '#047857', textAlign: 'center' },
-  cardMid: { flex: 1, gap: 3 },
-  cardTable: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  tokenLabel: { fontSize: 9, fontWeight: '700', color: C.primary, letterSpacing: 0.8, textTransform: 'uppercase' },
+  tokenText: { fontSize: 14, fontWeight: '800', color: C.primaryDk, textAlign: 'center', marginTop: 2 },
+  cardMid: { flex: 1, gap: 4 },
+  cardTable: { fontSize: 15, fontWeight: '800', color: C.t1, letterSpacing: -0.2 },
   typeBadge: {
-    alignSelf: 'flex-start', backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8,
+    borderWidth: 1,
   },
-  typeBadgeText: { fontSize: 11, color: '#6B7280', fontWeight: '600', textTransform: 'capitalize' },
-  cardWaiter: { fontSize: 11, color: '#9CA3AF' },
-  cardRight: { alignItems: 'flex-end', gap: 4 },
-  cardAmount: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  cardTime: { fontSize: 11, color: '#6B7280' },
+  typeBadgeText: { fontSize: 11, fontWeight: '700' },
+  cardWaiter: { fontSize: 11.5, color: C.t3, marginTop: 1 },
+  cardRight: { alignItems: 'flex-end', gap: 5 },
+  cardAmount: { fontSize: 17, fontWeight: '800', color: C.t1, letterSpacing: -0.3 },
+  cardTime: { fontSize: 11, color: C.t3 },
   elapsedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#FFFBEB', paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 8, borderWidth: 1, borderColor: '#FCD34D',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: C.amberBg, paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 10, borderWidth: 1, borderColor: C.amberBd,
   },
-  elapsedText: { fontSize: 10, color: '#D97706', fontWeight: '700' },
+  elapsedText: { fontSize: 10, color: C.amber, fontWeight: '700' },
 
-  actionRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  actionRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: C.borderLt },
   editBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 11, backgroundColor: '#EFF6FF',
-    borderRightWidth: 1, borderRightColor: '#E5E7EB',
+    gap: 6, paddingVertical: 13, backgroundColor: C.blueBg,
+    borderRightWidth: 1, borderRightColor: C.border,
   },
-  editBtnText: { fontSize: 13, fontWeight: '600', color: '#2563EB' },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: C.blue },
   billBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 11, backgroundColor: '#059669',
+    gap: 6, paddingVertical: 13, backgroundColor: C.primary,
   },
   billBtnText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
 
   // Modal
   modalWrap: { flex: 1, justifyContent: 'flex-end' },
-  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
   billSheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingBottom: 8,
+    backgroundColor: C.card,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingBottom: 10,
   },
   sheetHandle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB',
-    alignSelf: 'center', marginTop: 10, marginBottom: 2,
+    width: 44, height: 4, borderRadius: 2, backgroundColor: C.border,
+    alignSelf: 'center', marginTop: 12, marginBottom: 4,
   },
   sheetHeaderRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: C.borderLt,
   },
-  sheetTitle: { fontSize: 17, fontWeight: 'bold', color: '#111827', flex: 1, textAlign: 'center' },
+  sheetTitle: { fontSize: 17, fontWeight: '800', color: C.t1, flex: 1, textAlign: 'center', letterSpacing: -0.3 },
   closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
   },
   backBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
   },
 
   // Payment step
-  payStepWrap: { paddingBottom: 24 },
-  payStepSub: { fontSize: 13, color: '#6B7280', textAlign: 'center', paddingHorizontal: 20, marginTop: 10, marginBottom: 16 },
+  payStepWrap: { paddingBottom: 28 },
+  payStepSub: { fontSize: 13, color: C.t2, textAlign: 'center', paddingHorizontal: 20, marginTop: 12, marginBottom: 20, lineHeight: 20 },
   payGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
   payCard: {
-    flex: 1, borderRadius: 16, borderWidth: 1.5,
-    padding: 14, alignItems: 'center', gap: 6,
+    flex: 1, borderRadius: 18, borderWidth: 1.5,
+    padding: 16, alignItems: 'center', gap: 7,
+    ...shadow.sm,
   },
   payIconCircle: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 56, height: 56, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  payLabel: { fontSize: 14, fontWeight: '700' },
-  payDesc: { fontSize: 11, color: '#9CA3AF', textAlign: 'center' },
+  payLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  payDesc: { fontSize: 11, color: C.t3, textAlign: 'center', lineHeight: 15 },
 
   // Receipt
-  receiptHeader: { alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20 },
+  receiptHeader: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20 },
   receiptLogoCircle: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: '#059669', alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+    width: 52, height: 52, borderRadius: 18,
+    backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
-  receiptStoreName: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
-  receiptSubLabel: { fontSize: 10, letterSpacing: 2, fontWeight: '700', color: '#9CA3AF', marginTop: 2 },
+  receiptStoreName: { fontSize: 17, fontWeight: '800', color: C.t1, letterSpacing: -0.3 },
+  receiptSubLabel: { fontSize: 10, letterSpacing: 2.5, fontWeight: '700', color: C.t3, marginTop: 3 },
 
   pmBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 20, marginBottom: 6,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1.5,
+    marginHorizontal: 16, marginBottom: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 12, borderWidth: 1.5,
   },
   pmBannerText: { fontSize: 13, fontWeight: '700' },
 
   receiptInfo: { paddingHorizontal: 20, paddingBottom: 4 },
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#F9FAFB',
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.borderLt,
   },
-  infoLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
-  infoValue: { fontSize: 12, color: '#111827', fontWeight: '600' },
+  infoLabel: { fontSize: 12, color: C.t3, fontWeight: '500' },
+  infoValue: { fontSize: 12, color: C.t1, fontWeight: '700' },
 
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 20, marginVertical: 6 },
+  divider: { height: 1, backgroundColor: C.borderLt, marginHorizontal: 20, marginVertical: 8 },
 
   itemsSection: { paddingHorizontal: 20 },
   itemsHeader: {
-    flexDirection: 'row', paddingBottom: 6,
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB', marginBottom: 4,
+    flexDirection: 'row', paddingBottom: 8,
+    borderBottomWidth: 1.5, borderBottomColor: C.border, marginBottom: 4,
   },
-  itemCol: { fontSize: 10, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 },
+  itemCol: { fontSize: 10, fontWeight: '700', color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 },
   colCenter: { textAlign: 'center', width: 40 },
-  colRight: { textAlign: 'right', width: 70 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5 },
-  itemName: { fontSize: 13, color: '#374151', fontWeight: '500' },
-  itemQty: { fontSize: 13, color: '#6B7280', width: 40, textAlign: 'center' },
-  itemAmt: { fontSize: 13, color: '#111827', fontWeight: '600', width: 70, textAlign: 'right' },
+  colRight: { textAlign: 'right', width: 72 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  itemName: { fontSize: 13, color: C.t1, fontWeight: '500' },
+  itemQty: { fontSize: 13, color: C.t2, width: 40, textAlign: 'center', fontWeight: '600' },
+  itemAmt: { fontSize: 13, color: C.t1, fontWeight: '700', width: 72, textAlign: 'right' },
 
-  totalsSection: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 4 },
+  totalsSection: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 4 },
   totalRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingVertical: 4,
+    alignItems: 'center', paddingVertical: 5,
   },
-  totalLabel: { fontSize: 13, color: '#6B7280' },
-  totalValue: { fontSize: 13, color: '#374151', fontWeight: '600' },
+  totalLabel: { fontSize: 13, color: C.t2 },
+  totalValue: { fontSize: 13, color: C.t1, fontWeight: '700' },
   grandTotalRow: {
-    marginTop: 6, paddingTop: 10,
-    borderTopWidth: 2, borderTopColor: '#E5E7EB',
+    marginTop: 8, paddingTop: 12,
+    borderTopWidth: 2, borderTopColor: C.border,
   },
-  grandTotalLabel: { fontSize: 14, fontWeight: '800', color: '#111827' },
-  grandTotalValue: { fontSize: 20, fontWeight: '800', color: '#059669' },
+  grandTotalLabel: { fontSize: 14, fontWeight: '800', color: C.t1, letterSpacing: 0.5 },
+  grandTotalValue: { fontSize: 22, fontWeight: '800', color: C.primary, letterSpacing: -0.5 },
 
   pendingNote: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFFBEB', marginHorizontal: 20, marginTop: 8, marginBottom: 4,
-    padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#FCD34D',
+    backgroundColor: C.amberBg, marginHorizontal: 16, marginTop: 10, marginBottom: 6,
+    padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.amberBd,
   },
-  pendingNoteText: { flex: 1, fontSize: 12, color: '#92400E' },
+  pendingNoteText: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
 
   closeFullBtn: {
-    margin: 16, marginTop: 8, paddingVertical: 14,
-    backgroundColor: '#F3F4F6', borderRadius: 12, alignItems: 'center',
+    margin: 16, marginTop: 6, paddingVertical: 15,
+    backgroundColor: C.surface, borderRadius: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: C.border,
   },
-  closeFullBtnText: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  closeFullBtnText: { fontSize: 15, fontWeight: '700', color: C.t1 },
 });
