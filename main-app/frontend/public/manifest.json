@@ -1,6 +1,6 @@
 {
-  "name": "AByte POS Enterprise",
-  "short_name": "AByte POS",
+  "name": "AByte ERP",
+  "short_name": "AByte ERP",
   "description": "Enterprise Point of Sale System",
   "start_url": "/",
   "scope": "/",
