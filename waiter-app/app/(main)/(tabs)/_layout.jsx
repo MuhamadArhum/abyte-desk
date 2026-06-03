@@ -18,59 +18,73 @@ export default function TabsLayout() {
   const statusBarH = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : insets.top;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#1E40AF' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#1E40AF" />
+    <View style={{ flex: 1, backgroundColor: '#059669' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#059669" />
 
-      {/* App Header */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: statusBarH }]}>
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.menuBtn} activeOpacity={0.7}>
-          <Ionicons name="menu" size={26} color="#FFFFFF" />
+          <Ionicons name="menu" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AByte Waiter</Text>
-        <View style={{ width: 42 }} />
+        <View style={styles.headerCenter}>
+          <Ionicons name="restaurant" size={16} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.headerTitle}>AByte Waiter</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Tab Navigator */}
+      {/* Tabs */}
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: '#1E40AF',
-          tabBarInactiveTintColor: '#94A3B8',
+          tabBarActiveTintColor: '#059669',
+          tabBarInactiveTintColor: '#9CA3AF',
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
             borderTopWidth: 1,
-            borderTopColor: '#E2E8F0',
-            height: 62 + insets.bottom,
-            paddingBottom: insets.bottom + 6,
+            borderTopColor: '#E5E7EB',
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom + 4,
             paddingTop: 6,
           },
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
         }}
       >
         <Tabs.Screen
           name="home"
           options={{
             title: 'New Order',
-            tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+                <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={22} color={color} />
+              </View>
+            ),
           }}
         />
         <Tabs.Screen
           name="running"
           options={{
             title: 'Running',
-            tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+                <Ionicons name={focused ? 'receipt' : 'receipt-outline'} size={22} color={color} />
+              </View>
+            ),
           }}
         />
         <Tabs.Screen
           name="history"
           options={{
             title: 'History',
-            tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+                <Ionicons name={focused ? 'time' : 'time-outline'} size={22} color={color} />
+              </View>
+            ),
           }}
         />
       </Tabs>
 
-      {/* Sidebar overlay */}
       <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     </View>
   );
@@ -78,19 +92,20 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E40AF',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 14, paddingBottom: 12,
   },
-  menuBtn: { padding: 8 },
+  menuBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  headerCenter: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6,
+  },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
+    fontSize: 17, fontWeight: 'bold', color: '#FFFFFF', letterSpacing: -0.2,
   },
+  tabIconWrap: {
+    width: 32, height: 24, alignItems: 'center', justifyContent: 'center',
+  },
+  tabIconActive: {},
 });

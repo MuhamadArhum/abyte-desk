@@ -33,12 +33,10 @@ export default function TablesScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      fetchTables();
-    }, [fetchTables])
-  );
+  useFocusEffect(useCallback(() => {
+    setLoading(true);
+    fetchTables();
+  }, [fetchTables]));
 
   const handleTablePress = (table) => {
     setTable(table.table_id, table.table_name, null);
@@ -52,26 +50,28 @@ export default function TablesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Table</Text>
         <TouchableOpacity onPress={fetchTables} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
+          <Ionicons name="refresh-outline" size={20} color="rgba(255,255,255,0.8)" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#1E40AF" />
+          <ActivityIndicator size="large" color="#059669" />
           <Text style={styles.loadingText}>Loading tables...</Text>
         </View>
       ) : tables.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="checkmark-circle" size={72} color="#22C55E" />
+          <View style={styles.emptyIcon}>
+            <Ionicons name="close-circle" size={36} color="#DC2626" />
+          </View>
           <Text style={styles.emptyTitle}>All Tables Occupied</Text>
           <Text style={styles.emptySub}>No free tables available right now</Text>
           <TouchableOpacity style={styles.refreshBtn} onPress={fetchTables}>
-            <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
+            <Ionicons name="refresh-outline" size={15} color="#FFFFFF" />
             <Text style={styles.refreshBtnText}>Refresh</Text>
           </TouchableOpacity>
         </View>
@@ -83,16 +83,17 @@ export default function TablesScreen() {
           contentContainerStyle={styles.grid}
           columnWrapperStyle={styles.row}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
+            <RefreshControl refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); fetchTables(); }}
-              colors={['#1E40AF']}
-            />
+              colors={['#059669']} />
           }
           ListHeaderComponent={
-            <Text style={styles.countText}>
-              {tables.length} free {tables.length === 1 ? 'table' : 'tables'}
-            </Text>
+            <View style={styles.listHeader}>
+              <View style={styles.freeBadge}>
+                <View style={styles.greenDot} />
+                <Text style={styles.freeText}>{tables.length} free table{tables.length !== 1 ? 's' : ''}</Text>
+              </View>
+            </View>
           }
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -101,15 +102,17 @@ export default function TablesScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.tableIconCircle}>
-                <Ionicons name="restaurant-outline" size={30} color="#1E40AF" />
+                <Ionicons name="restaurant-outline" size={28} color="#059669" />
               </View>
               <Text style={styles.tableName}>{item.table_name}</Text>
               <Text style={styles.tableFloor}>{item.floor || 'Main Floor'}</Text>
               <View style={styles.availableBadge}>
                 <View style={styles.greenDot} />
-                <Text style={styles.availableText}>Free</Text>
+                <Text style={styles.availableText}>Available</Text>
               </View>
-              <Text style={styles.capacity}>{item.capacity || '—'} seats</Text>
+              {item.capacity && (
+                <Text style={styles.capacity}>{item.capacity} seats</Text>
+              )}
             </TouchableOpacity>
           )}
         />
@@ -119,51 +122,60 @@ export default function TablesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#1E40AF', paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: '#059669', paddingHorizontal: 14, paddingVertical: 12,
   },
-  backBtn: { padding: 6 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
-  center: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12,
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF' },
+
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  loadingText: { color: '#6B7280', fontSize: 14, marginTop: 8 },
+  emptyIcon: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center',
   },
-  loadingText: { color: '#64748B', marginTop: 8, fontSize: 14 },
-  emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
-  emptySub: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
+  emptySub: { fontSize: 13, color: '#6B7280', textAlign: 'center' },
   refreshBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#1E40AF', paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: '#059669', paddingHorizontal: 20, paddingVertical: 10,
     borderRadius: 10, marginTop: 4,
   },
-  refreshBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
-  countText: {
-    fontSize: 13, fontWeight: '600', color: '#475569',
-    paddingHorizontal: 4, paddingBottom: 8,
+  refreshBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 13 },
+
+  listHeader: { paddingHorizontal: 4, paddingBottom: 10 },
+  freeBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1, borderColor: '#6EE7B7',
   },
+  freeText: { fontSize: 12, fontWeight: '700', color: '#059669' },
+
   grid: { padding: 12, paddingBottom: 24 },
   row: { gap: 12 },
   tableCard: {
     flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16,
     padding: 16, alignItems: 'center', marginBottom: 12,
-    borderWidth: 1.5, borderColor: '#E2E8F0',
+    borderWidth: 1.5, borderColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   tableIconCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
   },
-  tableName: { fontSize: 15, fontWeight: 'bold', color: '#1E293B' },
-  tableFloor: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  tableName: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  tableFloor: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
   availableBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     marginTop: 8, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: '#DCFCE7', borderRadius: 20,
+    backgroundColor: '#ECFDF5', borderRadius: 20,
   },
-  greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E' },
-  availableText: { fontSize: 11, color: '#16A34A', fontWeight: '700' },
-  capacity: { fontSize: 11, color: '#94A3B8', marginTop: 6 },
+  greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#059669' },
+  availableText: { fontSize: 11, color: '#059669', fontWeight: '700' },
+  capacity: { fontSize: 11, color: '#9CA3AF', marginTop: 6 },
 });

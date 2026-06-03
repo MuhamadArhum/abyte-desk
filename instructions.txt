@@ -10,14 +10,3 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
-App ka Flow Change krna Hai 
-1: User Loin k bad Home Screen py jaye ga Jahan py Wo Order Type Choose Kry ga (Dinein.takeaway wagera)
-2: Agr Dine in hoga to Dinein Main Tables System Hoga Free tables Show Ho jain Gy 
-3: Order Creation FLow :
-
-User Select Order Type (Din,TA)
-Choose Menu
-Punch Order
-Order MOve to Ruuning Order tab 
-Print Bill (Print on Cash / Card)
-If User Want to Update the order (Add any Item) User Edit Waly Button Ko Click kry ga To Sara Order usi Cart mai nDobara Aye ga or user koi new chiz add kar paye ga lkin yad rahy user ko qty kam ya item delete ka access ni hoga 

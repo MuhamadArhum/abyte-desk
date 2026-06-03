@@ -478,8 +478,11 @@ exports.updateSaleItems = async (req, res) => {
 
     // 4. Update sale header
     const newSubTotal = round2(items.reduce((sum, item) => sum + round2(parseFloat(item.unit_price) * item.quantity), 0));
-    const updates = ['total_amount = ?', 'sub_total = ?'];
-    const values = [round2(parseFloat(total_amount)), newSubTotal];
+    const newTaxPct = tax_percent !== undefined ? parseFloat(tax_percent) : parseFloat(sale[0].tax_percent || 0);
+    const newTaxAmt = round2(newSubTotal * newTaxPct / 100);
+    const newTotal = round2(parseFloat(total_amount) || (newSubTotal + newTaxAmt));
+    const updates = ['total_amount = ?', 'sub_total = ?', 'net_amount = ?', 'tax_amount = ?'];
+    const values = [newTotal, newSubTotal, newTotal, newTaxAmt];
     if (tax_percent !== undefined) { updates.push('tax_percent = ?'); values.push(tax_percent); }
     if (additional_charges_percent !== undefined) { updates.push('additional_charges_percent = ?'); values.push(additional_charges_percent); }
     if (customer_id !== undefined) { updates.push('customer_id = ?'); values.push(customer_id); }
@@ -782,10 +785,12 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const sale = await query(`
-      SELECT s.*, c.customer_name, u.name as cashier_name 
+      SELECT s.*, c.customer_name, u.name as cashier_name,
+             rt.table_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
+      LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
       WHERE s.sale_id = ?
     `, [req.params.id]);
 
@@ -794,7 +799,7 @@ exports.getById = async (req, res) => {
     }
 
     const items = await query(`
-      SELECT sd.*, p.product_name, p.barcode 
+      SELECT sd.*, p.product_name, p.barcode, p.category_id
       FROM sale_details sd
       JOIN products p ON sd.product_id = p.product_id
       WHERE sd.sale_id = ?

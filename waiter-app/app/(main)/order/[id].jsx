@@ -225,7 +225,7 @@ export default function OrderScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTable}>{tableName}</Text>
@@ -468,16 +468,16 @@ export default function OrderScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   center: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#F1F5F9', gap: 12,
+    backgroundColor: '#F9FAFB', gap: 12,
   },
-  loadingText: { color: '#64748B', fontSize: 14, marginTop: 8 },
+  loadingText: { color: '#6B7280', fontSize: 14, marginTop: 8 },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#1E40AF', paddingHorizontal: 14,
+    backgroundColor: '#059669', paddingHorizontal: 14,
     paddingVertical: 12, gap: 10,
   },
   backBtn: { padding: 6 },
@@ -487,29 +487,29 @@ const styles = StyleSheet.create({
   cartIconBtn: { padding: 6, position: 'relative' },
   cartBadge: {
     position: 'absolute', top: 0, right: 0,
-    backgroundColor: '#EF4444', width: 17, height: 17,
+    backgroundColor: '#DC2626', width: 17, height: 17,
     borderRadius: 9, alignItems: 'center', justifyContent: 'center',
   },
   cartBadgeText: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
 
   editBar: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#EFF6FF', paddingHorizontal: 14, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#BFDBFE',
+    backgroundColor: '#ECFDF5', paddingHorizontal: 14, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: '#6EE7B7',
   },
-  editBarText: { fontSize: 12, color: '#1E40AF', flex: 1 },
+  editBarText: { fontSize: 12, color: '#047857', flex: 1 },
 
   catBar: {
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
   },
   catScroll: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   catTab: {
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#E2E8F0',
+    backgroundColor: '#F9FAFB', borderWidth: 1.5, borderColor: '#E5E7EB',
   },
-  catTabActive: { backgroundColor: '#1E40AF', borderColor: '#1E40AF' },
-  catTabText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  catTabActive: { backgroundColor: '#059669', borderColor: '#059669' },
+  catTabText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
   catTabTextActive: { color: '#FFFFFF', fontWeight: '700' },
 
   productGrid: { padding: 12 },
@@ -517,39 +517,39 @@ const styles = StyleSheet.create({
   prodCard: {
     flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14,
     padding: 12, marginBottom: 10, alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#E2E8F0',
+    borderWidth: 1.5, borderColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  prodCardActive: { borderColor: '#1E40AF', backgroundColor: '#EFF6FF' },
+  prodCardActive: { borderColor: '#059669', backgroundColor: '#ECFDF5' },
   prodName: {
-    fontSize: 13, fontWeight: '600', color: '#1E293B',
+    fontSize: 13, fontWeight: '600', color: '#111827',
     textAlign: 'center', marginBottom: 4, minHeight: 36,
   },
-  prodPrice: { fontSize: 14, fontWeight: 'bold', color: '#1E40AF', marginBottom: 8 },
+  prodPrice: { fontSize: 14, fontWeight: 'bold', color: '#059669', marginBottom: 8 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   qtyBtn: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#BFDBFE',
+    backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#6EE7B7',
   },
-  qtyNum: { fontSize: 14, fontWeight: 'bold', color: '#1E293B', minWidth: 20, textAlign: 'center' },
+  qtyNum: { fontSize: 14, fontWeight: 'bold', color: '#111827', minWidth: 20, textAlign: 'center' },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addText: { fontSize: 13, color: '#1E40AF', fontWeight: '600' },
+  addText: { fontSize: 13, color: '#059669', fontWeight: '600' },
 
   bottomBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: '#E2E8F0',
+    borderTopWidth: 1, borderTopColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 6,
     position: 'absolute', bottom: 0, left: 0, right: 0,
   },
-  bottomCount: { fontSize: 12, color: '#94A3B8' },
-  bottomTotal: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
+  bottomCount: { fontSize: 12, color: '#9CA3AF' },
+  bottomTotal: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
   sendBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#1E40AF', paddingVertical: 12, paddingHorizontal: 18,
+    backgroundColor: '#059669', paddingVertical: 12, paddingHorizontal: 18,
     borderRadius: 12,
   },
   sendBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
@@ -562,40 +562,40 @@ const styles = StyleSheet.create({
     maxHeight: SCREEN_H * 0.85,
   },
   sheetHandle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0',
+    width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB',
     alignSelf: 'center', marginTop: 10,
   },
   sheetHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
   },
-  sheetTitle: { fontSize: 18, fontWeight: 'bold', color: '#1E293B' },
+  sheetTitle: { fontSize: 18, fontWeight: 'bold', color: '#111827' },
   cartEmpty: { alignItems: 'center', padding: 40, gap: 10 },
-  cartEmptyText: { color: '#94A3B8', fontSize: 15 },
+  cartEmptyText: { color: '#9CA3AF', fontSize: 15 },
   cartItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: '#F8FAFC', gap: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F9FAFB', gap: 12,
   },
-  cartItemName: { flex: 1, fontSize: 14, fontWeight: '500', color: '#1E293B' },
+  cartItemName: { flex: 1, fontSize: 14, fontWeight: '500', color: '#111827' },
   cartItemRight: { alignItems: 'flex-end', gap: 6 },
-  cartItemTotal: { fontSize: 13, fontWeight: 'bold', color: '#1E40AF' },
+  cartItemTotal: { fontSize: 13, fontWeight: 'bold', color: '#059669' },
   noteWrap: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
-  noteLabel: { fontSize: 13, fontWeight: '600', color: '#475569', marginBottom: 6 },
+  noteLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
   noteInput: {
-    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 10,
-    padding: 10, fontSize: 14, color: '#1E293B',
-    minHeight: 60, backgroundColor: '#F8FAFC', textAlignVertical: 'top',
+    borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 10,
+    padding: 10, fontSize: 14, color: '#111827',
+    minHeight: 60, backgroundColor: '#F9FAFB', textAlignVertical: 'top',
   },
   sheetFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingTop: 14,
-    borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    borderTopWidth: 1, borderTopColor: '#F3F4F6',
   },
-  sheetTotalLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
-  sheetTotalAmount: { fontSize: 20, fontWeight: 'bold', color: '#1E293B' },
+  sheetTotalLabel: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  sheetTotalAmount: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
   taxRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  taxLabel: { fontSize: 12, color: '#94A3B8' },
-  taxValue: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  taxLabel: { fontSize: 12, color: '#9CA3AF' },
+  taxValue: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
 });
