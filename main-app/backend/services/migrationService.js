@@ -165,6 +165,25 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    version: 7,
+    name: 'waiter_crud_permissions',
+    async run(db) {
+      // Waiter needs CRUD sub-keys because requirePermission('sales.pos') checks
+      // 'sales.pos.create' for POST and 'sales.pos.update' for PUT
+      const perms = [
+        'sales.pos.create',
+        'sales.pos.update',
+        'customers.create',
+      ];
+      for (const key of perms) {
+        await queryDb(db,
+          `INSERT IGNORE INTO role_permissions (role_name, module_key, is_allowed) VALUES ('Waiter', ?, 1)`,
+          [key]
+        );
+      }
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {
