@@ -48,10 +48,10 @@ export default function TabsLayout() {
         }}
       >
         <Tabs.Screen
-          name="tables"
+          name="home"
           options={{
-            title: 'Tables',
-            tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+            title: 'New Order',
+            tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
           }}
         />
         <Tabs.Screen

@@ -1,5 +1,5 @@
 For main App
-cd /var/www/AByte-POS && bash main-app/deploy.sh
+r
 For Admin Panel (Abyte@2026#Secure)
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
@@ -10,11 +10,14 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
+App ka Flow Change krna Hai 
+1: User Loin k bad Home Screen py jaye ga Jahan py Wo Order Type Choose Kry ga (Dinein.takeaway wagera)
+2: Agr Dine in hoga to Dinein Main Tables System Hoga Free tables Show Ho jain Gy 
+3: Order Creation FLow :
 
-
-
-1: User Login Kry ga or Sbse Phly main Screen py jaye ga jis main free tables usko show hongi 
-2: iss app main hum sidebar and footer main kuch screenn bnaye gy (footer= Tables, Ruunning orrdres, History)
-3: Sidebar main user ka profile and details show honi bs yani name,username,branch wagera
-4: Table screen main usko just free tables show hongi jo pory restaurant main free hongi wohi show hongi 
-5: Waiter k Pass bohat kam rihgts hongy yani wo sirf order create kr skta hai ya us ruuning order main kuch chez add kr skta hai lkin delete ni kr skta
+User Select Order Type (Din,TA)
+Choose Menu
+Punch Order
+Order MOve to Ruuning Order tab 
+Print Bill (Print on Cash / Card)
+If User Want to Update the order (Add any Item) User Edit Waly Button Ko Click kry ga To Sara Order usi Cart mai nDobara Aye ga or user koi new chiz add kar paye ga lkin yad rahy user ko qty kam ya item delete ka access ni hoga 

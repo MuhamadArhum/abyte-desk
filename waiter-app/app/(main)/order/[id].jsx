@@ -13,23 +13,23 @@ import useCartStore from '../../../store/cartStore';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-const ORDER_TYPES = [
-  { value: 'dine_in',   label: 'Dine In',   icon: 'restaurant-outline' },
-  { value: 'takeaway',  label: 'Takeaway',  icon: 'bag-handle-outline' },
-  { value: 'on_spot',   label: 'Walk-in',   icon: 'walk-outline' },
-  { value: 'delivery',  label: 'Delivery',  icon: 'bicycle-outline' },
-];
+const ORDER_TYPE_LABEL = {
+  dine_in: 'Dine In',
+  takeaway: 'Takeaway',
+  on_spot: 'Walk-in',
+  delivery: 'Delivery',
+};
 
 export default function OrderScreen() {
-  const { id: tableId, name, saleId } = useLocalSearchParams();
+  const { id: tableId, name, saleId, orderType: orderTypeParam } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const tableName = name ? decodeURIComponent(name) : 'Table';
+  const tableName = name ? decodeURIComponent(name) : 'Order';
+  const isEditMode = !!saleId;
 
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedCat, setSelectedCat] = useState(null);
-  const [existingItems, setExistingItems] = useState([]);
-  const [orderType, setOrderType] = useState('dine_in');
+  const [orderType, setOrderType] = useState(orderTypeParam || 'dine_in');
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -38,13 +38,12 @@ export default function OrderScreen() {
 
   const {
     items, addItem, incrementItem, decrementItem,
-    clearCart, existingSaleId,
+    setItems, clearCart, existingSaleId,
   } = useCartStore();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
 
-  // Calculate tax based on store settings + pos_mode
   const taxPercent = React.useMemo(() => {
     if (!settings) return 0;
     const fallback = parseFloat(settings.tax_rate || 0);
@@ -62,7 +61,6 @@ export default function OrderScreen() {
       return subtotal > 0 ? (taxedAmount / subtotal) * 100 : 0;
     }
 
-    // Simple mode
     if (orderType === 'delivery') return parseFloat(settings.tax_on_online ?? fallback);
     return parseFloat(settings.tax_on_cash ?? fallback);
   }, [settings, orderType, items, products, subtotal]);
@@ -76,45 +74,55 @@ export default function OrderScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [catRes, prodRes] = await Promise.all([
+      const requests = [
         api.get('/products/categories?type=finished_good'),
         api.get('/products?type=finished_good'),
-      ]);
+        api.get('/settings'),
+      ];
+      if (saleId) requests.push(api.get(`/sales/${saleId}`));
 
-      const cats = Array.isArray(catRes.data?.data) ? catRes.data.data
-                  : Array.isArray(catRes.data) ? catRes.data : [];
-      const prods = Array.isArray(prodRes.data?.data) ? prodRes.data.data
-                   : Array.isArray(prodRes.data) ? prodRes.data : [];
+      const results = await Promise.allSettled(requests);
+
+      const catRes  = results[0].status === 'fulfilled' ? results[0].value : null;
+      const prodRes = results[1].status === 'fulfilled' ? results[1].value : null;
+      const setRes  = results[2].status === 'fulfilled' ? results[2].value : null;
+      const saleRes = results[3]?.status === 'fulfilled' ? results[3].value : null;
+
+      const cats  = Array.isArray(catRes?.data?.data)  ? catRes.data.data
+                  : Array.isArray(catRes?.data)         ? catRes.data : [];
+      const prods = Array.isArray(prodRes?.data?.data) ? prodRes.data.data
+                  : Array.isArray(prodRes?.data)        ? prodRes.data : [];
 
       setCategories(cats);
       setProducts(prods);
       setSelectedCat(null);
 
-      // Fetch settings separately so menu still loads if settings fail
-      try {
-        const settingsRes = await api.get('/settings');
-        const s = settingsRes.data || {};
-        // Parse pos_tax_config if it's a string
+      if (setRes?.data) {
+        const s = setRes.data;
         if (s.pos_tax_config && typeof s.pos_tax_config === 'string') {
           try { s.pos_tax_config = JSON.parse(s.pos_tax_config); } catch { s.pos_tax_config = null; }
         }
-        console.log('[Settings]', JSON.stringify({
-          pos_mode: s.pos_mode,
-          tax_rate: s.tax_rate,
-          tax_on_cash: s.tax_on_cash,
-          tax_on_card: s.tax_on_card,
-          tax_on_online: s.tax_on_online,
-        }));
         setSettings(s);
-      } catch (e) {
-        console.warn('[Settings] fetch failed:', e.message);
       }
 
-      // Load existing order items if editing
-      if (saleId) {
-        const saleRes = await api.get(`/sales/${saleId}`);
+      if (saleRes?.data) {
         const saleData = saleRes.data;
-        setExistingItems(saleData?.items || saleData?.details || []);
+        // Use the sale's stored order type
+        if (saleData.order_type) setOrderType(saleData.order_type);
+
+        // Pre-load existing items into cart
+        const details = saleData?.items || saleData?.details || [];
+        const cartItems = details.map((d) => {
+          const matched = prods.find((p) => p.product_id === d.product_id);
+          return {
+            product_id: d.product_id,
+            product_name: d.product_name || matched?.product_name || 'Item',
+            unit_price: parseFloat(d.unit_price || d.selling_price || matched?.selling_price || 0),
+            quantity: d.quantity,
+            variant_id: d.variant_id || null,
+          };
+        });
+        setItems(cartItems);
       }
     } catch (err) {
       console.error('loadData error:', err.message);
@@ -140,52 +148,36 @@ export default function OrderScreen() {
       return;
     }
 
-    Alert.alert(
-      existingSaleId ? 'Add to Order?' : 'Send to Kitchen?',
-      existingSaleId
-        ? `Add ${totalItems} item(s) to the existing order?`
-        : `Send order for ${tableName} to kitchen?\n${totalItems} item(s) • PKR ${totalAmount.toFixed(0)}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: existingSaleId ? 'Add' : 'Send', onPress: submitOrder },
-      ]
-    );
+    const title   = isEditMode ? 'Update Order?' : 'Send to Kitchen?';
+    const message = isEditMode
+      ? `Save changes to this order?\n${totalItems} item(s) • PKR ${totalAmount.toFixed(0)}`
+      : `Send order for ${tableName} to kitchen?\n${totalItems} item(s) • PKR ${totalAmount.toFixed(0)}`;
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: isEditMode ? 'Update' : 'Send', onPress: submitOrder },
+    ]);
   };
 
   const submitOrder = async () => {
     setSending(true);
     try {
-      if (existingSaleId) {
-        // Merge new items into existing sale
-        const merged = [...existingItems];
-        items.forEach((newItem) => {
-          const existing = merged.find((e) => e.product_id === newItem.product_id);
-          if (existing) {
-            existing.quantity = (existing.quantity || 0) + newItem.quantity;
-          } else {
-            merged.push({
-              product_id: newItem.product_id,
-              quantity: newItem.quantity,
-              unit_price: newItem.unit_price,
-              variant_id: newItem.variant_id || null,
-            });
-          }
-        });
-
-        await api.put(`/sales/${existingSaleId}/items`, {
-          items: merged.map((i) => ({
+      if (isEditMode) {
+        await api.put(`/sales/${saleId}/items`, {
+          items: items.map((i) => ({
             product_id: i.product_id,
             quantity: i.quantity,
-            unit_price: parseFloat(i.unit_price || i.selling_price || 0),
+            unit_price: parseFloat(i.unit_price || 0),
             variant_id: i.variant_id || null,
           })),
+          total_amount: totalAmount,
+          tax_percent: parseFloat(taxPercent.toFixed(2)),
         });
 
-        Alert.alert('Done!', 'Items added to the order.', [
+        Alert.alert('Updated!', 'Order has been updated.', [
           { text: 'OK', onPress: () => { clearCart(); router.back(); } },
         ]);
       } else {
-        // Create new pending order
         const res = await api.post('/sales', {
           items: items.map((i) => ({
             product_id: i.product_id,
@@ -217,7 +209,6 @@ export default function OrderScreen() {
     }
   };
 
-  // ─── Loading ───────────────────────────────────────────────
   if (loading) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
@@ -227,7 +218,6 @@ export default function OrderScreen() {
     );
   }
 
-  // ─── Main render ───────────────────────────────────────────
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
@@ -239,9 +229,10 @@ export default function OrderScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTable}>{tableName}</Text>
-          {existingSaleId && (
-            <Text style={styles.headerSub}>Adding to existing order</Text>
-          )}
+          <Text style={styles.headerSub}>
+            {ORDER_TYPE_LABEL[orderType] || orderType}
+            {isEditMode ? '  •  Editing order' : ''}
+          </Text>
         </View>
         <TouchableOpacity style={styles.cartIconBtn} onPress={() => setCartVisible(true)} activeOpacity={0.7}>
           <Ionicons name="cart-outline" size={23} color="#FFFFFF" />
@@ -253,39 +244,13 @@ export default function OrderScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Existing order notice */}
-      {existingSaleId && existingItems.length > 0 && (
-        <View style={styles.existingBar}>
-          <Ionicons name="information-circle-outline" size={14} color="#92400E" />
-          <Text style={styles.existingBarText}>
-            {existingItems.length} item(s) already in this order — add more below
+      {/* Edit mode notice */}
+      {isEditMode && (
+        <View style={styles.editBar}>
+          <Ionicons name="create-outline" size={14} color="#1E40AF" />
+          <Text style={styles.editBarText}>
+            You can add items to this order — reducing or deleting is not allowed
           </Text>
-        </View>
-      )}
-
-      {/* Order Type Selector — hidden when editing existing order */}
-      {!existingSaleId && (
-        <View style={styles.orderTypeBar}>
-          <Text style={styles.orderTypeLabel}>Order Type:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.orderTypeScroll}>
-            {ORDER_TYPES.map((ot) => (
-              <TouchableOpacity
-                key={ot.value}
-                style={[styles.otBtn, orderType === ot.value && styles.otBtnActive]}
-                onPress={() => setOrderType(ot.value)}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={ot.icon}
-                  size={14}
-                  color={orderType === ot.value ? '#FFFFFF' : '#64748B'}
-                />
-                <Text style={[styles.otBtnText, orderType === ot.value && styles.otBtnTextActive]}>
-                  {ot.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
         </View>
       )}
 
@@ -335,13 +300,16 @@ export default function OrderScreen() {
               <Text style={styles.prodPrice}>PKR {price.toFixed(0)}</Text>
               {inCart ? (
                 <View style={styles.qtyRow}>
-                  <TouchableOpacity
-                    style={styles.qtyBtn}
-                    onPress={() => decrementItem(item.product_id)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="remove" size={15} color="#1E40AF" />
-                  </TouchableOpacity>
+                  {/* Hide minus in edit mode — no reducing allowed */}
+                  {!isEditMode && (
+                    <TouchableOpacity
+                      style={styles.qtyBtn}
+                      onPress={() => decrementItem(item.product_id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="remove" size={15} color="#1E40AF" />
+                    </TouchableOpacity>
+                  )}
                   <Text style={styles.qtyNum}>{inCart.quantity}</Text>
                   <TouchableOpacity
                     style={styles.qtyBtn}
@@ -377,17 +345,16 @@ export default function OrderScreen() {
             disabled={sending}
             activeOpacity={0.85}
           >
-            {sending
-              ? <ActivityIndicator color="#FFF" size="small" />
-              : (
-                <>
-                  <Ionicons name="send" size={17} color="#FFFFFF" />
-                  <Text style={styles.sendBtnText}>
-                    {existingSaleId ? 'Add to Order' : 'Send to Kitchen'}
-                  </Text>
-                </>
-              )
-            }
+            {sending ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="send" size={17} color="#FFFFFF" />
+                <Text style={styles.sendBtnText}>
+                  {isEditMode ? 'Update Order' : 'Send to Kitchen'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -423,9 +390,12 @@ export default function OrderScreen() {
                     <Text style={styles.cartItemName} numberOfLines={2}>{item.product_name}</Text>
                     <View style={styles.cartItemRight}>
                       <View style={styles.qtyRow}>
-                        <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
-                          <Ionicons name="remove" size={15} color="#1E40AF" />
-                        </TouchableOpacity>
+                        {/* Hide minus in edit mode */}
+                        {!isEditMode && (
+                          <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
+                            <Ionicons name="remove" size={15} color="#1E40AF" />
+                          </TouchableOpacity>
+                        )}
                         <Text style={styles.qtyNum}>{item.quantity}</Text>
                         <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementItem(item.product_id)}>
                           <Ionicons name="add" size={15} color="#1E40AF" />
@@ -438,7 +408,7 @@ export default function OrderScreen() {
                   </View>
                 ))}
 
-                {!existingSaleId && (
+                {!isEditMode && (
                   <View style={styles.noteWrap}>
                     <Text style={styles.noteLabel}>Order Note (optional)</Text>
                     <TextInput
@@ -477,17 +447,16 @@ export default function OrderScreen() {
                   onPress={() => { setCartVisible(false); handleSendOrder(); }}
                   disabled={sending}
                 >
-                  {sending
-                    ? <ActivityIndicator color="#FFF" size="small" />
-                    : (
-                      <>
-                        <Ionicons name="send" size={17} color="#FFFFFF" />
-                        <Text style={styles.sendBtnText}>
-                          {existingSaleId ? 'Add to Order' : 'Send to Kitchen'}
-                        </Text>
-                      </>
-                    )
-                  }
+                  {sending ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={17} color="#FFFFFF" />
+                      <Text style={styles.sendBtnText}>
+                        {isEditMode ? 'Update Order' : 'Send to Kitchen'}
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -506,7 +475,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { color: '#64748B', fontSize: 14, marginTop: 8 },
 
-  // Header
   header: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#1E40AF', paddingHorizontal: 14,
@@ -515,7 +483,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 6 },
   headerCenter: { flex: 1 },
   headerTable: { fontSize: 17, fontWeight: 'bold', color: '#FFFFFF' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   cartIconBtn: { padding: 6, position: 'relative' },
   cartBadge: {
     position: 'absolute', top: 0, right: 0,
@@ -524,34 +492,13 @@ const styles = StyleSheet.create({
   },
   cartBadgeText: { fontSize: 10, color: '#FFF', fontWeight: 'bold' },
 
-  // Existing order bar
-  existingBar: {
+  editBar: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FEF3C7', paddingHorizontal: 14, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: '#FDE68A',
+    backgroundColor: '#EFF6FF', paddingHorizontal: 14, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: '#BFDBFE',
   },
-  existingBarText: { fontSize: 12, color: '#92400E', flex: 1 },
+  editBarText: { fontSize: 12, color: '#1E40AF', flex: 1 },
 
-  // Order type bar
-  orderTypeBar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 14,
-    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
-    gap: 10,
-  },
-  orderTypeLabel: { fontSize: 12, fontWeight: '700', color: '#475569' },
-  orderTypeScroll: { gap: 8 },
-  otBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, backgroundColor: '#F1F5F9',
-    borderWidth: 1.5, borderColor: '#E2E8F0',
-  },
-  otBtnActive: { backgroundColor: '#1E40AF', borderColor: '#1E40AF' },
-  otBtnText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
-  otBtnTextActive: { color: '#FFFFFF' },
-
-  // Category bar
   catBar: {
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1, borderBottomColor: '#E2E8F0',
@@ -565,7 +512,6 @@ const styles = StyleSheet.create({
   catTabText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
   catTabTextActive: { color: '#FFFFFF', fontWeight: '700' },
 
-  // Product grid
   productGrid: { padding: 12 },
   productRow: { gap: 10 },
   prodCard: {
@@ -591,7 +537,6 @@ const styles = StyleSheet.create({
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addText: { fontSize: 13, color: '#1E40AF', fontWeight: '600' },
 
-  // Bottom send bar
   bottomBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 12,
@@ -609,7 +554,6 @@ const styles = StyleSheet.create({
   },
   sendBtnText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
 
-  // Cart modal
   modalWrap: { flex: 1, justifyContent: 'flex-end' },
   modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   cartSheet: {

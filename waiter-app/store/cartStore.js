@@ -9,6 +9,9 @@ const useCartStore = create((set, get) => ({
   setTable: (tableId, tableName, existingSaleId = null) =>
     set({ tableId, tableName, existingSaleId, items: [] }),
 
+  // Pre-load items (used in edit mode)
+  setItems: (newItems) => set({ items: newItems }),
+
   addItem: (product) => {
     const items = get().items;
     const existing = items.find((i) => i.product_id === product.product_id);
