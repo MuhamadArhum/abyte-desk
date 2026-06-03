@@ -150,6 +150,21 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE customers ADD COLUMN IF NOT EXISTS address TEXT NULL`);
     },
   },
+  {
+    version: 6,
+    name: 'waiter_role',
+    async run(db) {
+      // Add Waiter role and its default permissions
+      await queryDb(db, `INSERT IGNORE INTO roles (role_name) VALUES ('Waiter')`);
+      const perms = ['sales', 'sales.pos', 'customers'];
+      for (const key of perms) {
+        await queryDb(db,
+          `INSERT IGNORE INTO role_permissions (role_name, module_key, is_allowed) VALUES ('Waiter', ?, 1)`,
+          [key]
+        );
+      }
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

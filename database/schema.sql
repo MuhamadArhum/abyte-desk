@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS roles (
     role_name VARCHAR(50) NOT NULL UNIQUE
 );
 
-INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier');
+INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier'), ('Waiter');
 
 -- Role Permissions
 CREATE TABLE IF NOT EXISTS role_permissions (

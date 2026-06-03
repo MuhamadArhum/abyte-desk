@@ -6,10 +6,15 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 ssh root@185.255.94.23
-
 git clone https://MuhamadArhum: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@github.com/MuhamadArhum/AByte-POS.git
 
 
-ALTER USER 'abyte_user'@'localhost' IDENTIFIED BY '@Arhum368';
-  FLUSH PRIVILEGES;
-  EXIT;
+
+
+
+
+1: User Login Kry ga or Sbse Phly main Screen py jaye ga jis main free tables usko show hongi 
+2: iss app main hum sidebar and footer main kuch screenn bnaye gy (footer= Tables, Ruunning orrdres, History)
+3: Sidebar main user ka profile and details show honi bs yani name,username,branch wagera
+4: Table screen main usko just free tables show hongi jo pory restaurant main free hongi wohi show hongi 
+5: Waiter k Pass bohat kam rihgts hongy yani wo sirf order create kr skta hai ya us ruuning order main kuch chez add kr skta hai lkin delete ni kr skta

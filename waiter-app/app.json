@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "AByte Waiter",
+    "slug": "abyte-waiter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "abyte-waiter",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1E40AF"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1E40AF"
+      },
+      "package": "com.abyte.waiter"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

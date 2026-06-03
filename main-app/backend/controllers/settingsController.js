@@ -16,12 +16,19 @@ exports.getSettings = async (req, res) => {
     if (rows.length === 0) {
       return res.json({
         store_name: 'AByte ERP',
-        address: '',
-        phone: '',
-        receipt_footer: 'Thank you!'
+        address: '', phone: '', receipt_footer: 'Thank you!',
+        tax_rate: 0, tax_on_cash: 0, tax_on_card: 0, tax_on_online: 0,
+        pos_mode: 'simple', pos_tax_config: null,
       });
     }
     const row = rows[0];
+
+    // Fill NULL tax columns with their intended defaults
+    if (row.tax_on_cash  == null) row.tax_on_cash  = parseFloat(row.tax_rate || 0);
+    if (row.tax_on_card  == null) row.tax_on_card  = parseFloat(row.tax_rate || 0);
+    if (row.tax_on_online== null) row.tax_on_online= parseFloat(row.tax_rate || 0);
+    if (row.pos_mode     == null) row.pos_mode     = 'simple';
+
     // Parse pos_tax_config JSON
     if (row.pos_tax_config && typeof row.pos_tax_config === 'string') {
       try { row.pos_tax_config = JSON.parse(row.pos_tax_config); } catch { row.pos_tax_config = null; }

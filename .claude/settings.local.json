@@ -142,7 +142,9 @@
       "Bash(npm list *)",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('scripts',{}\\).keys\\(\\)\\)\\)\")",
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('node engine:', d.get\\('engines',{}\\).get\\('node','not set'\\)\\); print\\('deps:', list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)[:10]\\)\")",
-      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"router\\\\.\" {} | head -5')"
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"router\\\\.\" {} | head -5')",
+      "Bash(npm --version)",
+      "Bash(npx expo *)"
     ]
   }
 }
