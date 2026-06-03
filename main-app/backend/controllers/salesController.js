@@ -65,31 +65,33 @@ exports.createSale = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();  // START TRANSACTION
 
-    // Step 1: Validate stock for each item in the cart
-    for (const item of items) {
-      let rows;
+    // Step 1: Validate stock for each item (skip for pending/KOT orders — kitchen manages stock)
+    if (status !== 'pending') {
+      for (const item of items) {
+        let rows;
 
-      if (item.variant_id) {
-        rows = await conn.query(
-          'SELECT available_stock FROM variant_inventory WHERE variant_id = ? FOR UPDATE',
-          [item.variant_id]
-        );
-        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();
-          return res.status(400).json({
-            message: `Insufficient stock for variant ID ${item.variant_id}`,
-          });
-        }
-      } else {
-        rows = await conn.query(
-          'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
-          [item.product_id]
-        );
-        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();
-          return res.status(400).json({
-            message: `Insufficient stock for product ID ${item.product_id}`,
-          });
+        if (item.variant_id) {
+          rows = await conn.query(
+            'SELECT available_stock FROM variant_inventory WHERE variant_id = ? FOR UPDATE',
+            [item.variant_id]
+          );
+          if (rows.length === 0 || rows[0].available_stock < item.quantity) {
+            await conn.rollback();
+            return res.status(400).json({
+              message: `Insufficient stock for variant ID ${item.variant_id}`,
+            });
+          }
+        } else {
+          rows = await conn.query(
+            'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
+            [item.product_id]
+          );
+          if (rows.length === 0 || rows[0].available_stock < item.quantity) {
+            await conn.rollback();
+            return res.status(400).json({
+              message: `Insufficient stock for product ID ${item.product_id}`,
+            });
+          }
         }
       }
     }
@@ -186,31 +188,33 @@ exports.createSale = async (req, res) => {
 
     const sale_id = Number(saleResult.insertId);
 
-    // Step 5: Insert each cart item as a sale detail record and deduct stock
+    // Step 5: Insert each cart item as a sale detail record; deduct stock only for completed sales
     for (const item of items) {
       await conn.query(
         'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [sale_id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]
       );
 
-      if (item.variant_id) {
-        await conn.query(
-          'UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?',
-          [item.quantity, item.variant_id]
-        );
-        await conn.query(
-          'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?',
-          [item.quantity, item.variant_id]
-        );
-      } else {
-        await conn.query(
-          'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
-          [item.quantity, item.product_id]
-        );
-        await conn.query(
-          'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
-          [item.quantity, item.product_id]
-        );
+      if (status !== 'pending') {
+        if (item.variant_id) {
+          await conn.query(
+            'UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?',
+            [item.quantity, item.variant_id]
+          );
+          await conn.query(
+            'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?',
+            [item.quantity, item.variant_id]
+          );
+        } else {
+          await conn.query(
+            'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
+            [item.quantity, item.product_id]
+          );
+          await conn.query(
+            'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
+            [item.quantity, item.product_id]
+          );
+        }
       }
     }
 
@@ -406,6 +410,18 @@ exports.completeSale = async (req, res) => {
       ]
     );
 
+    // Deduct stock now that the order is being paid/completed
+    const saleItems = await query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    for (const item of saleItems) {
+      if (item.variant_id) {
+        await query('UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await query('UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+      } else {
+        await query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
     await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash', invoice_no }, req.ip);
 
     res.json({ message: 'Sale completed successfully', sale_id: id, invoice_no });
@@ -447,22 +463,10 @@ exports.updateSaleItems = async (req, res) => {
       return res.status(404).json({ message: 'Pending sale not found' });
     }
 
-    // 1. Restore old stock from existing items
-    const oldItems = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
-    for (const item of oldItems) {
-      if (item.variant_id) {
-        await conn.query('UPDATE variant_inventory SET available_stock = available_stock + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
-        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
-      } else {
-        await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
-        await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);
-      }
-    }
-
-    // 2. Delete old sale_details
+    // 1. Delete old sale_details (no stock restore — pending orders don't touch stock)
     await conn.query('DELETE FROM sale_details WHERE sale_id = ?', [id]);
 
-    // 3. Insert new items and deduct stock
+    // 2. Insert new items (no stock deduction — deducted when cashier completes the order)
     for (const item of items) {
       const unitPrice = round2(parseFloat(item.unit_price));
       const totalPrice = round2(unitPrice * item.quantity);
@@ -470,13 +474,6 @@ exports.updateSaleItems = async (req, res) => {
         'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, unitPrice, totalPrice]
       );
-      if (item.variant_id) {
-        await conn.query('UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
-        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
-      } else {
-        await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
-        await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
-      }
     }
 
     // 4. Update sale header
