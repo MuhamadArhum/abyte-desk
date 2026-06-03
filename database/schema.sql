@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS customers (
     email VARCHAR(150),
     company VARCHAR(150),
     tax_id VARCHAR(50),
+    address TEXT,
     address_1 TEXT,
     address_2 TEXT,
     address_3 TEXT,

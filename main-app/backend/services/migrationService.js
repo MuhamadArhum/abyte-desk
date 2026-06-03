@@ -143,6 +143,13 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    version: 5,
+    name: 'customers_address_column',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE customers ADD COLUMN IF NOT EXISTS address TEXT NULL`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {
