@@ -1,5 +1,5 @@
 For main App
-r
+cd /var/www/AByte-POS && bash main-app/deploy.sh
 For Admin Panel (Abyte@2026#Secure)
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
@@ -7,5 +7,6 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 ssh root@185.255.94.23
 git clone https://MuhamadArhum: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@github.com/MuhamadArhum/AByte-POS.git
+
 
 

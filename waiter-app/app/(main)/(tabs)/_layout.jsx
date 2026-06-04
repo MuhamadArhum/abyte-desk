@@ -93,6 +93,17 @@ export default function TabsLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="occupancy"
+          options={{
+            title: 'Tables',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
+                <Ionicons name={focused ? 'grid' : 'grid-outline'} size={24} color={color} />
+              </View>
+            ),
+          }}
+        />
       </Tabs>
 
       <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />

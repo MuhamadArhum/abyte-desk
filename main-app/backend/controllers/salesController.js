@@ -45,6 +45,8 @@ exports.createSale = async (req, res) => {
       credit_due_date,
       table_id = null,
       order_type = 'on_spot',
+      customer_name = null,
+      customer_phone = null,
     } = req.body;
     // items = array of { product_id, quantity, unit_price, variant_id, variant_name }
 
@@ -159,8 +161,8 @@ exports.createSale = async (req, res) => {
         sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        token_no, invoice_no, table_id, order_type, branch_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        token_no, invoice_no, table_id, order_type, branch_id, customer_name, customer_phone
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         subtotal,
         total_amount,
@@ -183,6 +185,8 @@ exports.createSale = async (req, res) => {
         table_id || null,
         order_type || 'on_spot',
         branch_id,
+        customer_name || null,
+        customer_phone || null,
       ]
     );
 
@@ -191,8 +195,8 @@ exports.createSale = async (req, res) => {
     // Step 5: Insert each cart item as a sale detail record; deduct stock only for completed sales
     for (const item of items) {
       await conn.query(
-        'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [sale_id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]
+        'INSERT INTO sale_details (sale_id, product_id, variant_id, variant_name, quantity, unit_price, total_price, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [sale_id, item.product_id, item.variant_id || null, item.variant_name || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity), item.note || null]
       );
 
       if (status !== 'pending') {
@@ -286,7 +290,7 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
-    const { page, limit, order_type } = req.query;
+    const { page, limit, order_type, user_id, waiter } = req.query;
 
     // Map frontend 'on_spot' filter to include both 'on_spot' and NULL order_type rows
     let orderTypeClause = '';
@@ -310,12 +314,22 @@ exports.getPending = async (req, res) => {
       filterParams.push(req.query.filter_branch);
     }
 
+    // Per-waiter filter: waiter=1 uses the token's own user_id; user_id param for admin overrides
+    let userClause = '';
+    if (waiter === '1') {
+      userClause = ' AND s.user_id = ?';
+      filterParams.push(req.user.user_id);
+    } else if (user_id) {
+      userClause = ' AND s.user_id = ?';
+      filterParams.push(user_id);
+    }
+
     // Always compute summary (filtered)
     const summaryResult = await query(
       `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount
        FROM sales s WHERE status = 'pending'
        AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-       ${orderTypeClause}${branchClause}`,
+       ${orderTypeClause}${branchClause}${userClause}`,
       filterParams
     );
     const summary = {
@@ -332,7 +346,7 @@ exports.getPending = async (req, res) => {
       LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
       WHERE s.status = 'pending'
       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-      ${orderTypeClause}${branchClause}
+      ${orderTypeClause}${branchClause}${userClause}
     `;
     const params = [...filterParams];
 
@@ -629,12 +643,17 @@ exports.getAll = async (req, res) => {
       return [s, p];
     };
 
+    const waiter = req.query.waiter;
+
     const applyCashierClause = (s, p) => {
       if (cashier && cashier.trim()) {
         s += ' AND u.name LIKE ?';
         p.push(`%${cashier.trim()}%`);
       }
-      if (user_id) {
+      if (waiter === '1') {
+        s += ' AND s.user_id = ?';
+        p.push(req.user.user_id);
+      } else if (user_id) {
         s += ' AND s.user_id = ?';
         p.push(user_id);
       }
@@ -861,5 +880,24 @@ exports.refundSale = async (req, res) => {
     res.status(500).json({ message: 'Failed to refund sale' });
   } finally {
     if (conn) conn.release();
+  }
+};
+
+exports.swapTable = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { table_id } = req.body;
+
+    const sale = await query('SELECT sale_id FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    if (!sale.length) return res.status(404).json({ message: 'Pending sale not found' });
+
+    await query('UPDATE sales SET table_id = ? WHERE sale_id = ?', [table_id || null, id]);
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_TABLE_SWAPPED', 'sale', id, { table_id }, req.ip);
+
+    res.json({ message: 'Table updated successfully' });
+  } catch (error) {
+    logger.error('Swap table error:', error);
+    res.status(500).json({ message: 'Failed to update table' });
   }
 };

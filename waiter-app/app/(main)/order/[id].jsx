@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Modal,
-  TextInput, Dimensions,
+  TextInput, Dimensions, Vibration,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import useCartStore from '../../../store/cartStore';
 import { C, shadow } from '../../../constants/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
+const haptic = () => Vibration.vibrate(8);
 
 const ORDER_TYPE_LABEL = {
   dine_in: 'Dine In',
@@ -20,6 +21,8 @@ const ORDER_TYPE_LABEL = {
   on_spot: 'Walk-in',
   delivery: 'Delivery',
 };
+
+const NEEDS_CUSTOMER_INFO = ['takeaway', 'delivery'];
 
 export default function OrderScreen() {
   const { id: tableId, name, saleId, orderType: orderTypeParam } = useLocalSearchParams();
@@ -37,10 +40,13 @@ export default function OrderScreen() {
   const [cartVisible, setCartVisible] = useState(false);
   const [note, setNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  // Track which item has its note input open (product_id or null)
+  const [openNoteId, setOpenNoteId] = useState(null);
 
   const {
     items, addItem, incrementItem, decrementItem,
     setItems, clearCart, existingSaleId,
+    updateItemNote, customerName, customerPhone, setCustomerInfo,
   } = useCartStore();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
@@ -55,7 +61,6 @@ export default function OrderScreen() {
     if (settings.pos_mode === 'category' && settings.pos_tax_config) {
       const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
       if (!cat.tax_enabled) return 0;
-      // Tax enabled for this order type — use payment method rate
     }
     return orderType === 'delivery' ? onlineRate : cashRate;
   }, [settings, orderType]);
@@ -114,10 +119,8 @@ export default function OrderScreen() {
 
       if (saleRes?.data) {
         const saleData = saleRes.data;
-        // Use the sale's stored order type
         if (saleData.order_type) setOrderType(saleData.order_type);
 
-        // Pre-load existing items into cart
         const details = saleData?.items || saleData?.details || [];
         const cartItems = details.map((d) => {
           const matched = prods.find((p) => p.product_id === d.product_id);
@@ -127,6 +130,7 @@ export default function OrderScreen() {
             unit_price: parseFloat(d.unit_price || d.selling_price || matched?.selling_price || 0),
             quantity: d.quantity,
             variant_id: d.variant_id || null,
+            note: d.note || '',
           };
         });
         setItems(cartItems);
@@ -176,6 +180,7 @@ export default function OrderScreen() {
             quantity: i.quantity,
             unit_price: parseFloat(i.unit_price || 0),
             variant_id: i.variant_id || null,
+            note: i.note || null,
           })),
           total_amount: totalAmount,
           tax_percent: parseFloat(taxPercent.toFixed(2)),
@@ -192,6 +197,7 @@ export default function OrderScreen() {
             quantity: i.quantity,
             unit_price: i.unit_price,
             variant_id: i.variant_id || null,
+            note: i.note || null,
           })),
           table_id: parseInt(tableId) || null,
           order_type: orderType,
@@ -201,6 +207,8 @@ export default function OrderScreen() {
           additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
           discount: 0,
           note: note.trim() || null,
+          customer_name: NEEDS_CUSTOMER_INFO.includes(orderType) && customerName.trim() ? customerName.trim() : null,
+          customer_phone: NEEDS_CUSTOMER_INFO.includes(orderType) && customerPhone.trim() ? customerPhone.trim() : null,
         });
 
         const token = res.data?.token_no || res.data?.sale?.token_no;
@@ -227,6 +235,8 @@ export default function OrderScreen() {
     );
   }
 
+  const showCustomerInfo = NEEDS_CUSTOMER_INFO.includes(orderType) && !isEditMode;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar style="light" />
@@ -243,7 +253,7 @@ export default function OrderScreen() {
             {isEditMode ? '  •  Editing order' : ''}
           </Text>
         </View>
-        <TouchableOpacity style={styles.cartIconBtn} onPress={() => setCartVisible(true)} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.cartIconBtn} onPress={() => { haptic(); setCartVisible(true); }} activeOpacity={0.7}>
           <Ionicons name="cart-outline" size={23} color="#FFFFFF" />
           {totalItems > 0 && (
             <View style={styles.cartBadge}>
@@ -329,7 +339,7 @@ export default function OrderScreen() {
           return (
             <TouchableOpacity
               style={[styles.prodCard, inCart && styles.prodCardActive]}
-              onPress={() => addItem(item)}
+              onPress={() => { haptic(); addItem(item); }}
               activeOpacity={0.85}
             >
               {inCart && (
@@ -348,7 +358,7 @@ export default function OrderScreen() {
                   {!isEditMode && (
                     <TouchableOpacity
                       style={styles.qtyBtn}
-                      onPress={() => decrementItem(item.product_id)}
+                      onPress={() => { haptic(); decrementItem(item.product_id); }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Ionicons name="remove" size={15} color={C.primary} />
@@ -357,7 +367,7 @@ export default function OrderScreen() {
                   <Text style={styles.qtyNum}>{inCart.quantity}</Text>
                   <TouchableOpacity
                     style={styles.qtyBtn}
-                    onPress={() => incrementItem(item.product_id)}
+                    onPress={() => { haptic(); incrementItem(item.product_id); }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     <Ionicons name="add" size={15} color={C.primary} />
@@ -385,7 +395,7 @@ export default function OrderScreen() {
           </View>
           <TouchableOpacity
             style={styles.sendBtn}
-            onPress={handleSendOrder}
+            onPress={() => { haptic(); handleSendOrder(); }}
             disabled={sending}
             activeOpacity={0.85}
           >
@@ -428,36 +438,114 @@ export default function OrderScreen() {
                 <Text style={styles.cartEmptyText}>Cart is empty</Text>
               </View>
             ) : (
-              <ScrollView style={{ maxHeight: SCREEN_H * 0.45 }}>
-                {items.map((item) => (
-                  <View key={item.product_id} style={styles.cartItem}>
-                    <Text style={styles.cartItemName} numberOfLines={2}>{item.product_name}</Text>
-                    <View style={styles.cartItemRight}>
-                      <View style={styles.qtyRow}>
-                        {/* Hide minus in edit mode */}
-                        {!isEditMode && (
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
-                            <Ionicons name="remove" size={15} color={C.primary} />
-                          </TouchableOpacity>
-                        )}
-                        <Text style={styles.qtyNum}>{item.quantity}</Text>
-                        <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementItem(item.product_id)}>
-                          <Ionicons name="add" size={15} color={C.primary} />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.cartItemTotal}>
-                        PKR {(item.unit_price * item.quantity).toFixed(0)}
-                      </Text>
+              <ScrollView style={{ maxHeight: SCREEN_H * 0.52 }} keyboardShouldPersistTaps="handled">
+
+                {/* Customer info section for takeaway/delivery */}
+                {showCustomerInfo && (
+                  <View style={styles.customerSection}>
+                    <View style={styles.customerSectionHeader}>
+                      <Ionicons name="person-circle-outline" size={16} color={C.t2} />
+                      <Text style={styles.customerSectionTitle}>Customer Info</Text>
+                      <Text style={styles.customerSectionSub}>(Optional)</Text>
                     </View>
+                    <View style={styles.customerFieldRow}>
+                      <View style={[styles.customerField, { flex: 1.4 }]}>
+                        <Ionicons name="person-outline" size={14} color={C.t3} style={styles.customerFieldIcon} />
+                        <TextInput
+                          style={styles.customerFieldInput}
+                          placeholder="Customer name"
+                          placeholderTextColor={C.t3}
+                          value={customerName}
+                          onChangeText={(v) => setCustomerInfo(v, customerPhone)}
+                          autoCorrect={false}
+                          returnKeyType="next"
+                        />
+                      </View>
+                      <View style={[styles.customerField, { flex: 1 }]}>
+                        <Ionicons name="call-outline" size={14} color={C.t3} style={styles.customerFieldIcon} />
+                        <TextInput
+                          style={styles.customerFieldInput}
+                          placeholder="Phone"
+                          placeholderTextColor={C.t3}
+                          value={customerPhone}
+                          onChangeText={(v) => setCustomerInfo(customerName, v)}
+                          keyboardType="phone-pad"
+                          returnKeyType="done"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Cart items */}
+                {items.map((item) => (
+                  <View key={item.product_id} style={styles.cartItemWrap}>
+                    <View style={styles.cartItem}>
+                      <Text style={styles.cartItemName} numberOfLines={2}>{item.product_name}</Text>
+                      <View style={styles.cartItemRight}>
+                        <View style={styles.qtyRow}>
+                          {!isEditMode && (
+                            <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
+                              <Ionicons name="remove" size={15} color={C.primary} />
+                            </TouchableOpacity>
+                          )}
+                          <Text style={styles.qtyNum}>{item.quantity}</Text>
+                          <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementItem(item.product_id)}>
+                            <Ionicons name="add" size={15} color={C.primary} />
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.cartItemTotal}>
+                          PKR {(item.unit_price * item.quantity).toFixed(0)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Per-item note toggle */}
+                    <TouchableOpacity
+                      style={styles.itemNoteToggle}
+                      onPress={() => setOpenNoteId(openNoteId === item.product_id ? null : item.product_id)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={item.note ? 'chatbubble' : 'chatbubble-outline'}
+                        size={12}
+                        color={item.note ? C.primary : C.t3}
+                      />
+                      <Text style={[styles.itemNoteToggleText, item.note && { color: C.primary }]}>
+                        {item.note ? item.note : 'Add note'}
+                      </Text>
+                      <Ionicons
+                        name={openNoteId === item.product_id ? 'chevron-up' : 'chevron-down'}
+                        size={12}
+                        color={C.t3}
+                      />
+                    </TouchableOpacity>
+
+                    {openNoteId === item.product_id && (
+                      <View style={styles.itemNoteInputWrap}>
+                        <TextInput
+                          style={styles.itemNoteInput}
+                          placeholder="e.g. no onion, extra spicy..."
+                          placeholderTextColor={C.t3}
+                          value={item.note || ''}
+                          onChangeText={(v) => updateItemNote(item.product_id, v)}
+                          multiline={false}
+                          returnKeyType="done"
+                          onSubmitEditing={() => setOpenNoteId(null)}
+                          autoFocus
+                        />
+                      </View>
+                    )}
                   </View>
                 ))}
 
+                {/* Order-level note */}
                 {!isEditMode && (
                   <View style={styles.noteWrap}>
                     <Text style={styles.noteLabel}>Order Note (optional)</Text>
                     <TextInput
                       style={styles.noteInput}
-                      placeholder="Special instructions..."
+                      placeholder="Special instructions for the whole order..."
                       placeholderTextColor={C.t3}
                       value={note}
                       onChangeText={setNote}
@@ -625,7 +713,7 @@ const styles = StyleSheet.create({
   cartSheet: {
     backgroundColor: C.card,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    maxHeight: SCREEN_H * 0.85,
+    maxHeight: SCREEN_H * 0.88,
   },
   sheetHandle: {
     width: 40, height: 4, borderRadius: 2, backgroundColor: C.border,
@@ -643,14 +731,59 @@ const styles = StyleSheet.create({
   },
   cartEmpty: { alignItems: 'center', padding: 48, gap: 10 },
   cartEmptyText: { color: C.t2, fontSize: 15, fontWeight: '600' },
+
+  // Customer info
+  customerSection: {
+    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    backgroundColor: C.surface, borderRadius: 14,
+    borderWidth: 1.5, borderColor: C.border,
+    padding: 12,
+  },
+  customerSectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10,
+  },
+  customerSectionTitle: { fontSize: 13, fontWeight: '700', color: C.t1 },
+  customerSectionSub: { fontSize: 11, color: C.t3, fontWeight: '500' },
+  customerFieldRow: { flexDirection: 'row', gap: 8 },
+  customerField: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 10,
+    borderWidth: 1.5, borderColor: C.border,
+    height: 40, paddingRight: 10,
+  },
+  customerFieldIcon: { paddingHorizontal: 10 },
+  customerFieldInput: { flex: 1, fontSize: 13, color: C.t1, height: 40 },
+
+  // Cart items
+  cartItemWrap: {
+    borderBottomWidth: 1, borderBottomColor: C.borderLt,
+  },
   cartItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 13, paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: C.borderLt, gap: 12,
+    paddingVertical: 13, paddingHorizontal: 20, gap: 12,
   },
   cartItemName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.t1, lineHeight: 20 },
   cartItemRight: { alignItems: 'flex-end', gap: 6 },
   cartItemTotal: { fontSize: 13, fontWeight: '800', color: C.primary },
+
+  // Per-item note
+  itemNoteToggle: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 20, paddingBottom: 8,
+  },
+  itemNoteToggleText: {
+    flex: 1, fontSize: 11.5, color: C.t3, fontStyle: 'italic',
+  },
+  itemNoteInputWrap: {
+    paddingHorizontal: 20, paddingBottom: 10,
+  },
+  itemNoteInput: {
+    borderWidth: 1.5, borderColor: C.primaryBd, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+    fontSize: 13, color: C.t1,
+    backgroundColor: C.primaryLt,
+  },
+
   noteWrap: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 4 },
   noteLabel: {
     fontSize: 11, fontWeight: '700', color: C.t3,

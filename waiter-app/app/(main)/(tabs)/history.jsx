@@ -1,11 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, StyleSheet,
-  RefreshControl, ActivityIndicator, TouchableOpacity,
+  RefreshControl, ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../../services/api';
+import useAuthStore from '../../../store/authStore';
 import { C, shadow } from '../../../constants/theme';
 
 const PM = {
@@ -22,28 +23,63 @@ const OT_COLOR = {
   delivery: { color: C.purple,  bg: C.purpleBg,  border: C.purpleBd  },
 };
 
+const DATE_FILTERS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week',  label: 'This Week' },
+  { key: 'all',   label: 'All' },
+];
+
+function isToday(d) {
+  return new Date(d).toDateString() === new Date().toDateString();
+}
+function isThisWeek(d) {
+  return Date.now() - new Date(d).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
 export default function HistoryScreen() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [dateFilter, setDateFilter] = useState('today');
+  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuthStore();
 
   const fetchHistory = useCallback(async () => {
     try {
-      const res = await api.get('/sales?limit=50&page=1');
+      const res = await api.get('/sales?limit=200&page=1');
       const data = res.data?.data || res.data || [];
-      setSales(Array.isArray(data) ? data.filter((s) => s.status === 'completed') : []);
+      const all = Array.isArray(data) ? data.filter((s) => s.status === 'completed') : [];
+      const myId = user?.user_id;
+      setSales(myId ? all.filter((s) => Number(s.user_id) === Number(myId)) : all);
     } catch (err) {
       console.error('fetchHistory error:', err.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
     fetchHistory();
   }, [fetchHistory]));
+
+  const filteredSales = useMemo(() => {
+    let list = sales;
+
+    if (dateFilter === 'today') list = list.filter((s) => isToday(s.sale_date));
+    else if (dateFilter === 'week') list = list.filter((s) => isThisWeek(s.sale_date));
+
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((s) =>
+        (s.invoice_no && s.invoice_no.toLowerCase().includes(q)) ||
+        (s.token_no   && s.token_no.toLowerCase().includes(q))   ||
+        String(s.sale_id).includes(q)
+      );
+    }
+    return list;
+  }, [sales, dateFilter, searchQuery]);
 
   const fmtDate = (d) => new Date(d).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
   const fmtTime = (d) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -59,31 +95,70 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Sub-header */}
       <View style={styles.subHeader}>
         <View style={styles.subHeaderLeft}>
           <Text style={styles.subHeaderTitle}>Completed Orders</Text>
-          {sales.length > 0 && (
+          {filteredSales.length > 0 && (
             <View style={styles.countChip}>
-              <Text style={styles.countChipText}>{sales.length}</Text>
+              <Text style={styles.countChipText}>{filteredSales.length}</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={fetchHistory} style={styles.refreshBtn}>
+        <TouchableOpacity onPress={() => { setRefreshing(true); fetchHistory(); }} style={styles.refreshBtn}>
           <Ionicons name="refresh-outline" size={17} color={C.t2} />
         </TouchableOpacity>
       </View>
 
-      {sales.length === 0 ? (
+      {/* Date filter chips */}
+      <View style={styles.filterRow}>
+        {DATE_FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[styles.filterChip, dateFilter === f.key && styles.filterChipActive]}
+            onPress={() => setDateFilter(f.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, dateFilter === f.key && styles.filterChipTextActive]}>
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Search bar */}
+      <View style={styles.searchWrap}>
+        <Ionicons name="search-outline" size={16} color={C.t3} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by order # or invoice..."
+          placeholderTextColor={C.t3}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle" size={16} color={C.t3} style={{ paddingRight: 10 }} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {filteredSales.length === 0 ? (
         <View style={styles.center}>
           <View style={styles.emptyCircle}>
-            <Ionicons name="time-outline" size={38} color={C.t3} />
+            <Ionicons name={searchQuery ? 'search-outline' : 'time-outline'} size={38} color={C.t3} />
           </View>
-          <Text style={styles.emptyTitle}>No History Yet</Text>
-          <Text style={styles.emptySub}>Completed orders will appear here</Text>
+          <Text style={styles.emptyTitle}>{searchQuery ? 'No Results' : 'No Orders Yet'}</Text>
+          <Text style={styles.emptySub}>
+            {searchQuery ? 'Try a different order number' : 'Completed orders will appear here'}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={sales}
+          data={filteredSales}
           keyExtractor={(item) => String(item.sale_id)}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -96,11 +171,8 @@ export default function HistoryScreen() {
             const otc = OT_COLOR[item.order_type] || OT_COLOR.dine_in;
             return (
               <View style={styles.card}>
-                {/* Left accent */}
                 <View style={[styles.cardAccent, { backgroundColor: pm.color }]} />
-
                 <View style={styles.cardBody}>
-                  {/* Top row */}
                   <View style={styles.cardTop}>
                     <View style={styles.invoiceWrap}>
                       <Text style={styles.invoiceNo}>{item.invoice_no || `Sale #${item.sale_id}`}</Text>
@@ -116,7 +188,6 @@ export default function HistoryScreen() {
                     </View>
                   </View>
 
-                  {/* Meta row */}
                   <View style={styles.metaRow}>
                     {item.table_name && (
                       <View style={styles.metaItem}>
@@ -138,7 +209,6 @@ export default function HistoryScreen() {
                     </View>
                   </View>
 
-                  {/* Bottom row */}
                   <View style={styles.cardBottom}>
                     <View style={styles.cashierRow}>
                       <Ionicons name="person-circle-outline" size={14} color={C.t3} />
@@ -187,6 +257,28 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
   },
 
+  filterRow: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: C.card, borderWidth: 1.5, borderColor: C.border,
+  },
+  filterChipActive: { backgroundColor: C.primary, borderColor: C.primary },
+  filterChipText: { fontSize: 13, color: C.t2, fontWeight: '600' },
+  filterChipTextActive: { color: '#FFFFFF', fontWeight: '700' },
+
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card,
+    marginHorizontal: 14, marginTop: 8, marginBottom: 10,
+    borderRadius: 14, borderWidth: 1.5, borderColor: C.border,
+    height: 44, ...shadow.sm,
+  },
+  searchIcon: { paddingHorizontal: 12 },
+  searchInput: { flex: 1, fontSize: 14, color: C.t1, height: 44 },
+
   list: { padding: 14, gap: 10, paddingBottom: 28 },
   card: {
     flexDirection: 'row',
@@ -214,9 +306,7 @@ const styles = StyleSheet.create({
 
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  otChip: {
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1,
-  },
+  otChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
   metaText: { fontSize: 11.5, color: C.t2 },
 
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

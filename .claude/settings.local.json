@@ -145,7 +145,11 @@
       "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -n \"router\\\\.\" {} | head -5')",
       "Bash(npm --version)",
       "Bash(npx expo *)",
-      "Bash(npx eas *)"
+      "Bash(npx eas *)",
+      "Read(//c/Program Files/MySQL/MySQL Server 8.0/bin/**)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Bash(/c/Program Files/MariaDB 12.2/bin/mysql.exe *)",
+      "Bash(\"/c/Program Files/MariaDB 12.2/bin/mysql.exe\" -u root -p12345 abyte_pos -e \"SHOW TABLES;\")"
     ]
   }
 }

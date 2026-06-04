@@ -5,12 +5,15 @@ const useCartStore = create((set, get) => ({
   tableId: null,
   tableName: '',
   existingSaleId: null,
+  customerName: '',
+  customerPhone: '',
 
   setTable: (tableId, tableName, existingSaleId = null) =>
     set({ tableId, tableName, existingSaleId, items: [] }),
 
-  // Pre-load items (used in edit mode)
   setItems: (newItems) => set({ items: newItems }),
+
+  setCustomerInfo: (name, phone) => set({ customerName: name, customerPhone: phone }),
 
   addItem: (product) => {
     const items = get().items;
@@ -31,6 +34,7 @@ const useCartStore = create((set, get) => ({
             unit_price: parseFloat(product.selling_price || product.price || 0),
             quantity: 1,
             variant_id: product.variant_id || null,
+            note: '',
           },
         ],
       });
@@ -59,7 +63,14 @@ const useCartStore = create((set, get) => ({
     }
   },
 
-  clearCart: () => set({ items: [], tableId: null, tableName: '', existingSaleId: null }),
+  updateItemNote: (product_id, note) =>
+    set({
+      items: get().items.map((i) =>
+        i.product_id === product_id ? { ...i, note } : i
+      ),
+    }),
+
+  clearCart: () => set({ items: [], tableId: null, tableName: '', existingSaleId: null, customerName: '', customerPhone: '' }),
 }));
 
 export default useCartStore;

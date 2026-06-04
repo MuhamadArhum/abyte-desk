@@ -10,6 +10,7 @@ router.get('/pending', salesController.getPending);
 router.put('/:id/complete', requirePermission('sales.pos'), salesController.completeSale);
 router.patch('/:id/kot-printed', requirePermission('sales.pos'), salesController.markKotPrinted);
 router.put('/:id/items', requirePermission('sales.pos'), salesController.updateSaleItems);
+router.put('/:id/table', requirePermission('sales.pos'), salesController.swapTable);
 router.post('/:id/refund', requirePermission('sales.returns'), salesController.refundSale);
 router.post('/:id/sync-tax', requirePermission('sales.pos'), salesController.syncTax);
 router.delete('/:id', requirePermission('sales.orders'), salesController.deleteSale);
