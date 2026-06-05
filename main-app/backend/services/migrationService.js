@@ -186,6 +186,44 @@ const MIGRATIONS = [
   },
   {
     version: 8,
+    name: 'ensure_joined_tables',
+    async run(db) {
+      // These tables are JOIN-ed in sales queries but only created lazily in controllers.
+      // Missing tables cause 500 errors on every sales GET request.
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS restaurant_tables (
+          table_id   INT PRIMARY KEY AUTO_INCREMENT,
+          table_name VARCHAR(50)  NOT NULL,
+          floor      VARCHAR(50)  DEFAULT 'Main',
+          capacity   INT          DEFAULT 4,
+          status     ENUM('available','occupied') DEFAULT 'available',
+          created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS deliveries (
+          delivery_id       INT PRIMARY KEY AUTO_INCREMENT,
+          delivery_number   VARCHAR(30)  NULL,
+          sale_id           INT          NULL,
+          customer_id       INT          NULL,
+          delivery_address  TEXT         NULL,
+          delivery_city     VARCHAR(100) DEFAULT '',
+          delivery_phone    VARCHAR(30)  DEFAULT '',
+          rider_name        VARCHAR(100) DEFAULT '',
+          rider_phone       VARCHAR(30)  DEFAULT '',
+          status            VARCHAR(30)  DEFAULT 'pending',
+          delivery_charges  DECIMAL(10,2) DEFAULT 0,
+          estimated_delivery DATETIME   NULL,
+          notes             TEXT         NULL,
+          created_by        INT          NULL,
+          branch_id         INT          NULL,
+          created_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    },
+  },
+  {
+    version: 9,
     name: 'sales_missing_columns',
     async run(db) {
       const stmts = [
