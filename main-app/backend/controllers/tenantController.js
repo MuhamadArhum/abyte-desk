@@ -114,18 +114,7 @@ exports.create = async (req, res) => {
       }
     }
 
-    // Step 3: Seed default role_permissions for the plan
-    await conn.query(`USE \`${dbName}\``);
-    await conn.query(`
-      INSERT IGNORE INTO role_permissions (role_name, module_key, is_allowed)
-      VALUES
-        ('Manager','dashboard',1),('Manager','sales.pos',1),('Manager','sales.orders',1),
-        ('Manager','inventory.products',1),('Manager','inventory.categories',1),
-        ('Manager','reports.sales',1),('Manager','reports.inventory',1),
-        ('Cashier','sales.pos',1),('Cashier','sales.orders',1)
-    `);
-
-    // Step 4: Create admin user in new tenant DB
+    // Step 3: Create admin user in new tenant DB
     const passwordHash = await bcrypt.hash(admin_password, 10);
     await conn.query(
       `INSERT INTO users (username, name, email, password_hash, role_id, role_name)

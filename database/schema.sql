@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS roles (
     role_name VARCHAR(50) NOT NULL UNIQUE
 );
 
-INSERT IGNORE INTO roles (role_name) VALUES ('Admin'), ('Manager'), ('Cashier'), ('Waiter');
+INSERT IGNORE INTO roles (role_name) VALUES ('Admin');
 
 -- Role Permissions
 CREATE TABLE IF NOT EXISTS role_permissions (
@@ -27,22 +27,6 @@ CREATE TABLE IF NOT EXISTS role_permissions (
     UNIQUE KEY unique_role_module (role_name, module_key),
     INDEX idx_role (role_name)
 );
-
--- Default permissions: Manager gets access to all operational modules
-INSERT IGNORE INTO role_permissions (role_name, module_key, is_allowed) VALUES
-('Manager', 'sales',                1),
-('Manager', 'inventory',            1),
-('Manager', 'inventory.products',   1),
-('Manager', 'inventory.categories', 1),
-('Manager', 'inventory.purchases',  1),
-('Manager', 'inventory.adjustments',1),
-('Manager', 'customers',            1),
-('Manager', 'reports',              1),
-('Manager', 'expenses',             1),
-('Manager', 'staff',                1),
-('Manager', 'credit_sales',         1),
-('Cashier',  'sales',               1),
-('Cashier',  'customers',           1);
 
 -- Categories
 CREATE TABLE IF NOT EXISTS categories (
