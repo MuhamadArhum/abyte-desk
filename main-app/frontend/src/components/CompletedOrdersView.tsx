@@ -15,7 +15,7 @@ import {
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
 import api from '../utils/api';
-import { printReceipt } from '../utils/receiptPrinter';
+import { printToThermalPrinter } from '../utils/receiptPrinter';
 import { localToday } from '../utils/dateUtils';
 
 // ─── Bill Preview Modal ─────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => 
           <div className="flex-1 text-xs text-gray-400">Press <kbd className="bg-white border border-gray-200 px-1.5 py-0.5 rounded font-mono font-bold">Ctrl+P</kbd> to print</div>
           <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
           <button
-            onClick={() => { printReceipt(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
+            onClick={() => { printToThermalPrinter(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
             className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
           >
             <Printer size={16} /> Print

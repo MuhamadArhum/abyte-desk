@@ -916,15 +916,5 @@ export async function printBillWithTax(
     footer:        `★ ${billLabel} ★\n${settings?.receipt_footer || 'Thank you for shopping!'}`,
   };
 
-  try {
-    await api.post('/settings/print-queue', { type: 'invoice', receiptData });
-  } catch {
-    // Fallback: browser print dialog
-    printReceipt(
-      { ...sale, tax_percent: taxRate, tax_amount: newTaxAmount, total_amount: newTotal, amount_paid: newTotal, payment_method: taxType },
-      { ...(settings || {}), header_note: `★ ${billLabel} ★` },
-      cashierName,
-      customerName
-    );
-  }
+  await api.post('/settings/print-queue', { type: 'invoice', receiptData });
 }

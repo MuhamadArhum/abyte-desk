@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, CheckCircle, Printer, Search, Archive, RotateCcw, FileText, DollarSign, User, Calendar, CreditCard, Package } from 'lucide-react';
 import api from '../utils/api';
-import { printReceipt } from '../utils/receiptPrinter';
+import { printToThermalPrinter } from '../utils/receiptPrinter';
 import Pagination from './Pagination';
 
 interface OrdersModalProps {
@@ -90,7 +90,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
         api.get(`/sales/${saleId}`),
         api.get('/settings')
       ]);
-      printReceipt(saleRes.data, settingsRes.data, saleRes.data.cashier_name || 'Staff', saleRes.data.customer_name);
+      await printToThermalPrinter(saleRes.data, settingsRes.data, saleRes.data.cashier_name || 'Staff', saleRes.data.customer_name);
     } catch (error) {
       console.error('Failed to print order', error);
       alert('Failed to print order');

@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
-import { printReceipt, printBillWithTax } from '../utils/receiptPrinter';
+import { printBillWithTax } from '../utils/receiptPrinter';
 import { printKOT, printInvoice } from '../utils/agentPrinter';
 
 interface CheckoutModalProps {
