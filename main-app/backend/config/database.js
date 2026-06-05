@@ -46,7 +46,7 @@ const poolOptions = {
   port: parseInt(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  connectionLimit: 25,         // 25 connections — AI context uses up to 15 in parallel, need headroom for other requests
+  connectionLimit: 5,          // 5 per tenant pool — with N tenants × 2 PM2 workers, keep total well under max_connections
   acquireTimeout: 30000,
   connectTimeout: 10000,
   bigIntAsNumber: true,        // Convert BIGINT to JS Number
