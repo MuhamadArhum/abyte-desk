@@ -265,10 +265,8 @@ exports.deleteRole = async (req, res) => {
     if (PROTECTED.includes(role.role_name)) {
       return res.status(400).json({ message: `Cannot delete built-in role "${role.role_name}"` });
     }
-    const usersWithRole = await query('SELECT user_id FROM users WHERE role_id = ? LIMIT 1', [id]);
-    if (usersWithRole.length > 0) {
-      return res.status(400).json({ message: 'Cannot delete role that is assigned to users' });
-    }
+    // Unassign users from this role before deleting
+    await query('UPDATE users SET role_id = NULL, role_name = NULL WHERE role_id = ?', [id]);
     await query('DELETE FROM role_permissions WHERE role_name = ?', [role.role_name]);
     await query('DELETE FROM roles WHERE role_id = ?', [id]);
     await logAction(req.user.user_id, req.user.name, 'ROLE_DELETED', 'roles', parseInt(id), { role_name: role.role_name }, req.ip);
