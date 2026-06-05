@@ -10,11 +10,11 @@ const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
-// Ensure tables that are JOIN-ed in sales queries exist (created lazily elsewhere)
-let _schemaDone = false;
-async function ensureSalesSchema() {
-  if (_schemaDone) return;
-  _schemaDone = true;
+// Ensure tables that are JOIN-ed in sales queries exist — tracked per tenant DB
+const _schemaDone = new Set();
+async function ensureSalesSchema(db) {
+  if (_schemaDone.has(db)) return;
+  _schemaDone.add(db);
   const stmts = [
     `CREATE TABLE IF NOT EXISTS restaurant_tables (
       table_id   INT PRIMARY KEY AUTO_INCREMENT,
@@ -79,7 +79,7 @@ const parsePagination = (page, limit) => {
 exports.createSale = async (req, res) => {
   let conn;  // Database connection for the transaction
   try {
-    await ensureSalesSchema();
+    await ensureSalesSchema(req.tenantDb);
     const {
       items,
       discount,
@@ -340,7 +340,7 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
-    await ensureSalesSchema();
+    await ensureSalesSchema(req.tenantDb);
     const { page, limit, order_type, user_id, waiter } = req.query;
 
     // Map frontend 'on_spot' filter to include both 'on_spot' and NULL order_type rows
@@ -684,7 +684,7 @@ exports.syncTax = async (req, res) => {
 // --- Get Today's Sales ---
 exports.getToday = async (req, res) => {
   try {
-    await ensureSalesSchema();
+    await ensureSalesSchema(req.tenantDb);
     const today = new Date().toISOString().split('T')[0];
     const activeBranch = (req.user.role_name !== 'Admin' && req.user.branch_id)
       ? req.user.branch_id
@@ -712,7 +712,7 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    await ensureSalesSchema();
+    await ensureSalesSchema(req.tenantDb);
     const {
       page, limit, search, status, date_from, date_to,
       order_type, shift_start, shift_end,
