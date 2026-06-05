@@ -261,7 +261,7 @@ exports.deleteRole = async (req, res) => {
     const [role] = await query('SELECT * FROM roles WHERE role_id = ?', [id]);
     if (!role) return res.status(404).json({ message: 'Role not found' });
 
-    const PROTECTED = ['Admin', 'Manager', 'Cashier'];
+    const PROTECTED = ['Admin'];
     if (PROTECTED.includes(role.role_name)) {
       return res.status(400).json({ message: `Cannot delete built-in role "${role.role_name}"` });
     }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Shield, Save, Check, Loader2, ChevronDown, ChevronRight,
-  Users, Copy, Search, AlertCircle, X,
+  Users, Copy, Search, AlertCircle, X, Plus, Trash2,
   LayoutDashboard, ShoppingCart, Package, UserCheck, Calculator, Settings, UtensilsCrossed,
 } from 'lucide-react';
 import api from '../../utils/api';
@@ -163,6 +163,9 @@ const AccessControl = () => {
   const [collapsed, setCollapsed]       = useState<Record<string, boolean>>({});
   const [search, setSearch]             = useState('');
   const [copyFrom, setCopyFrom]         = useState('');
+  const [newRoleName, setNewRoleName]   = useState('');
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [deletingRole, setDeletingRole] = useState<string | null>(null);
 
   const permissions: Set<string> = allPerms[selectedRole] || new Set();
 
@@ -255,6 +258,47 @@ const AccessControl = () => {
     setAllPerms(prev => ({ ...prev, [selectedRole]: new Set(src) }));
     setSaved(false);
     setCopyFrom('');
+  };
+
+  // ── Create role ───────────────────────────────────────────────────────────
+  const handleCreateRole = async () => {
+    const name = newRoleName.trim();
+    if (!name) return;
+    setCreatingRole(true);
+    try {
+      const res = await api.post('/users/roles', { role_name: name });
+      const created = res.data.role_name as string;
+      setRoles(prev => [...prev, created]);
+      setAllPerms(prev => ({ ...prev, [created]: new Set() }));
+      setSavedPerms(prev => ({ ...prev, [created]: new Set() }));
+      setSelectedRole(created);
+      setNewRoleName('');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create role');
+    } finally {
+      setCreatingRole(false);
+    }
+  };
+
+  // ── Delete role ───────────────────────────────────────────────────────────
+  const handleDeleteRole = async (roleName: string, roleId?: number) => {
+    if (!confirm(`Delete role "${roleName}"? This cannot be undone.`)) return;
+    setDeletingRole(roleName);
+    try {
+      // We need role_id — fetch it first if not known
+      const rolesRes = await api.get('/users/roles');
+      const found = (rolesRes.data.data || []).find((r: any) => r.role_name === roleName);
+      if (!found) throw new Error('Role not found');
+      await api.delete(`/users/roles/${found.role_id}`);
+      setRoles(prev => prev.filter(r => r !== roleName));
+      setAllPerms(prev => { const n = { ...prev }; delete n[roleName]; return n; });
+      setSavedPerms(prev => { const n = { ...prev }; delete n[roleName]; return n; });
+      if (selectedRole === roleName) setSelectedRole(roles.find(r => r !== roleName) || '');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete role');
+    } finally {
+      setDeletingRole(null);
+    }
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -359,45 +403,86 @@ const AccessControl = () => {
         <div className="flex min-h-[600px]">
 
           {/* ── Role sidebar ────────────────────────────────────────────── */}
-          <div className="w-56 shrink-0 border-r border-gray-100 p-4 space-y-2 bg-gray-50/50">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider px-1 mb-3">
+          <div className="w-56 shrink-0 border-r border-gray-100 p-4 bg-gray-50/50 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider px-1 mb-1">
               <Users size={12} /> Roles
             </div>
 
-            {roles.length === 0 ? (
-              <p className="text-xs text-gray-400 px-1">No non-Admin roles found.</p>
-            ) : roles.map(role => {
-              const { count, pct } = roleStats(role);
-              const active  = selectedRole === role;
-              const hasDirt = isDirty(role);
-              return (
+            {/* Role list */}
+            <div className="flex flex-col gap-2 flex-1">
+              {roles.length === 0 ? (
+                <p className="text-xs text-gray-400 px-1">No roles yet. Create one below.</p>
+              ) : roles.map(role => {
+                const { count, pct } = roleStats(role);
+                const active  = selectedRole === role;
+                const hasDirt = isDirty(role);
+                const deleting = deletingRole === role;
+                return (
+                  <div key={role} className="relative group">
+                    <button
+                      onClick={() => setSelectedRole(role)}
+                      className={`w-full text-left px-3 py-3 rounded-xl transition-all ${
+                        active
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-semibold text-sm pr-5">{role}</span>
+                        {hasDirt && (
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-300' : 'bg-amber-500'}`} />
+                        )}
+                      </div>
+                      <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${active ? 'bg-white/30' : 'bg-gray-100'}`}>
+                        <div
+                          className={`h-full rounded-full transition-all ${active ? 'bg-white' : 'bg-emerald-500'}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs ${active ? 'text-emerald-100' : 'text-gray-400'}`}>
+                        {count}/{TOTAL_MODULES} modules · {pct}%
+                      </span>
+                    </button>
+                    {/* Delete button — appears on hover */}
+                    <button
+                      onClick={() => handleDeleteRole(role)}
+                      disabled={deleting}
+                      title={`Delete ${role}`}
+                      className={`absolute top-2 right-2 p-1 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${
+                        active
+                          ? 'text-white/70 hover:text-white hover:bg-white/20'
+                          : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                      } disabled:opacity-30`}
+                    >
+                      {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Create new role */}
+            <div className="pt-2 border-t border-gray-200 mt-1">
+              <p className="text-xs font-semibold text-gray-400 mb-1.5 px-1">New Role</p>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={newRoleName}
+                  onChange={e => setNewRoleName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCreateRole()}
+                  placeholder="Role name..."
+                  className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-lg outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 bg-white"
+                />
                 <button
-                  key={role}
-                  onClick={() => setSelectedRole(role)}
-                  className={`w-full text-left px-3 py-3 rounded-xl transition-all ${
-                    active
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
-                  }`}
+                  onClick={handleCreateRole}
+                  disabled={creatingRole || !newRoleName.trim()}
+                  title="Create role"
+                  className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-semibold text-sm">{role}</span>
-                    {hasDirt && (
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-300' : 'bg-amber-500'}`} />
-                    )}
-                  </div>
-                  <div className={`w-full h-1 rounded-full overflow-hidden mb-1 ${active ? 'bg-white/30' : 'bg-gray-100'}`}>
-                    <div
-                      className={`h-full rounded-full transition-all ${active ? 'bg-white' : 'bg-emerald-500'}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className={`text-xs ${active ? 'text-emerald-100' : 'text-gray-400'}`}>
-                    {count}/{TOTAL_MODULES} modules · {pct}%
-                  </span>
+                  {creatingRole ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                 </button>
-              );
-            })}
+              </div>
+            </div>
           </div>
 
           {/* ── Right: Permission editor ─────────────────────────────────── */}
