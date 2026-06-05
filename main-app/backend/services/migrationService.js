@@ -251,6 +251,32 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS printer_agent_url VARCHAR(255) NULL`);
     },
   },
+  {
+    version: 11,
+    name: 'print_queue_table',
+    async run(db) {
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS print_queue (
+          id           INT AUTO_INCREMENT PRIMARY KEY,
+          type         VARCHAR(50)  NOT NULL DEFAULT 'invoice',
+          payload      JSON         NOT NULL,
+          status       ENUM('pending','printing','done','failed') DEFAULT 'pending',
+          error_message TEXT        NULL,
+          created_at   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+          processed_at DATETIME     NULL,
+          INDEX idx_pq_status (status),
+          INDEX idx_pq_created (created_at)
+        )
+      `);
+    },
+  },
+  {
+    version: 12,
+    name: 'agent_token_column',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS agent_token VARCHAR(100) NULL`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

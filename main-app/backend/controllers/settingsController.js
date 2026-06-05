@@ -153,13 +153,15 @@ exports.updateSettings = async (req, res) => {
       logger.warn('tax_on_cash/card/online column error:', txErr.message);
     }
 
-    // Update printer agent URL
+    // Update printer agent URL and agent token
     try {
-      const { printer_agent_url } = req.body;
-      await query(`UPDATE store_settings SET printer_agent_url=? WHERE setting_id=1`,
-        [printer_agent_url || null]);
+      const { printer_agent_url, agent_token } = req.body;
+      await query(
+        `UPDATE store_settings SET printer_agent_url=?, agent_token=? WHERE setting_id=1`,
+        [printer_agent_url || null, agent_token || null]
+      );
     } catch (paErr) {
-      logger.warn('printer_agent_url column error:', paErr.message);
+      logger.warn('printer_agent_url/agent_token column error:', paErr.message);
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
@@ -750,6 +752,76 @@ exports.getSystemInfo = async (req, res) => {
       uptime: Math.floor(process.uptime()),
       memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
     });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Add Print Job to Queue ---
+exports.addPrintJob = async (req, res) => {
+  try {
+    const { type = 'invoice', receiptData, kotData } = req.body;
+    if (!receiptData && !kotData) {
+      return res.status(400).json({ message: 'receiptData or kotData is required' });
+    }
+    const payload = JSON.stringify(receiptData ? { receiptData } : { kotData });
+    const result = await query(
+      'INSERT INTO print_queue (type, payload, status) VALUES (?, ?, ?)',
+      [type, payload, 'pending']
+    );
+    res.json({ success: true, job_id: result.insertId });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Get Pending Print Jobs (browser polls this) ---
+exports.getPendingPrintJobs = async (req, res) => {
+  try {
+    const jobs = await query(
+      `SELECT id, type, payload, created_at
+       FROM print_queue
+       WHERE status = 'pending'
+       ORDER BY created_at ASC
+       LIMIT 5`
+    );
+
+    if (jobs.length > 0) {
+      const ids = jobs.map(j => j.id);
+      await query(
+        `UPDATE print_queue SET status = 'printing' WHERE id IN (${ids.map(() => '?').join(',')})`,
+        ids
+      );
+    }
+
+    const parsed = jobs.map(j => ({
+      id:      j.id,
+      type:    j.type,
+      payload: typeof j.payload === 'string' ? JSON.parse(j.payload) : j.payload,
+    }));
+
+    res.json({ jobs: parsed });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Update Print Job Status (browser reports result) ---
+exports.updatePrintJobStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, error_message } = req.body;
+    if (!['done', 'failed'].includes(status)) {
+      return res.status(400).json({ message: 'status must be done or failed' });
+    }
+    await query(
+      `UPDATE print_queue SET status = ?, error_message = ?, processed_at = NOW() WHERE id = ?`,
+      [status, error_message || null, id]
+    );
+    res.json({ success: true });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });

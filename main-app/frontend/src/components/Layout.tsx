@@ -62,6 +62,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIWidget from './AIWidget';
 import ProfileModal from './ProfileModal';
+import { usePrintQueue } from '../hooks/usePrintQueue';
 
 interface MenuItem {
   icon: any;
@@ -77,6 +78,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, hasPermission, isAdmin, activeBranchId, setActiveBranchId } = useAuth();
+  usePrintQueue();
   const [branches, setBranches] = useState<{ store_id: number; store_name: string }[]>([]);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);

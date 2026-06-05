@@ -21,6 +21,11 @@ router.post('/print-receipt', settingsController.printReceipt);
 // Proxy print to Printer Agent on cashier PC
 router.post('/print-via-agent', settingsController.printViaAgent);
 
+// Print Queue — mobile adds jobs, cashier browser processes them
+router.post('/print-queue',        settingsController.addPrintJob);
+router.get('/print-queue/pending', settingsController.getPendingPrintJobs);
+router.patch('/print-queue/:id',   settingsController.updatePrintJobStatus);
+
 // Print invoice/quotation to thermal printer
 router.post('/print-thermal-document', settingsController.printThermalDocument);
 

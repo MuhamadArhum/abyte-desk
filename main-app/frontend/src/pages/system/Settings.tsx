@@ -1002,23 +1002,20 @@ const Settings = () => {
                 </div>
               </div>
 
-              {/* ── Agent URL config (for mobile app / backend proxy) ── */}
+              {/* ── Mobile Print Queue Info ── */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-700 mb-3">Agent URL (for Mobile App)</h2>
-                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
-                  <p className="text-xs text-gray-500">
-                    Mobile app prints via the backend → Agent. Enter the cashier PC's IP where the agent is running.
+                <h2 className="text-sm font-semibold text-gray-700 mb-3">Mobile Print Queue</h2>
+                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 space-y-2">
+                  <p className="text-xs font-semibold text-emerald-800">How it works</p>
+                  <ol className="text-xs text-emerald-700 space-y-1 list-decimal list-inside">
+                    <li>Mobile app sends print job → saved in database</li>
+                    <li>Cashier PC browser (this app) checks every 5 seconds</li>
+                    <li>Browser forwards job to local Printer Agent (localhost:3001)</li>
+                    <li>Agent prints on the thermal printer</li>
+                  </ol>
+                  <p className="text-xs text-emerald-600 mt-2">
+                    No configuration needed — just keep the POS open on the cashier PC and make sure the Printer Agent is running.
                   </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={settings.printer_agent_url || ''}
-                      onChange={e => setSettings({ ...settings, printer_agent_url: e.target.value })}
-                      placeholder="http://192.168.1.10:3001"
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 bg-white font-mono"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400">Example: <code className="bg-white px-1 rounded border border-gray-200">http://192.168.1.10:3001</code></p>
                 </div>
               </div>
 

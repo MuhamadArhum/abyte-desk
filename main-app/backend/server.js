@@ -117,7 +117,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Subdomain'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-Subdomain', 'X-Tenant-Code', 'X-Agent-Token'],
 };
 
 // ── Rate Limiters ────────────────────────────────────────────
@@ -183,6 +183,7 @@ app.use('/api/ai',                aiLimiter);
 // Health check — public, no auth (used to wake up Render free tier)
 app.get('/api/ping',    (_req, res) => res.json({ ok: true }));
 app.get('/api/v1/ping', (_req, res) => res.json({ ok: true, version: 'v1' }));
+
 
 // Auth (no tenant guard needed — login resolves tenant itself)
 app.use('/api/auth',    authRoutes);
