@@ -389,7 +389,7 @@ exports.getPending = async (req, res) => {
     };
 
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name,
+      SELECT s.*, u.name as cashier_name,
         rt.table_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
@@ -693,9 +693,8 @@ exports.getToday = async (req, res) => {
     const branchParam  = activeBranch ? [activeBranch] : [];
 
     const sales = await query(`
-      SELECT s.*, c.customer_name, u.name as cashier_name
+      SELECT s.*, u.name as cashier_name
       FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
       WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)
         AND (s.status = 'completed' OR s.status = 'refunded')
@@ -770,7 +769,7 @@ exports.getAll = async (req, res) => {
     };
 
     let sql = `
-      SELECT s.*, c.customer_name, u.name as cashier_name,
+      SELECT s.*, u.name as cashier_name,
              COALESCE(d.delivery_charges, 0) AS delivery_charges
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
@@ -896,7 +895,7 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const sale = await query(`
-      SELECT s.*, c.customer_name, u.name as cashier_name,
+      SELECT s.*, u.name as cashier_name,
              rt.table_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.customer_id
