@@ -414,8 +414,6 @@ const POS = () => {
       setEditingSaleId(sale.sale_id);
       setEditingTokenNo(sale.token_no || null);
       setAssignedUserId(saleData.user_id || null);
-      // Fetch branch users for reassignment if not already loaded
-      api.get('/sales/assignable-users').then(r => setPosUsers(r.data || [])).catch(() => {});
     } catch (err) {
       console.error('Failed to load edit order', err);
       alert('Failed to load order for editing');
@@ -504,6 +502,12 @@ const POS = () => {
     fetchCustomers();
     fetchCategories();
     fetchProducts(1, '', 'All');
+    api.get('/sales/assignable-users').then(r => {
+      const users = r.data || [];
+      setPosUsers(users);
+      // Default: pre-select current logged-in user
+      if (user?.user_id) setAssignedUserId(user.user_id);
+    }).catch(() => {});
   }, [register]);
 
   // Re-fetch when page, category, or search changes (debounce search)
@@ -674,15 +678,21 @@ const POS = () => {
   }, [customers, customerSearch]);
 
   const handleAssignUser = async (userId: number) => {
-    if (!editingSaleId || userAssigning) return;
-    setUserAssigning(true);
-    try {
-      await api.put(`/sales/${editingSaleId}/assign-user`, { user_id: userId });
+    if (userAssigning) return;
+    // In edit mode: persist immediately to DB
+    if (editingSaleId) {
+      setUserAssigning(true);
+      try {
+        await api.put(`/sales/${editingSaleId}/assign-user`, { user_id: userId });
+        setAssignedUserId(userId);
+      } catch (err: any) {
+        alert(err.response?.data?.message || 'Failed to assign user');
+      } finally {
+        setUserAssigning(false);
+      }
+    } else {
+      // New order: just select for use when holding
       setAssignedUserId(userId);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to assign user');
-    } finally {
-      setUserAssigning(false);
     }
   };
 
@@ -705,7 +715,7 @@ const POS = () => {
       clearCart();
       setEditingSaleId(null);
       setEditingTokenNo(null);
-      setAssignedUserId(null);
+      if (user?.user_id) setAssignedUserId(user.user_id);
       resetDelivery();
       const walkin = customers.find(c => c.customer_id === 1);
       setSelectedCustomer(walkin || null);
@@ -733,7 +743,7 @@ const POS = () => {
         total_amount: total,
         payment_method: 'cash',
         amount_paid: 0,
-        user_id: user?.user_id,
+        user_id: assignedUserId || user?.user_id,
         status: 'pending',
         tax_percent: taxRate,
         additional_charges_percent: additionalRate,
@@ -746,6 +756,7 @@ const POS = () => {
       clearCart();
       setSelectedTableId(null);
       fetchTables();
+      if (user?.user_id) setAssignedUserId(user.user_id);
       const token = res.data?.token_no || null;
       setHoldToken(token);
       setTimeout(() => setHoldToken(null), 5000);
@@ -801,7 +812,7 @@ const POS = () => {
         total_amount: total,
         payment_method: 'cash',
         amount_paid: 0,
-        user_id: user?.user_id,
+        user_id: assignedUserId || user?.user_id,
         status: 'pending',
         tax_percent: taxRate,
         additional_charges_percent: additionalRate,
@@ -822,6 +833,7 @@ const POS = () => {
 
       clearCart();
       resetDelivery();
+      if (user?.user_id) setAssignedUserId(user.user_id);
       setDeliveryConfirm(delRes.data.delivery_number);
       setTimeout(() => setDeliveryConfirm(null), 6000);
     } catch (err: any) {
@@ -1249,7 +1261,7 @@ const POS = () => {
             )}
             {cart.length > 0 && (
               <button
-                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); setAssignedUserId(null); resetDelivery(); }}
+                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); if (user?.user_id) setAssignedUserId(user.user_id); resetDelivery(); }}
                 className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
                 title="Clear Cart"
               >
@@ -1269,7 +1281,7 @@ const POS = () => {
               </p>
             </div>
             <button
-              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); setAssignedUserId(null); resetDelivery(); }}
+              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); if (user?.user_id) setAssignedUserId(user.user_id); resetDelivery(); }}
               className="text-blue-400 hover:text-blue-200 text-xs font-medium"
             >
               Cancel
@@ -1277,35 +1289,46 @@ const POS = () => {
           </div>
         )}
 
-        {/* ── User Reassignment Panel (edit mode only) ── */}
-        {editingSaleId && posUsers.length > 0 && (
-          <div className="bg-blue-50 border-b border-blue-200 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center gap-1.5 mb-2">
-              <User size={12} className="text-blue-500" />
-              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Assign Waiter</span>
-              {userAssigning && <span className="text-xs text-blue-400 ml-auto">Saving...</span>}
+        {/* ── Waiter / User Panel (always visible) ── */}
+        {posUsers.length > 0 && (
+          <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                <User size={12} /> Waiter
+                {userAssigning && <span className="text-gray-400 font-normal normal-case ml-1">Saving...</span>}
+              </span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {posUsers.map(u => (
-                <button
-                  key={u.user_id}
-                  onClick={() => handleAssignUser(u.user_id)}
-                  disabled={userAssigning}
-                  title={u.role_name}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all disabled:opacity-60 ${
-                    assignedUserId === u.user_id
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:bg-blue-50'
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                    assignedUserId === u.user_id ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>
-                    {u.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="truncate max-w-[80px]">{u.name}</span>
-                </button>
-              ))}
+            <div className="space-y-1 max-h-[160px] overflow-y-auto pr-0.5">
+              {posUsers.map(u => {
+                const isSelected = assignedUserId === u.user_id;
+                return (
+                  <button
+                    key={u.user_id}
+                    onClick={() => handleAssignUser(u.user_id)}
+                    disabled={userAssigning}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all disabled:opacity-60 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="flex-1 text-left truncate">{u.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {u.role_name}
+                    </span>
+                    {isSelected && (
+                      <div className="w-2 h-2 rounded-full bg-white shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1813,7 +1836,7 @@ const POS = () => {
           setSelectedPendingSale(null);
           setEditingSaleId(null);
           setEditingTokenNo(null);
-          setAssignedUserId(null);
+          if (user?.user_id) setAssignedUserId(user.user_id);
           setShowMobileCart(false);
           setSelectedTableId(null);
           fetchTables();
