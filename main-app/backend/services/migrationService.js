@@ -184,6 +184,14 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    version: 8,
+    name: 'sales_customer_name_phone',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(150) NULL`);
+      await queryDb(db, `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30) NULL`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {
