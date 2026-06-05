@@ -124,6 +124,104 @@ const TableSearchInput = ({
   );
 };
 
+// ── UserSelectInput ──────────────────────────────────────────
+const UserSelectInput = ({
+  users, selectedUserId, onSelect, saving,
+}: {
+  users: any[];
+  selectedUserId: number | null;
+  onSelect: (id: number) => void;
+  saving?: boolean;
+}) => {
+  const [query, setQuery] = useState('');
+  const [showDrop, setShowDrop] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setShowDrop(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selectedUser = users.find(u => u.user_id === selectedUserId);
+
+  const filtered = query.trim()
+    ? users.filter(u => u.name.toLowerCase().includes(query.toLowerCase()))
+    : users;
+
+  const handlePick = (u: any) => {
+    onSelect(u.user_id);
+    setQuery('');
+    setShowDrop(false);
+  };
+
+  return (
+    <div ref={ref} className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+          <User size={12} /> Waiter
+          {saving && <span className="text-gray-400 font-normal normal-case ml-1">Saving...</span>}
+        </span>
+      </div>
+
+      {selectedUser && !showDrop ? (
+        <div className="flex items-center gap-2 bg-blue-600 text-white rounded-lg px-3 py-2">
+          <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
+            {selectedUser.name.charAt(0).toUpperCase()}
+          </div>
+          <span className="font-semibold text-sm flex-1">{selectedUser.name}</span>
+          <span className="text-blue-200 text-xs">{selectedUser.role_name}</span>
+          <button
+            onClick={() => setShowDrop(true)}
+            className="text-blue-200 hover:text-white ml-1"
+            title="Change waiter"
+          >
+            <Search size={13} />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+          <input
+            type="text"
+            placeholder={users.length === 0 ? 'No users available' : 'Search waiter...'}
+            disabled={users.length === 0}
+            autoFocus={showDrop}
+            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setShowDrop(true); }}
+            onFocus={() => setShowDrop(true)}
+          />
+          {showDrop && filtered.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-auto z-40">
+              {filtered.map((u: any) => (
+                <button
+                  key={u.user_id}
+                  onClick={() => handlePick(u)}
+                  className="w-full text-left px-3 py-2.5 flex items-center gap-2 text-sm border-b border-gray-100 last:border-0 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-semibold text-gray-800 flex-1">{u.name}</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    {u.role_name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const POS = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1289,48 +1387,14 @@ const POS = () => {
           </div>
         )}
 
-        {/* ── Waiter / User Panel (always visible) ── */}
+        {/* ── Waiter / User Panel ── */}
         {posUsers.length > 0 && (
-          <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                <User size={12} /> Waiter
-                {userAssigning && <span className="text-gray-400 font-normal normal-case ml-1">Saving...</span>}
-              </span>
-            </div>
-            <div className="space-y-1 max-h-[160px] overflow-y-auto pr-0.5">
-              {posUsers.map(u => {
-                const isSelected = assignedUserId === u.user_id;
-                return (
-                  <button
-                    key={u.user_id}
-                    onClick={() => handleAssignUser(u.user_id)}
-                    disabled={userAssigning}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all disabled:opacity-60 ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                  >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="flex-1 text-left truncate">{u.name}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {u.role_name}
-                    </span>
-                    {isSelected && (
-                      <div className="w-2 h-2 rounded-full bg-white shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <UserSelectInput
+            users={posUsers}
+            selectedUserId={assignedUserId}
+            onSelect={handleAssignUser}
+            saving={userAssigning}
+          />
         )}
 
         {/* ── Dine-In: Table Search Input ── */}
