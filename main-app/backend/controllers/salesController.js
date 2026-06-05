@@ -51,6 +51,12 @@ async function ensureSalesSchema(db) {
     `ALTER TABLE sales ADD COLUMN IF NOT EXISTS additional_charges_amount DECIMAL(10,2) DEFAULT 0`,
     `ALTER TABLE sales ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) DEFAULT 0`,
     `ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0`,
+    `ALTER TABLE sale_details ADD COLUMN IF NOT EXISTS note TEXT NULL`,
+    `ALTER TABLE sale_details ADD COLUMN IF NOT EXISTS variant_id INT NULL`,
+    `ALTER TABLE sale_details ADD COLUMN IF NOT EXISTS variant_name VARCHAR(100) NULL`,
+    `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_charges DECIMAL(10,2) DEFAULT 0`,
+    `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS notes TEXT NULL`,
+    `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_number VARCHAR(30) NULL`,
   ];
   for (const sql of stmts) {
     try { await query(sql); } catch (e) {
