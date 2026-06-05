@@ -104,6 +104,7 @@ export default function RunningScreen() {
   const [billLoading, setBillLoading] = useState(false);
   const [billStep, setBillStep] = useState('payment');
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [printing, setPrinting] = useState(false);
 
   // Table swap state
   const [swapOrder, setSwapOrder] = useState(null);
@@ -186,6 +187,50 @@ export default function RunningScreen() {
     setBillData(null);
     setSelectedPayment(null);
     setBillStep('payment');
+    setPrinting(false);
+  };
+
+  const handlePrint = async () => {
+    if (!billData || printing) return;
+    setPrinting(true);
+    try {
+      const s = billData.settings || {};
+      const sale = billData.sale || {};
+      const receiptData = {
+        storeName:      s.store_name || 'Restaurant',
+        storeAddress:   s.address || '',
+        storePhone:     s.phone || '',
+        storeEmail:     s.email || '',
+        saleId:         sale.sale_id,
+        tokenNo:        sale.token_no || `#${sale.sale_id}`,
+        tableName:      sale.table_name || '',
+        orderType:      ORDER_TYPE_LABEL[sale.order_type] || sale.order_type || '',
+        date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
+        cashierName:    sale.cashier_name || '',
+        customerName:   sale.customer_name || '',
+        currencySymbol: s.currency_symbol || 'Rs.',
+        paymentMethod:  selectedPayment || 'cash',
+        items: billData.items.map((i) => ({
+          name:     i.product_name || 'Item',
+          quantity: i.quantity,
+          price:    parseFloat(i.unit_price || 0),
+        })),
+        discount:    parseFloat(sale.discount || 0),
+        taxAmount:   billTaxAmt,
+        totalAmount: billTotal,
+        amountPaid:  billTotal,
+        changeDue:   0,
+        note:        sale.note || '',
+      };
+      await api.post('/settings/print-receipt', { receiptData });
+      haptic();
+      Alert.alert('Printed', 'Bill sent to printer successfully.');
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
+      Alert.alert('Print Failed', msg);
+    } finally {
+      setPrinting(false);
+    }
   };
 
   // Table swap handlers
@@ -510,9 +555,18 @@ export default function RunningScreen() {
                   </View>
                 </ScrollView>
 
-                <TouchableOpacity style={styles.closeFullBtn} onPress={closeBill}>
-                  <Text style={styles.closeFullBtnText}>Close</Text>
-                </TouchableOpacity>
+                <View style={styles.billActionRow}>
+                  <TouchableOpacity style={styles.printBtn} onPress={handlePrint} disabled={printing} activeOpacity={0.75}>
+                    {printing
+                      ? <ActivityIndicator size="small" color="#FFFFFF" />
+                      : <Ionicons name="print-outline" size={18} color="#FFFFFF" />
+                    }
+                    <Text style={styles.printBtnText}>{printing ? 'Printing...' : 'Print Bill'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.closeFullBtn} onPress={closeBill}>
+                    <Text style={styles.closeFullBtnText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </View>
@@ -781,8 +835,18 @@ const styles = StyleSheet.create({
   },
   pendingNoteText: { flex: 1, fontSize: 12, color: '#92400E', lineHeight: 17 },
 
+  billActionRow: {
+    flexDirection: 'row', gap: 10,
+    marginHorizontal: 16, marginTop: 6, marginBottom: 16,
+  },
+  printBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 15,
+    backgroundColor: '#059669', borderRadius: 14,
+  },
+  printBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   closeFullBtn: {
-    margin: 16, marginTop: 6, paddingVertical: 15,
+    flex: 1, paddingVertical: 15,
     backgroundColor: C.surface, borderRadius: 14,
     alignItems: 'center', borderWidth: 1, borderColor: C.border,
   },
