@@ -225,7 +225,7 @@ export default function RunningScreen() {
         changeDue:   0,
         note:        sale.note || '',
       };
-      await api.post('/settings/print-receipt', { receiptData });
+      await api.post('/settings/print-via-agent', { type: 'invoice', receiptData });
       haptic();
       Alert.alert('Printed', 'Bill sent to printer successfully.');
     } catch (err) {

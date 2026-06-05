@@ -244,6 +244,13 @@ const MIGRATIONS = [
       }
     },
   },
+  {
+    version: 10,
+    name: 'printer_agent_url',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS printer_agent_url VARCHAR(255) NULL`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

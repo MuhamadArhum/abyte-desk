@@ -18,6 +18,9 @@ router.post('/change-password', settingsController.changePassword);
 // Print receipt via configured printer
 router.post('/print-receipt', settingsController.printReceipt);
 
+// Proxy print to Printer Agent on cashier PC
+router.post('/print-via-agent', settingsController.printViaAgent);
+
 // Print invoice/quotation to thermal printer
 router.post('/print-thermal-document', settingsController.printThermalDocument);
 

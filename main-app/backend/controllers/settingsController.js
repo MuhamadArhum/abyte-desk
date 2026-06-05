@@ -3,6 +3,8 @@ const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
 const bcrypt = require('bcryptjs');
 const net = require('net');
+const https = require('https');
+const http = require('http');
 
 // --- Get Store Settings ---
 exports.getSettings = async (req, res) => {
@@ -151,6 +153,15 @@ exports.updateSettings = async (req, res) => {
       logger.warn('tax_on_cash/card/online column error:', txErr.message);
     }
 
+    // Update printer agent URL
+    try {
+      const { printer_agent_url } = req.body;
+      await query(`UPDATE store_settings SET printer_agent_url=? WHERE setting_id=1`,
+        [printer_agent_url || null]);
+    } catch (paErr) {
+      logger.warn('printer_agent_url column error:', paErr.message);
+    }
+
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
@@ -231,6 +242,54 @@ exports.printReceipt = async (req, res) => {
   } catch (err) {
     logger.error('Print error:', err);
     res.status(500).json({ message: err.message || 'Failed to print receipt' });
+  }
+};
+
+// --- Proxy print request to Printer Agent running on cashier PC ---
+exports.printViaAgent = async (req, res) => {
+  try {
+    const rows = await query('SELECT printer_agent_url FROM store_settings WHERE setting_id = 1');
+    const agentUrl = (rows[0]?.printer_agent_url || '').trim();
+    if (!agentUrl) {
+      return res.status(400).json({ message: 'Printer Agent URL not configured. Go to Settings and set the Agent URL (e.g. http://192.168.1.10:3001).' });
+    }
+
+    const { type = 'invoice', receiptData, kotData } = req.body;
+    const endpoint = type === 'kot' ? '/print/kot' : '/print/invoice';
+    const payload  = type === 'kot' ? { kotData } : { receiptData };
+
+    const targetUrl = agentUrl.replace(/\/$/, '') + endpoint;
+    const body = JSON.stringify(payload);
+    const urlObj = new URL(targetUrl);
+    const lib = urlObj.protocol === 'https:' ? https : http;
+
+    const result = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: urlObj.hostname,
+        port:     urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path:     urlObj.pathname,
+        method:   'POST',
+        headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        timeout:  8000,
+      };
+      const req2 = lib.request(options, (r) => {
+        let data = '';
+        r.on('data', d => data += d);
+        r.on('end', () => {
+          try { resolve({ status: r.statusCode, body: JSON.parse(data) }); }
+          catch { resolve({ status: r.statusCode, body: { error: data } }); }
+        });
+      });
+      req2.on('timeout', () => { req2.destroy(); reject(new Error('Agent not reachable (timeout). Is it running?')); });
+      req2.on('error', reject);
+      req2.write(body);
+      req2.end();
+    });
+
+    res.status(result.status).json(result.body);
+  } catch (err) {
+    logger.error('Agent proxy error:', err);
+    res.status(500).json({ message: err.message || 'Failed to reach printer agent' });
   }
 };
 

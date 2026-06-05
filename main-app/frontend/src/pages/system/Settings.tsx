@@ -1002,6 +1002,26 @@ const Settings = () => {
                 </div>
               </div>
 
+              {/* ── Agent URL config (for mobile app / backend proxy) ── */}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 mb-3">Agent URL (for Mobile App)</h2>
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
+                  <p className="text-xs text-gray-500">
+                    Mobile app prints via the backend → Agent. Enter the cashier PC's IP where the agent is running.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={settings.printer_agent_url || ''}
+                      onChange={e => setSettings({ ...settings, printer_agent_url: e.target.value })}
+                      placeholder="http://192.168.1.10:3001"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 bg-white font-mono"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400">Example: <code className="bg-white px-1 rounded border border-gray-200">http://192.168.1.10:3001</code></p>
+                </div>
+              </div>
+
               {/* ── Auto Print Receipt toggle (still useful) ── */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">Receipt Settings</h2>
