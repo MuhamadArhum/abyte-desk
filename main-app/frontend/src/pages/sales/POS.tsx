@@ -11,7 +11,7 @@ import DailyReportModal from '../../components/DailyReportModal';
 import RegisterCloseModal from '../../components/RegisterCloseModal';
 import ProductVariantModal from '../../components/ProductVariantModal';
 import api from '../../utils/api';
-import { printKOT, checkAgentHealth } from '../../utils/agentPrinter';
+import { printKOT } from '../../utils/agentPrinter';
 
 // ── TableSearchInput ─────────────────────────────────────────
 const TableSearchInput = ({
@@ -408,48 +408,13 @@ const POS = () => {
       note:          undefined,
     }));
 
-    // Try Printer Agent first (section-wise routing)
-    const agent = await checkAgentHealth();
-    if (agent) {
-      await printKOT({
-        tokenNo:     tokenNo || undefined,
-        tableNo:     tableName || undefined,
-        date:        new Date().toLocaleString(),
-        cashierName: user?.name || 'Staff',
-        items:       kotItems,
-      });
-      return;
-    }
-
-    // Fallback: browser print window
-    const kotWin = window.open('', '_blank', 'width=320,height=600');
-    if (!kotWin) return;
-    kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
-      <style>
-        body{font-family:monospace;font-size:13px;padding:12px;margin:0}
-        h2{text-align:center;font-size:15px;margin:0 0 4px}
-        .sub{text-align:center;font-size:11px;color:#555;margin-bottom:6px}
-        hr{border:none;border-top:1px dashed #000;margin:6px 0}
-        .tbl{font-size:16px;font-weight:bold;text-align:center;padding:4px 0}
-        .row{display:flex;gap:8px;padding:3px 0}
-        .qty{font-weight:bold;min-width:28px}
-        .name{flex:1}
-        .footer{text-align:center;font-size:10px;margin-top:8px}
-      </style></head><body>
-      <h2>KITCHEN ORDER TICKET</h2>
-      <div class="sub">${new Date().toLocaleString()}</div>
-      <hr/>
-      ${tableName ? `<div class="tbl">${tableName}</div>` : ''}
-      ${tokenNo ? `<div class="tbl">Token: ${tokenNo}</div>` : ''}
-      <div class="sub">By: ${user?.name || ''}</div>
-      <hr/>
-      ${cart.map(i => `<div class="row"><span class="qty">${i.quantity}x</span><span class="name">${i.product_name}${i.variant_name ? ` (${i.variant_name})` : ''}</span></div>`).join('')}
-      <hr/>
-      <div class="footer">--- KOT END ---</div>
-    </body></html>`);
-    kotWin.document.close();
-    kotWin.focus();
-    setTimeout(() => { kotWin.print(); kotWin.close(); }, 300);
+    await printKOT({
+      tokenNo:     tokenNo || undefined,
+      tableNo:     tableName || undefined,
+      date:        new Date().toLocaleString(),
+      cashierName: user?.name || 'Staff',
+      items:       kotItems,
+    });
   };
 
   // Check register on mount + load store settings + fetch tables

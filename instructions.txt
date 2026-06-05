@@ -18,4 +18,8 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
+Acha Aik Kaam kro Ab 
+1: Main App Main Printing Ko Thora Thi Krna hai Jab Bhi User Order Punch Kry to KOT Jani Chaye or Uski joob direct Agent KO Jani Chaye 
+2: Iss Trha Jab Bill ka Print diya jaye to bhi Window print popuo open hony ki bjaye direct wo print job agent ko jaye 
+or ye sara kaam sale module main hi krna hai bs baki modules main hum manual printer use krty hain Sirf sale module k Liye jo Prints hain wo automate krny hain yani without popup wo printing quee main chaly jain or agent printer ko bhej kr print kr dy 
 

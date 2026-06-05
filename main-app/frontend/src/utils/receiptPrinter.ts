@@ -814,27 +814,19 @@ export function isThermalPrinterAvailable(_settings: any): boolean {
   return true;
 }
 
-// Send receipt to thermal printer.
-// Strategy:
-//   1. Local Printer Agent (localhost:3001) — runs on cashier PC, works everywhere
-//   2. Backend API (localhost backend) — direct TCP from server to printer
-//   3. QZ Tray — local agent for cloud deployments
-//   4. Fallback — browser window.print() dialog
+// Send receipt via print queue — cashier browser picks it up and sends to agent
 export async function printToThermalPrinter(
   sale: ReceiptSale,
   settings: ReceiptSettings | null,
   cashierName: string,
   customerName?: string
 ): Promise<boolean> {
-  const isLocalhost = window.location.hostname === 'localhost' ||
-                      window.location.hostname === '127.0.0.1';
-
-  const totalAmount = parseNumber(sale.total_amount);
-  const discount    = parseNumber(sale.discount);
-  const taxAmount   = parseNumber(sale.tax_amount);
-  const taxPercent  = parseNumber(sale.tax_percent);
+  const totalAmount   = parseNumber(sale.total_amount);
+  const discount      = parseNumber(sale.discount);
+  const taxAmount     = parseNumber(sale.tax_amount);
+  const taxPercent    = parseNumber(sale.tax_percent);
   const chargesAmount = parseNumber(sale.additional_charges_amount);
-  const amountPaid  = parseNumber(sale.amount_paid);
+  const amountPaid    = parseNumber(sale.amount_paid);
 
   const receiptData = {
     storeName:      settings?.store_name || 'AByte ERP',
@@ -853,88 +845,37 @@ export async function printToThermalPrinter(
       quantity: item.quantity,
       price:    parseNumber(item.unit_price),
     })),
-    subtotal:     totalAmount - taxAmount - chargesAmount + discount,
+    subtotal:      totalAmount - taxAmount - chargesAmount + discount,
     discount,
     taxAmount,
     taxPercent,
     chargesAmount,
     totalAmount,
     amountPaid,
-    changeDue:    Math.max(0, amountPaid - totalAmount),
+    changeDue:     Math.max(0, amountPaid - totalAmount),
     paymentMethod: sale.payment_method,
-    footer:       settings?.receipt_footer || 'Thank you for shopping!',
+    footer:        settings?.receipt_footer || 'Thank you for shopping!',
   };
 
-  // ── 1. Local Printer Agent — highest priority ──────────────────────
-  const printerAgentUrl = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
   try {
-    const agentRes = await fetch(`${printerAgentUrl}/health`, { signal: AbortSignal.timeout(1000) });
-    if (agentRes.ok) {
-      const printRes = await fetch(`${printerAgentUrl}/print/invoice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiptData }),
-      });
-      if (printRes.ok) return true;
-      const err = await printRes.json().catch(() => ({}));
-      console.warn('Printer agent print failed:', err.error || err.message);
-    }
+    await api.post('/settings/print-queue', { type: 'invoice', receiptData });
+    return true;
   } catch {
-    // Agent not running — try next method
+    return false;
   }
-
-  // ── 2. Localhost: use backend API (server on same LAN as printer) ──
-  if (isLocalhost) {
-    try {
-      await api.post('/settings/print-receipt', { receiptData });
-      return true;
-    } catch (err) {
-      console.warn('Backend print failed, falling back to browser print:', err);
-      printReceipt(sale, settings, cashierName, customerName);
-      return false;
-    }
-  }
-
-  // ── 3. Deployed: try QZ Tray (local agent on cashier PC) ────────────
-  try {
-    const { isQZAvailable, printViaQZ } = await import('./qzPrinter');
-    const qzReady = await isQZAvailable();
-    if (qzReady) {
-      // Get printer IP/port from settings (stored as printer_ip / printer_port in DB)
-      const printerIp   = (settings as any)?.printer_ip;
-      const printerPort = (settings as any)?.printer_port || 9100;
-      if (printerIp) {
-        await printViaQZ(printerIp, printerPort, receiptData);
-        return true;
-      }
-      // Printer IP not configured — try named printer as fallback
-      const { printViaQZByName } = await import('./qzPrinter');
-      const printerName = (settings as any)?.printer_name;
-      if (printerName) {
-        await printViaQZByName(printerName, receiptData);
-        return true;
-      }
-    }
-  } catch (err) {
-    console.warn('QZ Tray print failed:', err);
-  }
-
-  // ── 4. Final fallback: browser print dialog ──────────────────────────
-  printReceipt(sale, settings, cashierName, customerName);
-  return false;
 }
 
 // ── Print Cash / Print Card Bill ─────────────────────────────────────────────
 // Recalculates tax at the given rate and prints a clearly labelled bill.
 // The stored sale data is never modified — this only affects the printed copy.
-export function printBillWithTax(
+export async function printBillWithTax(
   sale: ReceiptSale,
   settings: ReceiptSettings | null,
   cashierName: string,
   customerName: string | undefined,
   taxType: 'cash' | 'card' | 'online',
   taxRate: number
-): void {
+): Promise<void> {
   const parseNum = (v: any) => parseFloat(String(v).replace(/[^\d.-]/g, '')) || 0;
 
   const origTaxAmount     = parseNum(sale.tax_amount);
@@ -943,23 +884,47 @@ export function printBillWithTax(
   const origTotal         = parseNum(sale.total_amount);
   const subtotal          = origTotal - origTaxAmount - origChargesAmount + origDiscount;
 
-  const newTaxAmount  = subtotal * taxRate / 100;
-  const newTotal      = subtotal + newTaxAmount + origChargesAmount - origDiscount;
-  const billLabel     = taxType === 'cash' ? 'CASH BILL' : taxType === 'card' ? 'CARD BILL' : 'ONLINE BILL';
+  const newTaxAmount = subtotal * taxRate / 100;
+  const newTotal     = subtotal + newTaxAmount + origChargesAmount - origDiscount;
+  const billLabel    = taxType === 'cash' ? 'CASH BILL' : taxType === 'card' ? 'CARD BILL' : 'ONLINE BILL';
 
-  const modifiedSale: ReceiptSale = {
-    ...sale,
-    tax_percent: taxRate,
-    tax_amount: newTaxAmount,
-    total_amount: newTotal,
-    amount_paid: newTotal,
-    payment_method: taxType,
+  const receiptData = {
+    storeName:      settings?.store_name || 'AByte ERP',
+    storeAddress:   settings?.address || '',
+    storePhone:     settings?.phone || '',
+    saleId:         sale.sale_id,
+    invoiceNo:      sale.invoice_no,
+    tokenNo:        sale.token_no,
+    date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
+    cashierName,
+    customerName:   customerName || '',
+    currencySymbol: settings?.currency_symbol || 'Rs.',
+    items: (sale.items || []).map((item: any) => ({
+      name:     item.product_name,
+      quantity: item.quantity,
+      price:    parseNum(item.unit_price),
+    })),
+    subtotal,
+    discount:      origDiscount,
+    taxAmount:     newTaxAmount,
+    taxPercent:    taxRate,
+    chargesAmount: origChargesAmount,
+    totalAmount:   newTotal,
+    amountPaid:    newTotal,
+    changeDue:     0,
+    paymentMethod: taxType,
+    footer:        `★ ${billLabel} ★\n${settings?.receipt_footer || 'Thank you for shopping!'}`,
   };
 
-  const modifiedSettings: ReceiptSettings = {
-    ...(settings || {}),
-    header_note: `★ ${billLabel} ★`,
-  };
-
-  printReceipt(modifiedSale, modifiedSettings, cashierName, customerName);
+  try {
+    await api.post('/settings/print-queue', { type: 'invoice', receiptData });
+  } catch {
+    // Fallback: browser print dialog
+    printReceipt(
+      { ...sale, tax_percent: taxRate, tax_amount: newTaxAmount, total_amount: newTotal, amount_paid: newTotal, payment_method: taxType },
+      { ...(settings || {}), header_note: `★ ${billLabel} ★` },
+      cashierName,
+      customerName
+    );
+  }
 }

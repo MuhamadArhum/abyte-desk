@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
-import { printReceipt } from '../../utils/receiptPrinter';
+import { printToThermalPrinter } from '../../utils/receiptPrinter';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
 
@@ -155,7 +155,7 @@ const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: 
         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
           <button
-            onClick={() => { printReceipt(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
+            onClick={() => { printToThermalPrinter(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
             className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
           >
             <Printer size={16} /> Print
@@ -252,40 +252,24 @@ const WalkInOrders = () => {
     } catch { /* fallback to header-only data */ }
 
     const tableName = fullSale.table_name || (fullSale.order_type === 'takeaway' ? 'TAKEAWAY' : 'DINE-IN');
-    const kotWin = window.open('', '_blank', 'width=320,height=600');
-    if (!kotWin) return;
     const items: any[] = fullSale.items || [];
-    kotWin.document.write(`<!DOCTYPE html><html><head><title>KOT</title>
-      <style>
-        body{font-family:monospace;font-size:13px;padding:12px;margin:0}
-        h2{text-align:center;font-size:15px;margin:0 0 4px}
-        .sub{text-align:center;font-size:11px;color:#555;margin-bottom:6px}
-        hr{border:none;border-top:1px dashed #000;margin:6px 0}
-        .tbl{font-size:16px;font-weight:bold;text-align:center;padding:4px 0}
-        .row{display:flex;gap:8px;padding:3px 0}
-        .qty{font-weight:bold;min-width:28px}
-        .name{flex:1}
-        .reprint{text-align:center;font-size:10px;color:#c00;font-weight:bold;margin-bottom:4px}
-        .footer{text-align:center;font-size:10px;margin-top:8px}
-      </style>
-    </head><body>
-      <h2>KITCHEN ORDER TICKET</h2>
-      <div class="reprint">*** REPRINT ***</div>
-      <div class="sub">${new Date().toLocaleString()}</div>
-      <hr/>
-      <div class="tbl">${tableName}</div>
-      <div class="sub">Token: ${sale.token_no || sale.sale_id}</div>
-      <hr/>
-      ${items.length > 0
-        ? items.map((item: any) => `<div class="row"><span class="qty">${item.quantity}x</span><span class="name">${item.product_name}${item.variant_name ? ` (${item.variant_name})` : ''}</span></div>`).join('')
-        : '<div class="sub">No item details available</div>'
-      }
-      <hr/>
-      <div class="footer">--- KOT END ---</div>
-    </body></html>`);
-    kotWin.document.close();
-    kotWin.focus();
-    setTimeout(() => { kotWin.print(); kotWin.close(); }, 300);
+
+    await api.post('/settings/print-queue', {
+      type: 'kot',
+      kotData: {
+        tokenNo:     String(sale.token_no || sale.sale_id),
+        tableNo:     tableName,
+        date:        new Date().toLocaleString(),
+        cashierName: fullSale.cashier_name || 'Staff',
+        items: items.map((item: any) => ({
+          name:          item.product_name + (item.variant_name ? ` (${item.variant_name})` : ''),
+          quantity:      item.quantity,
+          category_id:   item.category_id,
+          category_name: item.category_name,
+        })),
+      },
+    }).catch(console.error);
+
     await api.patch(`/sales/${sale.sale_id}/kot-printed`).catch(() => {});
   };
 

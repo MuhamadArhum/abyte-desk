@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { printReceipt, printBillWithTax } from '../utils/receiptPrinter';
-import { printKOT, printInvoice, checkAgentHealth } from '../utils/agentPrinter';
+import { printKOT, printInvoice } from '../utils/agentPrinter';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -387,24 +387,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       footer:        settings?.receipt_footer || 'Thank you for shopping!',
     };
 
-    const agent = await checkAgentHealth();
-    if (agent) {
-      const result = await printInvoice(invoiceData);
-      if (result.success) return;
-      console.warn('[print] Agent invoice failed:', result.error);
-    }
-
-    // Fallback: browser print
-    printReceipt(sale, settings, user?.name || 'Staff', selectedCustomer?.customer_name);
+    await printInvoice(invoiceData);
   };
 
   const doKOT = async (sale: any) => {
     if (!sale) return;
-    const agent = await checkAgentHealth();
-    if (!agent) return; // No agent running — skip KOT
     await printKOT({
-      tokenNo:     sale.token_no     || undefined,
-      tableNo:     sale.table_name   || undefined,
+      tokenNo:     sale.token_no   || undefined,
+      tableNo:     sale.table_name || undefined,
       date:        new Date().toLocaleString(),
       cashierName: user?.name || 'Staff',
       items: (sale.items || cart).map((item: any) => ({
@@ -418,7 +408,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
   const handlePrintWithTax = (taxType: 'cash' | 'card', taxRate: number) => {
     if (!successSale) return;
-    printBillWithTax(successSale, settings, user?.name || 'Staff', selectedCustomer?.customer_name, taxType, taxRate);
+    printBillWithTax(successSale, settings, user?.name || 'Staff', selectedCustomer?.customer_name, taxType, taxRate).catch(console.error);
   };
 
   // F6 = Print Cash, F7 = Print Card — active only while success screen is shown
