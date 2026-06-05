@@ -186,10 +186,24 @@ const MIGRATIONS = [
   },
   {
     version: 8,
-    name: 'sales_customer_name_phone',
+    name: 'sales_missing_columns',
     async run(db) {
-      await queryDb(db, `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(150) NULL`);
-      await queryDb(db, `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30) NULL`);
+      const stmts = [
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS note TEXT NULL`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS tax_percent DECIMAL(5,2) DEFAULT 0`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS tax_amount DECIMAL(10,2) DEFAULT 0`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS additional_charges_percent DECIMAL(5,2) DEFAULT 0`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS additional_charges_amount DECIMAL(10,2) DEFAULT 0`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(150) NULL`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30) NULL`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) DEFAULT 0`,
+      ];
+      for (const sql of stmts) {
+        try { await queryDb(db, sql); } catch (e) {
+          if (!e.message.includes('Duplicate column')) throw e;
+        }
+      }
     },
   },
 ];
