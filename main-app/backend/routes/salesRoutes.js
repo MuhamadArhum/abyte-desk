@@ -7,6 +7,8 @@ router.use(authenticate);
 
 router.post('/', requirePermission('sales.pos'), salesController.createSale);
 router.get('/pending', salesController.getPending);
+router.get('/assignable-users', salesController.getAssignableUsers);
+router.put('/:id/assign-user', requirePermission('sales.pos'), salesController.assignUser);
 router.put('/:id/complete', requirePermission('sales.pos'), salesController.completeSale);
 router.patch('/:id/kot-printed', requirePermission('sales.pos'), salesController.markKotPrinted);
 router.put('/:id/items', requirePermission('sales.pos'), salesController.updateSaleItems);

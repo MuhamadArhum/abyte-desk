@@ -374,6 +374,45 @@ exports.getPending = async (req, res) => {
   }
 };
 
+// --- Get users assignable to a pending sale (branch-scoped) ---
+exports.getAssignableUsers = async (req, res) => {
+  try {
+    let sql = 'SELECT user_id, name, role_name FROM users WHERE is_active = 1';
+    const params = [];
+    if (req.user.branch_id) {
+      sql += ' AND branch_id = ?';
+      params.push(req.user.branch_id);
+    }
+    sql += ' ORDER BY name ASC';
+    const users = await query(sql, params);
+    res.json(users);
+  } catch (error) {
+    logger.error('Get assignable users error:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+};
+
+// --- Reassign a pending sale to a different user ---
+exports.assignUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    if (!user_id) return res.status(400).json({ message: 'user_id is required' });
+
+    const sale = await query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    if (sale.length === 0) return res.status(404).json({ message: 'Pending sale not found' });
+
+    const userRows = await query('SELECT user_id, name FROM users WHERE user_id = ? AND is_active = 1', [user_id]);
+    if (userRows.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    await query('UPDATE sales SET user_id = ? WHERE sale_id = ?', [user_id, id]);
+    res.json({ message: 'User assigned', user_id: userRows[0].user_id, name: userRows[0].name });
+  } catch (error) {
+    logger.error('Assign user error:', error);
+    res.status(500).json({ message: 'Failed to assign user' });
+  }
+};
+
 // --- Complete a Pending Sale ---
 exports.completeSale = async (req, res) => {
   try {

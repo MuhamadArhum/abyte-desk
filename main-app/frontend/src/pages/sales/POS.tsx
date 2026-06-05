@@ -166,6 +166,11 @@ const POS = () => {
   const [editingSaleId, setEditingSaleId] = useState<number | null>(null);
   const [editingTokenNo, setEditingTokenNo] = useState<string | null>(null);
 
+  // User reassignment state (shown in cart when editing)
+  const [posUsers, setPosUsers] = useState<any[]>([]);
+  const [assignedUserId, setAssignedUserId] = useState<number | null>(null);
+  const [userAssigning, setUserAssigning] = useState(false);
+
   const [isDailyReportOpen, setIsDailyReportOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -408,6 +413,9 @@ const POS = () => {
       if (saleData.additional_charges_percent !== undefined) setAdditionalRate(parseFloat(saleData.additional_charges_percent) || 0);
       setEditingSaleId(sale.sale_id);
       setEditingTokenNo(sale.token_no || null);
+      setAssignedUserId(saleData.user_id || null);
+      // Fetch branch users for reassignment if not already loaded
+      api.get('/sales/assignable-users').then(r => setPosUsers(r.data || [])).catch(() => {});
     } catch (err) {
       console.error('Failed to load edit order', err);
       alert('Failed to load order for editing');
@@ -665,6 +673,19 @@ const POS = () => {
     ).slice(0, 8);
   }, [customers, customerSearch]);
 
+  const handleAssignUser = async (userId: number) => {
+    if (!editingSaleId || userAssigning) return;
+    setUserAssigning(true);
+    try {
+      await api.put(`/sales/${editingSaleId}/assign-user`, { user_id: userId });
+      setAssignedUserId(userId);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to assign user');
+    } finally {
+      setUserAssigning(false);
+    }
+  };
+
   const handleSaveEdit = async () => {
     if (!editingSaleId || cart.length === 0) return;
     try {
@@ -684,6 +705,7 @@ const POS = () => {
       clearCart();
       setEditingSaleId(null);
       setEditingTokenNo(null);
+      setAssignedUserId(null);
       resetDelivery();
       const walkin = customers.find(c => c.customer_id === 1);
       setSelectedCustomer(walkin || null);
@@ -1227,7 +1249,7 @@ const POS = () => {
             )}
             {cart.length > 0 && (
               <button
-                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); resetDelivery(); }}
+                onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); setAssignedUserId(null); resetDelivery(); }}
                 className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
                 title="Clear Cart"
               >
@@ -1247,11 +1269,44 @@ const POS = () => {
               </p>
             </div>
             <button
-              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); resetDelivery(); }}
+              onClick={() => { clearCart(); setEditingSaleId(null); setEditingTokenNo(null); setAssignedUserId(null); resetDelivery(); }}
               className="text-blue-400 hover:text-blue-200 text-xs font-medium"
             >
               Cancel
             </button>
+          </div>
+        )}
+
+        {/* ── User Reassignment Panel (edit mode only) ── */}
+        {editingSaleId && posUsers.length > 0 && (
+          <div className="bg-blue-50 border-b border-blue-200 px-4 py-3 flex-shrink-0">
+            <div className="flex items-center gap-1.5 mb-2">
+              <User size={12} className="text-blue-500" />
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Assign Waiter</span>
+              {userAssigning && <span className="text-xs text-blue-400 ml-auto">Saving...</span>}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {posUsers.map(u => (
+                <button
+                  key={u.user_id}
+                  onClick={() => handleAssignUser(u.user_id)}
+                  disabled={userAssigning}
+                  title={u.role_name}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all disabled:opacity-60 ${
+                    assignedUserId === u.user_id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                    assignedUserId === u.user_id ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate max-w-[80px]">{u.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1758,6 +1813,7 @@ const POS = () => {
           setSelectedPendingSale(null);
           setEditingSaleId(null);
           setEditingTokenNo(null);
+          setAssignedUserId(null);
           setShowMobileCart(false);
           setSelectedTableId(null);
           fetchTables();

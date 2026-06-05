@@ -249,6 +249,15 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                           {sale.customer_name || 'Walk-in'}
                         </span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                          <User size={16} className="text-blue-500" />
+                          Waiter
+                        </span>
+                        <span className="font-medium text-blue-700">
+                          {sale.cashier_name || 'Staff'}
+                        </span>
+                      </div>
                       {sale.note && (
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
                           <p className="text-xs text-amber-800 font-medium italic">

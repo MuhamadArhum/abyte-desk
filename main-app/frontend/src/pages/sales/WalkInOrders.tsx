@@ -466,6 +466,10 @@ const WalkInOrders = () => {
                           <span className="font-semibold text-gray-800 truncate max-w-[120px]">{sale.customer_name || 'Walk-in'}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500 flex items-center gap-1.5"><User size={14} className="text-blue-500" /> Waiter</span>
+                          <span className="font-semibold text-blue-700 truncate max-w-[120px]">{sale.cashier_name || 'Staff'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={14} className="text-emerald-500" /> Total</span>
                           <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
                         </div>
@@ -519,6 +523,7 @@ const WalkInOrders = () => {
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Waiter</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">KOT</th>
@@ -541,6 +546,9 @@ const WalkInOrders = () => {
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600 font-medium">{sale.invoice_no || `#${sale.sale_id}`}</td>
                             <td className="px-4 py-3 text-sm text-gray-800">{sale.customer_name || 'Walk-in'}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm font-semibold text-blue-700">{sale.cashier_name || 'Staff'}</span>
+                            </td>
                             <td className="px-4 py-3">
                               <span className="font-semibold text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
                             </td>

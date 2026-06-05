@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useAuthStore from '../store/authStore';
 
 const BASE_URL = 'https://erp.abytesol.com/api';
 
@@ -15,7 +16,7 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     if (error.response?.status === 401) {
-      await AsyncStorage.multiRemove(['@waiter_token', '@waiter_user']);
+      await useAuthStore.getState().logout();
     }
     return Promise.reject(error);
   }
