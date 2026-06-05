@@ -10,7 +10,56 @@ const logger = require('../config/logger');
 const { getConnection, query } = require('../config/database');  // DB helpers (getConnection for transactions)
 const { logAction } = require('../services/auditService');
 
-// Column migrations are now handled by migrationService.js (runs at server startup)
+// Ensure tables that are JOIN-ed in sales queries exist (created lazily elsewhere)
+let _schemaDone = false;
+async function ensureSalesSchema() {
+  if (_schemaDone) return;
+  _schemaDone = true;
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS restaurant_tables (
+      table_id   INT PRIMARY KEY AUTO_INCREMENT,
+      table_name VARCHAR(50) NOT NULL,
+      floor      VARCHAR(50) DEFAULT 'Main',
+      capacity   INT DEFAULT 4,
+      status     ENUM('available','occupied') DEFAULT 'available',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS deliveries (
+      delivery_id      INT PRIMARY KEY AUTO_INCREMENT,
+      delivery_number  VARCHAR(30) NULL,
+      sale_id          INT NULL,
+      customer_id      INT NULL,
+      delivery_address TEXT NULL,
+      delivery_city    VARCHAR(100) DEFAULT '',
+      delivery_phone   VARCHAR(30) DEFAULT '',
+      rider_name       VARCHAR(100) DEFAULT '',
+      rider_phone      VARCHAR(30) DEFAULT '',
+      status           VARCHAR(30) DEFAULT 'pending',
+      delivery_charges DECIMAL(10,2) DEFAULT 0,
+      estimated_delivery DATETIME NULL,
+      notes            TEXT NULL,
+      created_by       INT NULL,
+      branch_id        INT NULL,
+      created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS note TEXT NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(150) NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(30) NULL`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS tax_percent DECIMAL(5,2) DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS tax_amount DECIMAL(10,2) DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS additional_charges_percent DECIMAL(5,2) DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS additional_charges_amount DECIMAL(10,2) DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) DEFAULT 0`,
+    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount DECIMAL(10,2) DEFAULT 0`,
+  ];
+  for (const sql of stmts) {
+    try { await query(sql); } catch (e) {
+      if (!e.message?.includes('Duplicate column') && !e.message?.includes('already exists')) {
+        logger.warn('[salesController] schema fix warning:', e.message);
+      }
+    }
+  }
+}
 
 // Helper: Round to 2 decimal places for currency
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
@@ -30,6 +79,7 @@ const parsePagination = (page, limit) => {
 exports.createSale = async (req, res) => {
   let conn;  // Database connection for the transaction
   try {
+    await ensureSalesSchema();
     const {
       items,
       discount,
@@ -290,6 +340,7 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
+    await ensureSalesSchema();
     const { page, limit, order_type, user_id, waiter } = req.query;
 
     // Map frontend 'on_spot' filter to include both 'on_spot' and NULL order_type rows
@@ -633,6 +684,7 @@ exports.syncTax = async (req, res) => {
 // --- Get Today's Sales ---
 exports.getToday = async (req, res) => {
   try {
+    await ensureSalesSchema();
     const today = new Date().toISOString().split('T')[0];
     const activeBranch = (req.user.role_name !== 'Admin' && req.user.branch_id)
       ? req.user.branch_id
@@ -660,6 +712,7 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
+    await ensureSalesSchema();
     const {
       page, limit, search, status, date_from, date_to,
       order_type, shift_start, shift_end,
