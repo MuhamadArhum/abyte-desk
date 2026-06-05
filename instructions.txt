@@ -1,7 +1,16 @@
 For main App
 cd /var/www/AByte-POS && bash main-app/deploy.sh
+
+
 For Admin Panel (Abyte@2026#Secure)
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
+
+
+
+
+
+
+
 
 
 

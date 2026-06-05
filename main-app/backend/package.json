@@ -4,8 +4,11 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "test":        "echo \"Error: no test specified\" && exit 1",
+    "start":       "node server.js",
+    "migrate:all": "node scripts/migrate-all.js",
+    "backup:all":  "node scripts/backup-all.js",
+    "db:status":   "node scripts/status.js"
   },
   "keywords": [],
   "author": "",
