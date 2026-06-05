@@ -135,12 +135,14 @@ const UserSelectInput = ({
 }) => {
   const [query, setQuery] = useState('');
   const [showDrop, setShowDrop] = useState(false);
+  const [changing, setChanging] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setShowDrop(false);
+        setChanging(false);
         setQuery('');
       }
     };
@@ -148,7 +150,11 @@ const UserSelectInput = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Reset changing state when selected user changes (e.g., after pick or edit load)
+  useEffect(() => { setChanging(false); setQuery(''); }, [selectedUserId]);
+
   const selectedUser = users.find(u => u.user_id === selectedUserId);
+  const showPill = selectedUser && !changing;
 
   const filtered = query.trim()
     ? users.filter(u => u.name.toLowerCase().includes(query.toLowerCase()))
@@ -158,40 +164,44 @@ const UserSelectInput = ({
     onSelect(u.user_id);
     setQuery('');
     setShowDrop(false);
+    setChanging(false);
   };
 
+  const startChanging = () => { setChanging(true); setShowDrop(true); };
+
   return (
-    <div ref={ref} className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
+    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
           <User size={12} /> Waiter
           {saving && <span className="text-gray-400 font-normal normal-case ml-1">Saving...</span>}
         </span>
+        {showPill && (
+          <button onClick={startChanging} className="text-xs text-blue-500 hover:text-blue-700 font-medium">
+            Change
+          </button>
+        )}
       </div>
 
-      {selectedUser && !showDrop ? (
+      {showPill ? (
         <div className="flex items-center gap-2 bg-blue-600 text-white rounded-lg px-3 py-2">
           <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
             {selectedUser.name.charAt(0).toUpperCase()}
           </div>
           <span className="font-semibold text-sm flex-1">{selectedUser.name}</span>
           <span className="text-blue-200 text-xs">{selectedUser.role_name}</span>
-          <button
-            onClick={() => setShowDrop(true)}
-            className="text-blue-200 hover:text-white ml-1"
-            title="Change waiter"
-          >
-            <Search size={13} />
+          <button onClick={startChanging} className="text-blue-200 hover:text-white">
+            <X size={14} />
           </button>
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative" ref={ref}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
           <input
             type="text"
             placeholder={users.length === 0 ? 'No users available' : 'Search waiter...'}
             disabled={users.length === 0}
-            autoFocus={showDrop}
+            autoFocus={changing}
             className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-50"
             value={query}
             onChange={e => { setQuery(e.target.value); setShowDrop(true); }}
@@ -603,8 +613,8 @@ const POS = () => {
     api.get('/sales/assignable-users').then(r => {
       const users = r.data || [];
       setPosUsers(users);
-      // Default: pre-select current logged-in user
-      if (user?.user_id) setAssignedUserId(user.user_id);
+      // Only default to current user when not editing an existing order
+      setAssignedUserId(prev => prev ?? (user?.user_id ?? null));
     }).catch(() => {});
   }, [register]);
 
