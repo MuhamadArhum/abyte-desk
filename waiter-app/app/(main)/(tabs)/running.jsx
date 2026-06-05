@@ -471,7 +471,8 @@ export default function RunningScreen() {
                             const taxAmt = Math.round(sub * tax / 100 * 100) / 100;
                             const addAmt = billData.addAmt || 0;
                             const total  = Math.round((sub + taxAmt + addAmt) * 100) / 100;
-                            await api.post('/settings/print-receipt', {
+                            await api.post('/settings/print-queue', {
+                              type: 'invoice',
                               receiptData: {
                                 storeName:      s.store_name || 'Restaurant',
                                 storeAddress:   s.address || '',
