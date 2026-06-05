@@ -102,6 +102,7 @@ export default function RunningScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [billData, setBillData] = useState(null);
   const [billLoading, setBillLoading] = useState(false);
+  const [billMode, setBillMode] = useState('view'); // 'view' | 'print'
   const [billStep, setBillStep] = useState('payment');
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [printing, setPrinting] = useState(false);
@@ -145,8 +146,9 @@ export default function RunningScreen() {
     router.push(`/(main)/order/${order.table_id || 0}?saleId=${order.sale_id}&name=${name}`);
   };
 
-  const handleBillPress = async (order) => {
+  const handleBillPress = async (order, mode = 'view') => {
     haptic();
+    setBillMode(mode);
     setBillLoading(true);
     try {
       const [saleRes, settingsRes] = await Promise.all([
@@ -187,6 +189,7 @@ export default function RunningScreen() {
     setBillData(null);
     setSelectedPayment(null);
     setBillStep('payment');
+    setBillMode('view');
     setPrinting(false);
   };
 
@@ -392,14 +395,23 @@ export default function RunningScreen() {
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    style={styles.billBtn}
-                    onPress={() => handleBillPress(item)}
+                    style={styles.viewBtn}
+                    onPress={() => handleBillPress(item, 'view')}
                     disabled={billLoading}
                     activeOpacity={0.8}
                   >
-                    {billLoading
+                    <Ionicons name="eye-outline" size={15} color="#7C3AED" />
+                    <Text style={styles.viewBtnText}>View</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.billBtn}
+                    onPress={() => handleBillPress(item, 'print')}
+                    disabled={billLoading}
+                    activeOpacity={0.8}
+                  >
+                    {billLoading && billMode === 'print'
                       ? <ActivityIndicator size="small" color="#FFFFFF" />
-                      : (<><Ionicons name="receipt-outline" size={15} color="#FFFFFF" /><Text style={styles.billBtnText}>Bill</Text></>)
+                      : (<><Ionicons name="print-outline" size={15} color="#FFFFFF" /><Text style={styles.billBtnText}>Bill</Text></>)
                     }
                   </TouchableOpacity>
                 </View>
@@ -415,6 +427,13 @@ export default function RunningScreen() {
           <TouchableOpacity style={styles.modalOverlay} onPress={closeBill} />
           <View style={styles.billSheet}>
             <View style={styles.sheetHandle} />
+
+            {billStep === 'printing' && (
+              <View style={styles.printingWrap}>
+                <ActivityIndicator size="large" color="#059669" />
+                <Text style={styles.printingText}>Sending to printer...</Text>
+              </View>
+            )}
 
             {billStep === 'payment' && (
               <View style={styles.payStepWrap}>
@@ -432,7 +451,66 @@ export default function RunningScreen() {
                     <TouchableOpacity
                       key={pm.value}
                       style={[styles.payCard, { backgroundColor: pm.bg, borderColor: pm.border }]}
-                      onPress={() => { haptic(); setSelectedPayment(pm.value); setBillStep('preview'); }}
+                      onPress={async () => {
+                        haptic();
+                        setSelectedPayment(pm.value);
+                        if (billMode === 'print') {
+                          // Direct print — no preview
+                          setPrinting(true);
+                          setBillStep('printing');
+                          try {
+                            const s = billData.settings || {};
+                            const sale = billData.sale || {};
+                            const tax = (() => {
+                              if (!s) return 0;
+                              if (pm.value === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
+                              if (pm.value === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
+                              return parseFloat(s.tax_on_cash || s.tax_rate || 0);
+                            })();
+                            const sub   = billData.subtotal || 0;
+                            const taxAmt = Math.round(sub * tax / 100 * 100) / 100;
+                            const addAmt = billData.addAmt || 0;
+                            const total  = Math.round((sub + taxAmt + addAmt) * 100) / 100;
+                            await api.post('/settings/print-receipt', {
+                              receiptData: {
+                                storeName:      s.store_name || 'Restaurant',
+                                storeAddress:   s.address || '',
+                                storePhone:     s.phone || '',
+                                saleId:         sale.sale_id,
+                                tokenNo:        sale.token_no || `#${sale.sale_id}`,
+                                tableName:      sale.table_name || '',
+                                orderType:      ORDER_TYPE_LABEL[sale.order_type] || sale.order_type || '',
+                                date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
+                                cashierName:    sale.cashier_name || '',
+                                customerName:   sale.customer_name || '',
+                                currencySymbol: s.currency_symbol || 'Rs.',
+                                paymentMethod:  pm.value,
+                                items: billData.items.map((i) => ({
+                                  name: i.product_name || 'Item',
+                                  quantity: i.quantity,
+                                  price: parseFloat(i.unit_price || 0),
+                                })),
+                                discount:    parseFloat(sale.discount || 0),
+                                taxAmount:   taxAmt,
+                                totalAmount: total,
+                                amountPaid:  total,
+                                changeDue:   0,
+                                note:        sale.note || '',
+                              },
+                            });
+                            closeBill();
+                            Alert.alert('Printed', 'Bill sent to printer successfully.');
+                          } catch (err) {
+                            const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
+                            Alert.alert('Print Failed', msg);
+                            closeBill();
+                          } finally {
+                            setPrinting(false);
+                          }
+                        } else {
+                          setBillStep('preview');
+                        }
+                      }}
                       activeOpacity={0.75}
                     >
                       <View style={[styles.payIconCircle, { backgroundColor: pm.color }]}>
@@ -726,6 +804,12 @@ const styles = StyleSheet.create({
     borderRightWidth: 1, borderRightColor: C.border,
   },
   swapBtnText: { fontSize: 12, fontWeight: '700', color: C.amber },
+  viewBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, paddingVertical: 12, borderRightWidth: 1, borderRightColor: C.borderLt,
+    backgroundColor: '#F5F3FF',
+  },
+  viewBtnText: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
   billBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 5, paddingVertical: 13, backgroundColor: C.primary,
@@ -759,6 +843,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
   },
 
+  printingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 16 },
+  printingText: { fontSize: 15, fontWeight: '600', color: C.t2 },
   payStepWrap: { paddingBottom: 28 },
   payStepSub: { fontSize: 13, color: C.t2, textAlign: 'center', paddingHorizontal: 20, marginTop: 12, marginBottom: 20, lineHeight: 20 },
   payGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
