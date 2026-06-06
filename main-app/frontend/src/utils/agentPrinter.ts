@@ -15,6 +15,7 @@ export interface InvoiceData {
   storeName?: string;
   storeAddress?: string;
   storePhone?: string;
+  logoEscPosData?: string;   // base64 encoded ESC/POS raster bitmap
   saleId?: number | string;
   invoiceNo?: string;
   tokenNo?: string;
@@ -34,6 +35,65 @@ export interface InvoiceData {
   changeDue?: number;
   paymentMethod?: string;
   footer?: string;
+}
+
+// Converts a logo image URL to an ESC/POS raster bitmap (base64 encoded).
+// Uses the browser Canvas API — no extra dependencies needed.
+export async function rasterizeLogoForEscPos(
+  logoUrl: string,
+  paperWidth: 58 | 80 = 80
+): Promise<string | null> {
+  try {
+    const targetWidth = paperWidth === 58 ? 256 : 384;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => {
+      img.onload  = () => resolve();
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = logoUrl;
+    });
+
+    const ratio        = img.naturalHeight / img.naturalWidth;
+    const targetHeight = Math.round(targetWidth * ratio);
+
+    const canvas = document.createElement('canvas');
+    canvas.width  = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    const { data, width, height } = ctx.getImageData(0, 0, targetWidth, targetHeight);
+
+    const widthBytes = Math.ceil(width / 8);
+    const bmp        = new Uint8Array(widthBytes * height);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i    = (y * width + x) * 4;
+        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (gray < 128) {
+          bmp[y * widthBytes + Math.floor(x / 8)] |= (1 << (7 - (x % 8)));
+        }
+      }
+    }
+
+    // GS v 0 — ESC/POS raster image command
+    const header = new Uint8Array([
+      0x1D, 0x76, 0x30, 0x00,
+      widthBytes & 0xFF, (widthBytes >> 8) & 0xFF,
+      height     & 0xFF, (height     >> 8) & 0xFF,
+    ]);
+    const combined = new Uint8Array(header.length + bmp.length);
+    combined.set(header);
+    combined.set(bmp, header.length);
+
+    return btoa(String.fromCharCode(...combined));
+  } catch {
+    return null;
+  }
 }
 
 export interface KOTItem {

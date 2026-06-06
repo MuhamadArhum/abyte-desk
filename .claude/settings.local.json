@@ -158,7 +158,9 @@
       "PowerShell(tasklist *)",
       "Bash(npm run *)",
       "Bash(cmd *)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "Bash(taskkill /f /im ABytePrinterAgent.exe)",
+      "Bash(xargs basename *)"
     ]
   }
 }

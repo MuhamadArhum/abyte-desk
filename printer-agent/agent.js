@@ -100,6 +100,7 @@ const CMD = {
   CUT_PARTIAL:   Buffer.from([GS,  0x56, 0x41, 0x05]),
   CUT_FULL:      Buffer.from([GS,  0x56, 0x00]),
   OPEN_DRAWER:   Buffer.from([ESC, 0x70, 0x00, 0x19, 0xFA]),
+  FEED_1:        Buffer.from([ESC, 0x64, 0x01]),
   FEED_3:        Buffer.from([ESC, 0x64, 0x03]),
   FEED_5:        Buffer.from([ESC, 0x64, 0x05]),
 };
@@ -122,6 +123,16 @@ function buildInvoiceESCPOS(d, printerCfg) {
   const padL = (s, n) => String(s).slice(0, n).padStart(n);
 
   push(CMD.INIT);
+
+  // Logo (pre-rasterized ESC/POS bitmap from frontend)
+  if (d.logoEscPosData) {
+    try {
+      const logoBytes = Buffer.from(d.logoEscPosData, 'base64');
+      push(CMD.ALIGN_CENTER);
+      bufs.push(logoBytes);
+      push(CMD.FEED_1);
+    } catch {}
+  }
 
   // Header
   push(CMD.ALIGN_CENTER, CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);

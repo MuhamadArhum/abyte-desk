@@ -9,16 +9,17 @@ import api from '../../utils/api';
 import { printToThermalPrinter } from '../../utils/receiptPrinter';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
+import { ReceiptModal } from '../../components/ReceiptView';
+import { buildSaleReceipt } from '../../utils/receiptBuilder';
 
-// ─── Bill Preview Modal (active orders) ─────────────────────────────────────
+// ─── Bill Preview Modal (active orders) — now uses unified ReceiptView ───────
 const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
-  const [sale, setSale] = useState<any>(null);
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [receiptData, setReceiptData] = useState<any>(null);
+  const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
     Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')])
-      .then(([s, st]) => { setSale(s.data); setSettings(st.data); })
+      .then(([s, st]) => setReceiptData(buildSaleReceipt(s.data, st.data, s.data.cashier_name || 'Staff', s.data.customer_name)))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [saleId]);
@@ -26,144 +27,13 @@ const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: 
   if (loading) return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3" />
         <p className="text-gray-500">Loading receipt...</p>
       </div>
     </div>
   );
-  if (!sale) return null;
 
-  const items: any[] = sale.items || [];
-  const cs = settings?.currency_symbol || 'Rs.';
-  const subtotal = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
-  const taxRate = parseFloat(sale.tax_percent || 0);
-  const chargesRate = parseFloat(sale.additional_charges_percent || 0);
-  const taxAmount = subtotal * taxRate / 100;
-  const chargesAmount = subtotal * chargesRate / 100;
-  const discountAmount = parseFloat(sale.discount || 0);
-  const grandTotal = parseFloat(sale.total_amount || 0);
-
-  const orderTypeLabels: Record<string, string> = {
-    dine_in: 'Dine-In', takeaway: 'Takeaway', delivery: 'Delivery', walk_in: 'Walk-In',
-  };
-  const orderTypeColors: Record<string, string> = {
-    dine_in: 'bg-orange-100 text-orange-700', takeaway: 'bg-yellow-100 text-yellow-700',
-    delivery: 'bg-blue-100 text-blue-700', walk_in: 'bg-emerald-100 text-emerald-700',
-  };
-  const orderLabel = sale.order_type ? orderTypeLabels[sale.order_type] || sale.order_type : null;
-  const orderColor = sale.order_type ? (orderTypeColors[sale.order_type] || 'bg-gray-100 text-gray-700') : '';
-
-  const saleDate = sale.created_at ? new Date(sale.created_at).toLocaleString('en-PK', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  }) : '';
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-gray-800">Bill Preview</h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                {sale.token_no && <span className="text-sm text-emerald-600 font-bold">{sale.token_no}</span>}
-                {orderLabel && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${orderColor}`}>{orderLabel}</span>}
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-
-          {/* Meta info grid */}
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            {[
-              ['Invoice', sale.invoice_no || `#${sale.sale_id}`],
-              ['Customer', sale.customer_name || 'Walk-in'],
-              ['Order Taker', sale.cashier_name || 'Staff'],
-              ['Date', saleDate],
-              ...(sale.table_name ? [['Table', sale.table_name]] : []),
-            ].map(([label, value]) => (
-              <div key={label} className="bg-gray-50 rounded-lg p-2.5">
-                <p className="text-gray-400 text-xs mb-0.5">{label}</p>
-                <p className="font-semibold text-gray-700 text-sm">{value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Items table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-gray-600 font-semibold">Item</th>
-                  <th className="px-3 py-2 text-center text-gray-600 font-semibold">Qty</th>
-                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Rate</th>
-                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((item: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-3 py-2">
-                      <p className="text-gray-800 font-medium">{item.product_name}</p>
-                      {item.variant_name && <p className="text-gray-400 text-xs">{item.variant_name}</p>}
-                    </td>
-                    <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{cs} {parseFloat(item.unit_price).toFixed(0)}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Totals breakdown */}
-          <div className="space-y-1.5 bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(0)}</span></div>
-            {taxRate > 0 && (
-              <div className="flex justify-between text-sm text-orange-600">
-                <span>Tax ({taxRate}%)</span><span>+ {cs} {taxAmount.toFixed(0)}</span>
-              </div>
-            )}
-            {chargesRate > 0 && (
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Service Charges ({chargesRate}%)</span><span>+ {cs} {chargesAmount.toFixed(0)}</span>
-              </div>
-            )}
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Discount</span><span>- {cs} {discountAmount.toFixed(0)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">
-              <span>Grand Total</span>
-              <span className="text-emerald-600 text-lg">{cs} {grandTotal.toFixed(0)}</span>
-            </div>
-          </div>
-
-          {/* Status badge */}
-          <div className="flex items-center justify-center">
-            <span className="text-xs px-3 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 uppercase tracking-wider">
-              {sale.status || 'Pending'} — Unpaid
-            </span>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
-          <button
-            onClick={() => { printToThermalPrinter(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
-          >
-            <Printer size={16} /> Print
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  return receiptData ? <ReceiptModal data={receiptData} onClose={onClose} /> : null;
 };
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────

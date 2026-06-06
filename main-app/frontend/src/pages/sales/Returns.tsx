@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { RotateCcw, Search, Loader2, Check, Printer } from 'lucide-react';
+import { RotateCcw, Search, Loader2, Check, Printer, FileText } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { ReceiptModal } from '../../components/ReceiptView';
+import { buildReturnReceipt } from '../../utils/receiptBuilder';
 
 interface SaleItem {
   product_id: number;
@@ -51,6 +53,7 @@ const Returns = () => {
   const [returnData, setReturnData] = useState<{ saleId: number; items: { product_name: string; quantity: number; unit_price: string }[]; refundAmount: number; reason: string; refundMethod: string; returnType: string } | null>(null);
   const [thermalAvailable, setThermalAvailable] = useState(false);
   const [thermalPrinting, setThermalPrinting] = useState(false);
+  const [receiptViewData, setReceiptViewData] = useState<any>(null);
 
   // Recent returns
   const [recentReturns, setRecentReturns] = useState<any[]>([]);
@@ -205,6 +208,8 @@ const Returns = () => {
   }, [showRecent, currentPage, loadRecentReturns]);
 
   return (
+    <>
+    {receiptViewData && <ReceiptModal data={receiptViewData} onClose={() => setReceiptViewData(null)} />}
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -228,6 +233,23 @@ const Returns = () => {
           <Check size={20} className="text-emerald-600 flex-shrink-0" />
           <span className="text-emerald-700 font-medium">Return processed successfully! Stock has been restored.</span>
           <div className="ml-auto flex items-center gap-2">
+            {returnData && (
+              <button
+                onClick={async () => {
+                  const sRes = await api.get('/settings').catch(() => ({ data: {} }));
+                  setReceiptViewData(buildReturnReceipt({
+                    sale_id:       returnData.saleId,
+                    items:         returnData.items.map(i => ({ product_name: i.product_name, quantity: i.quantity, unit_price: i.unit_price })),
+                    refund_amount: returnData.refundAmount,
+                    refund_method: returnData.refundMethod,
+                    reason:        returnData.reason,
+                  }, sRes.data));
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-300 text-emerald-700 text-sm rounded-lg transition-colors hover:bg-emerald-50"
+              >
+                <FileText size={14} /> View
+              </button>
+            )}
             {thermalAvailable && returnData && (
               <button
                 onClick={handleThermalPrint}
@@ -235,7 +257,7 @@ const Returns = () => {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors disabled:opacity-60"
               >
                 {thermalPrinting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
-                Print Return Receipt
+                Print
               </button>
             )}
             <button onClick={() => { setSuccess(false); setReturnData(null); }} className="text-emerald-600 hover:text-emerald-800 text-sm">Dismiss</button>
@@ -467,6 +489,7 @@ const Returns = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

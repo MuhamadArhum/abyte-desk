@@ -252,6 +252,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
+// ── Serve Uploaded Files (logos, etc.) ───────────────────────
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!require('fs').existsSync(uploadsDir)) require('fs').mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(uploadsDir));
+
 // ── Serve React Frontend ──────────────────────────────────────
 // Must be AFTER all /api routes so API calls are not intercepted.
 const frontendDist = path.join(__dirname, '../frontend/dist');

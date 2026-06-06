@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck } from 'lucide-react';
+import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck, FileText } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { printBillWithTax } from '../utils/receiptPrinter';
-import { printKOT, printInvoice } from '../utils/agentPrinter';
+import { printKOT, printInvoice, rasterizeLogoForEscPos } from '../utils/agentPrinter';
+import { ReceiptModal } from './ReceiptView';
+import { buildSaleReceipt } from '../utils/receiptBuilder';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [successSale, setSuccessSale] = useState<any>(null);
+  const [showReceiptView, setShowReceiptView] = useState(false);
   const [settings, setSettings] = useState<any>(null);
 
   // Pending sale items & rates
@@ -361,10 +364,19 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     const discountAmt   = parseNum(sale.discount);
     const amountPaid    = parseNum(sale.amount_paid);
 
+    const paperWidth: 58 | 80 = settings?.receipt_paper_width === '58mm' ? 58 : 80;
+    const logoUrl = settings?.receipt_logo
+      ? `${window.location.origin}${settings.receipt_logo}`
+      : null;
+    const logoEscPosData = logoUrl
+      ? await rasterizeLogoForEscPos(logoUrl, paperWidth).catch(() => null)
+      : null;
+
     const invoiceData = {
       storeName:      settings?.store_name || 'AByte ERP',
       storeAddress:   settings?.address    || '',
       storePhone:     settings?.phone      || '',
+      ...(logoEscPosData ? { logoEscPosData } : {}),
       saleId:         sale.sale_id,
       invoiceNo:      sale.invoice_no,
       tokenNo:        sale.token_no,
@@ -441,6 +453,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   if (successSale) {
     const changeDueAmount = paymentMethod === 'credit' ? 0 : Math.max(0, parseFloat(successSale.amount_paid || 0) - parseFloat(successSale.total_amount || 0));
     return (
+      <>
+      {showReceiptView && (
+        <ReceiptModal
+          data={buildSaleReceipt(successSale, settings, user?.name || 'Staff', selectedCustomer?.customer_name)}
+          onClose={() => setShowReceiptView(false)}
+        />
+      )}
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-8 text-center">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
@@ -490,6 +509,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               Done
             </button>
             <button
+              onClick={() => setShowReceiptView(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl transition-colors border border-emerald-200"
+              title="View Receipt"
+            >
+              <FileText size={16} /> View
+            </button>
+            <button
               onClick={() => handlePrintWithTax('cash', taxOnCash)}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded-xl transition-colors border border-orange-200"
               title="Print Cash Bill (F6)"
@@ -518,6 +544,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           </div>
         </div>
       </div>
+      </>
     );
   }
 

@@ -7,6 +7,30 @@ const crypto = require('crypto');
 const net = require('net');
 const https = require('https');
 const http = require('http');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const logoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.png';
+    cb(null, `logo_${req.tenantDb || 'default'}${ext}`);
+  },
+});
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (['image/png','image/jpeg','image/jpg','image/gif','image/webp'].includes(file.mimetype))
+      cb(null, true);
+    else
+      cb(new Error('Only image files are allowed'));
+  },
+});
 
 // --- Get Store Settings ---
 exports.getSettings = async (req, res) => {
@@ -862,6 +886,40 @@ exports.regenerateAgentToken = async (req, res) => {
     const newToken = crypto.randomBytes(24).toString('hex');
     await query('UPDATE store_settings SET agent_token = ? WHERE setting_id = 1', [newToken]);
     res.json({ agent_token: newToken });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Upload Invoice Logo ---
+exports.logoUploadMiddleware = logoUpload.single('logo');
+exports.uploadLogo = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const logoPath = `/uploads/${req.file.filename}`;
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS receipt_logo VARCHAR(500) NULL`).catch(() => {});
+    await query('UPDATE store_settings SET receipt_logo = ? WHERE setting_id = 1', [logoPath]);
+
+    res.json({ success: true, logo_url: logoPath });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Delete Invoice Logo ---
+exports.deleteLogo = async (req, res) => {
+  try {
+    const rows = await query('SELECT receipt_logo FROM store_settings WHERE setting_id = 1');
+    const currentLogo = rows[0]?.receipt_logo;
+    if (currentLogo) {
+      const fullPath = path.join(uploadsDir, path.basename(currentLogo));
+      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+    }
+    await query('UPDATE store_settings SET receipt_logo = NULL WHERE setting_id = 1');
+    res.json({ success: true });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2 } from 'lucide-react';
+import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2, FileText } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { ReceiptModal } from '../../components/ReceiptView';
+import { buildCreditSaleReceipt } from '../../utils/receiptBuilder';
 
 interface CreditSale {
   credit_sale_id: number;
@@ -41,6 +43,9 @@ const CreditSales = () => {
   // Thermal print
   const [creditThermalAvailable, setCreditThermalAvailable] = useState(false);
   const [thermalPrintingId, setThermalPrintingId] = useState<number | null>(null);
+
+  // Receipt view
+  const [receiptViewData, setReceiptViewData] = useState<any>(null);
 
   // Payment modal
   const [paymentModal, setPaymentModal] = useState<CreditSale | null>(null);
@@ -141,6 +146,8 @@ const CreditSales = () => {
   };
 
   return (
+    <>
+    {receiptViewData && <ReceiptModal data={receiptViewData} onClose={() => setReceiptViewData(null)} />}
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -234,10 +241,20 @@ const CreditSales = () => {
                             </button>
                           )}
                           <button
+                            onClick={async () => {
+                              const sRes = await api.get('/settings').catch(() => ({ data: {} }));
+                              setReceiptViewData(buildCreditSaleReceipt(cs, sRes.data));
+                            }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Receipt"
+                          >
+                            <FileText size={14} />
+                          </button>
+                          <button
                             onClick={() => creditThermalAvailable ? handleThermalPrintCS(cs) : handlePrintRow(cs)}
                             disabled={thermalPrintingId === cs.credit_sale_id}
                             className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-60"
-                            title={creditThermalAvailable ? 'Print Thermal Receipt' : 'Print Receipt (A4)'}
+                            title="Print Receipt"
                           >
                             {thermalPrintingId === cs.credit_sale_id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />}
                           </button>
@@ -290,6 +307,7 @@ const CreditSales = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

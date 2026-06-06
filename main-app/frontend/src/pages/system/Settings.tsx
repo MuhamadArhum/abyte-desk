@@ -37,6 +37,8 @@ import {
   Layers,
   Copy,
   RefreshCw,
+  Upload,
+  ImageOff,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -142,6 +144,10 @@ const Settings = () => {
   // System info
   const [systemInfo, setSystemInfo] = useState<any>(null);
 
+  // Logo upload
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoDeleting, setLogoDeleting] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -160,6 +166,39 @@ const Settings = () => {
       if (res.ok) { setAgentInfo(await res.json()); setAgentStatus('available'); }
       else setAgentStatus('unavailable');
     } catch { setAgentStatus('unavailable'); }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    try {
+      const form = new FormData();
+      form.append('logo', file);
+      const res = await api.post('/settings/logo', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setSettings((s: any) => ({ ...s, receipt_logo: res.data.logo_url }));
+      toast.success('Logo uploaded');
+    } catch {
+      toast.error('Logo upload failed');
+    } finally {
+      setLogoUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    setLogoDeleting(true);
+    try {
+      await api.delete('/settings/logo');
+      setSettings((s: any) => ({ ...s, receipt_logo: '' }));
+      toast.success('Logo removed');
+    } catch {
+      toast.error('Failed to remove logo');
+    } finally {
+      setLogoDeleting(false);
+    }
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -574,6 +613,61 @@ const Settings = () => {
                 </div>
               </div>
 
+              {/* Logo Upload */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Company Logo</h3>
+                <div className="flex items-start gap-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {/* Preview */}
+                  <div className="w-28 h-28 rounded-xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                    {settings.receipt_logo ? (
+                      <img
+                        src={settings.receipt_logo}
+                        alt="Logo"
+                        className="max-w-full max-h-full object-contain p-1"
+                      />
+                    ) : (
+                      <ImageOff size={32} className="text-gray-300" />
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div className="flex-1 space-y-3">
+                    <p className="text-sm text-gray-600">
+                      Upload your company logo — it will appear on printed invoices and receipt views.
+                      <span className="block text-xs text-gray-400 mt-0.5">PNG, JPG or WebP · Max 2 MB · Recommended: square or wide</span>
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <label className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold cursor-pointer transition ${
+                        logoUploading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      }`}>
+                        {logoUploading
+                          ? <Loader2 size={15} className="animate-spin" />
+                          : <Upload size={15} />
+                        }
+                        {settings.receipt_logo ? 'Replace Logo' : 'Upload Logo'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          className="hidden"
+                          disabled={logoUploading}
+                          onChange={handleLogoUpload}
+                        />
+                      </label>
+                      {settings.receipt_logo && (
+                        <button
+                          type="button"
+                          onClick={handleLogoDelete}
+                          disabled={logoDeleting}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                        >
+                          {logoDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Receipt Show/Hide Toggles */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Receipt Display Options</h3>
@@ -608,6 +702,11 @@ const Settings = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Receipt Preview</h3>
                 <div className="max-w-xs mx-auto bg-white border-2 border-dashed border-gray-300 rounded-lg p-6 font-mono text-sm text-center">
+                  {settings.receipt_logo && (
+                    <div className="flex justify-center mb-2">
+                      <img src={settings.receipt_logo} alt="Logo" className="max-h-16 max-w-[120px] object-contain" />
+                    </div>
+                  )}
                   {settings.receipt_header && <p className="text-xs text-gray-500 mb-2">{settings.receipt_header}</p>}
                   {settings.receipt_show_store_name && <p className="font-bold text-lg">{settings.store_name || 'Store Name'}</p>}
                   {settings.receipt_show_address && settings.address && <p className="text-xs text-gray-500">{settings.address}</p>}

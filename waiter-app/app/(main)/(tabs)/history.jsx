@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../services/api';
 import useAuthStore from '../../../store/authStore';
 import { C, shadow } from '../../../constants/theme';
+import { ReceiptModal } from '../../../components/ReceiptView';
 
 const PM = {
   cash:   { color: C.primary,  bg: C.primaryLt,  border: C.primaryBd,  icon: 'cash-outline',           label: 'Cash'   },
@@ -36,12 +37,52 @@ function isThisWeek(d) {
   return Date.now() - new Date(d).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
+function buildReceiptData(sale, settings) {
+  const s = settings || {};
+  const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+  const items = (sale.items || []).map((i) => ({
+    name:     i.product_name || 'Item',
+    quantity: i.quantity,
+    price:    parseFloat(i.unit_price || 0),
+    note:     i.note,
+  }));
+  const total = parseFloat(sale.net_amount || sale.total_amount || 0);
+  const paid  = parseFloat(sale.amount_paid || total);
+  return {
+    docType:        'sale',
+    docNumber:      sale.invoice_no,
+    tokenNo:        sale.token_no,
+    date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString('en-PK') : undefined,
+    storeName:      s.store_name || 'Store',
+    storeAddress:   s.address,
+    storePhone:     s.phone,
+    logoUrl,
+    currencySymbol: s.currency_symbol || 'Rs.',
+    footer:         s.receipt_footer,
+    cashierName:    sale.cashier_name,
+    customerName:   sale.customer_name,
+    tableNo:        sale.table_name,
+    orderType:      sale.order_type,
+    items,
+    subtotal:       parseFloat(sale.subtotal || total),
+    discount:       parseFloat(sale.discount || 0) || undefined,
+    taxAmount:      parseFloat(sale.tax_amount || 0) || undefined,
+    taxPercent:     parseFloat(sale.tax_percent || 0) || undefined,
+    totalAmount:    total,
+    amountPaid:     paid,
+    changeDue:      paid - total > 0.005 ? paid - total : undefined,
+    paymentMethod:  sale.payment_method,
+  };
+}
+
 export default function HistoryScreen() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dateFilter, setDateFilter] = useState('today');
   const [searchQuery, setSearchQuery] = useState('');
+  const [receiptData, setReceiptData] = useState(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const { user } = useAuthStore();
 
   const fetchHistory = useCallback(async () => {
@@ -84,6 +125,21 @@ export default function HistoryScreen() {
   const fmtDate = (d) => new Date(d).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
   const fmtTime = (d) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
+  const openReceipt = useCallback(async (sale) => {
+    setReceiptLoading(true);
+    try {
+      const [saleRes, settingsRes] = await Promise.all([
+        api.get(`/sales/${sale.sale_id}`),
+        api.get('/settings'),
+      ]);
+      setReceiptData(buildReceiptData(saleRes.data, settingsRes.data));
+    } catch (e) {
+      console.error('openReceipt error:', e.message);
+    } finally {
+      setReceiptLoading(false);
+    }
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -95,6 +151,14 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      {receiptData && (
+        <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />
+      )}
+      {receiptLoading && (
+        <View style={styles.receiptLoading}>
+          <ActivityIndicator size="large" color={C.primary} />
+        </View>
+      )}
       {/* Sub-header */}
       <View style={styles.subHeader}>
         <View style={styles.subHeaderLeft}>
@@ -214,9 +278,19 @@ export default function HistoryScreen() {
                       <Ionicons name="person-circle-outline" size={14} color={C.t3} />
                       <Text style={styles.cashierText}>{item.cashier_name || '—'}</Text>
                     </View>
-                    <Text style={styles.amount}>
-                      PKR {parseFloat(item.net_amount || item.total_amount || 0).toFixed(0)}
-                    </Text>
+                    <View style={styles.cardBottomRight}>
+                      <TouchableOpacity
+                        onPress={() => openReceipt(item)}
+                        style={styles.viewBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="document-text-outline" size={13} color={C.primary} />
+                        <Text style={styles.viewBtnText}>View</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.amount}>
+                        PKR {parseFloat(item.net_amount || item.total_amount || 0).toFixed(0)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -312,5 +386,17 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cashierRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cashierText: { fontSize: 12, color: C.t3 },
+  cardBottomRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  viewBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
+    backgroundColor: C.primaryLt, borderWidth: 1, borderColor: C.primaryBd,
+  },
+  viewBtnText: { fontSize: 11, fontWeight: '700', color: C.primary },
   amount: { fontSize: 18, fontWeight: '800', color: C.t1, letterSpacing: -0.3 },
+  receiptLoading: {
+    position: 'absolute', inset: 0, zIndex: 99,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 });

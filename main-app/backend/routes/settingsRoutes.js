@@ -49,6 +49,10 @@ router.post('/test-printer', authorize('Admin'), settingsController.testPrinter)
 router.get('/agent-config', authorize('Admin'), settingsController.getAgentConfig);
 router.post('/agent-token/regenerate', authorize('Admin'), settingsController.regenerateAgentToken);
 
+// Logo upload/delete: Admin only
+router.post('/logo', authorize('Admin'), settingsController.logoUploadMiddleware, settingsController.uploadLogo);
+router.delete('/logo', authorize('Admin'), settingsController.deleteLogo);
+
 // System info: Admin only
 router.get('/system-info', authorize('Admin'), settingsController.getSystemInfo);
 
