@@ -68,7 +68,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
     const labels = Array(printQty).fill(null).map(() => `
       <div class="label">
         <div class="product-name">{currency}{product.product_name}</div>
-        <div class="product-price">$${parseFloat(product.price).toFixed(2)}</div>
+        <div class="product-price">$${parseFloat(product.price).toFixed(0)}</div>
         <svg id="barcode-print-${Math.random()}"></svg>
       </div>
     `).join('');
@@ -133,7 +133,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
           {/* Product Info */}
           <div className="text-center">
             <p className="font-bold text-gray-800">{product.product_name}</p>
-            <p className="text-emerald-600 font-bold text-lg">{currency}{parseFloat(product.price).toFixed(2)}</p>
+            <p className="text-emerald-600 font-bold text-lg">{currency}{parseFloat(product.price).toFixed(0)}</p>
           </div>
 
           {/* Barcode Preview */}

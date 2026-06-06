@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Building2, Plus, Edit, Trash2, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -236,7 +236,7 @@ const BankAccounts = () => {
                     <td className="px-6 py-4 text-sm text-gray-600">{account.account_holder || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{account.branch || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-gray-800">Rs. {Number(account.current_balance).toFixed(2)}</span>
+                      <span className="font-semibold text-gray-800">Rs. {Number(account.current_balance).toFixed(0)}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${account.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>

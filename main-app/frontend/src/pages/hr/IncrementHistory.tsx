@@ -46,9 +46,9 @@ const IncrementHistory = () => {
       new Date(i.effective_date).toLocaleDateString(),
       `"${i.full_name}"`,
       i.department || '',
-      Number(i.old_salary).toFixed(2),
-      Number(i.new_salary).toFixed(2),
-      Number(i.increment_amount).toFixed(2),
+      Number(i.old_salary).toFixed(0),
+      Number(i.new_salary).toFixed(0),
+      Number(i.increment_amount).toFixed(0),
       `${Number(i.increment_percentage).toFixed(1)}%`,
       `"${(i.reason || '').replace(/"/g, '""')}"`,
       i.approved_by_name || ''

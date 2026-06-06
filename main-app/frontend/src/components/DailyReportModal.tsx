@@ -89,7 +89,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
             
             <div class="row bold">
               <span>Total Sales:</span>
-              <span>$${summary.totalSales.toFixed(2)}</span>
+              <span>$${summary.totalSales.toFixed(0)}</span>
             </div>
             <div class="row">
               <span>Total Orders:</span>
@@ -100,29 +100,29 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
             
             <div class="row">
               <span>Cash:</span>
-              <span>$${summary.cash.toFixed(2)}</span>
+              <span>$${summary.cash.toFixed(0)}</span>
             </div>
             <div class="row">
               <span>Card:</span>
-              <span>$${summary.card.toFixed(2)}</span>
+              <span>$${summary.card.toFixed(0)}</span>
             </div>
             <div class="row">
               <span>Online:</span>
-              <span>$${summary.online.toFixed(2)}</span>
+              <span>$${summary.online.toFixed(0)}</span>
             </div>
             
             <div class="divider"></div>
             
             <div class="row">
               <span>Refunds:</span>
-              <span>$${summary.refunded.toFixed(2)}</span>
+              <span>$${summary.refunded.toFixed(0)}</span>
             </div>
             
             <div class="divider"></div>
             
             <div class="row bold">
               <span>Net Cash:</span>
-              <span>$${(summary.cash).toFixed(2)}</span>
+              <span>$${(summary.cash).toFixed(0)}</span>
             </div>
           </body>
         </html>
@@ -174,7 +174,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Total Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{currency}{summary.totalSales.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.totalSales.toFixed(0)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -184,7 +184,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Card Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{currency}{summary.card.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.card.toFixed(0)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
@@ -194,7 +194,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Online Sales</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{currency}{summary.online.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.online.toFixed(0)}</p>
              </div>
 
              <div className="bg-white p-4 rounded-xl border border-red-100 shadow-sm">
@@ -204,7 +204,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                    </div>
                    <p className="text-sm text-gray-500 font-medium">Refunds</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-800">{currency}{summary.refunded.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-800">{currency}{summary.refunded.toFixed(0)}</p>
              </div>
           </div>
 
@@ -228,7 +228,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
                   <tr key={sale.sale_id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3 text-sm text-gray-600">{new Date(sale.sale_date).toLocaleTimeString()}</td>
                     <td className="px-6 py-3 text-sm font-medium text-gray-900">#{sale.sale_id}</td>
-                    <td className="px-6 py-3 text-sm font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(2)}</td>
+                    <td className="px-6 py-3 text-sm font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(0)}</td>
                     <td className="px-6 py-3 text-sm text-gray-600 capitalize">{sale.payment_method}</td>
                     <td className="px-6 py-3">
                        <span className={`px-2 py-1 text-xs rounded-full font-medium capitalize border ${

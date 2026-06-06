@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { DollarSign, Calendar, Play, Download, CheckCircle, Printer, Search, ChevronDown } from 'lucide-react';
 import api from '../../utils/api';
@@ -169,10 +169,10 @@ const PayrollProcessing = () => {
       `"${p.full_name}"`,
       p.department || '',
       p.position || '',
-      p.base_salary.toFixed(2),
-      p.deductions.toFixed(2),
-      p.bonuses.toFixed(2),
-      p.net_amount.toFixed(2)
+      p.base_salary.toFixed(0),
+      p.deductions.toFixed(0),
+      p.bonuses.toFixed(0),
+      p.net_amount.toFixed(0)
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

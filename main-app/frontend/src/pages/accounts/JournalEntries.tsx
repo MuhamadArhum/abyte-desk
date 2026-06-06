@@ -111,7 +111,7 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
       const others = prev.filter((_, idx) => idx !== i);
       const otherDr = others.reduce((s, l) => s + Number(l.debit || 0), 0);
       const otherCr = others.reduce((s, l) => s + Number(l.credit || 0), 0);
-      const remaining = parseFloat(Math.abs(otherDr - otherCr).toFixed(2));
+      const remaining = parseFloat(Math.abs(otherDr - otherCr).toFixed(0));
       return prev.map((l, idx) => {
         if (idx !== i) return l;
         const existingAmt = l.debit || l.credit || '';

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Package } from 'lucide-react';
 import api from '../utils/api';
 
@@ -166,7 +166,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
                           />
                         </td>
                         <td className="p-4 text-right text-gray-700">
-                          ${Number(item.unit_cost).toFixed(2)}
+                          ${Number(item.unit_cost).toFixed(0)}
                         </td>
                       </tr>
                     ))}

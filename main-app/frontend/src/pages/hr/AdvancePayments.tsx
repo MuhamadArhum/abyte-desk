@@ -164,7 +164,7 @@ const AdvancePayments = () => {
       new Date(a.payment_date).toLocaleDateString(),
       `"${a.full_name}"`,
       a.department || '',
-      Number(a.amount).toFixed(2),
+      Number(a.amount).toFixed(0),
       (a.payment_method || '').replace('_', ' '),
       `"${(a.reason || '').replace(/"/g, '""')}"`
     ]);

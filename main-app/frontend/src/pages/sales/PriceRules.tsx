@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Percent, Plus, Search, Edit2, Trash2, X, Tag, Clock, ShoppingBag, Layers } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
@@ -701,7 +701,7 @@ const PriceRules = () => {
     if (rule.discount_type === 'percentage') {
       return `${rule.discount_value}%`;
     }
-    return `Rs. ${Number(rule.discount_value).toFixed(2)}`;
+    return `Rs. ${Number(rule.discount_value).toFixed(0)}`;
   };
 
   const formatDateRange = (start: string, end: string | null): string => {

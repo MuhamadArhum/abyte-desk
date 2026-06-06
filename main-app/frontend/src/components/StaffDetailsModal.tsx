@@ -86,7 +86,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
   };
 
   const handleDeletePayment = async (payment: any) => {
-    if (!window.confirm(`Delete salary payment of $${Number(payment.net_amount).toFixed(2)}?`)) return;
+    if (!window.confirm(`Delete salary payment of $${Number(payment.net_amount).toFixed(0)}?`)) return;
     try {
       await api.delete(`/staff/salary-payment/${payment.payment_id}`);
       toast.success('Salary payment deleted');
@@ -247,7 +247,7 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Salary</p>
-                      <p className="text-lg font-semibold text-gray-800">{currency}{Number(staff.salary || 0).toFixed(2)} / {staff.salary_type}</p>
+                      <p className="text-lg font-semibold text-gray-800">{currency}{Number(staff.salary || 0).toFixed(0)} / {staff.salary_type}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Status</p>
@@ -370,10 +370,10 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
                               <td className="p-4 text-sm text-gray-600">
                                 {new Date(payment.from_date).toLocaleDateString()} - {new Date(payment.to_date).toLocaleDateString()}
                               </td>
-                              <td className="p-4 text-right">{currency}{Number(payment.amount).toFixed(2)}</td>
-                              <td className="p-4 text-right text-red-600">{payment.deductions > 0 ? `-$${Number(payment.deductions).toFixed(2)}` : '-'}</td>
-                              <td className="p-4 text-right text-green-600">{payment.bonuses > 0 ? `+$${Number(payment.bonuses).toFixed(2)}` : '-'}</td>
-                              <td className="p-4 text-right font-bold text-emerald-600">{currency}{Number(payment.net_amount).toFixed(2)}</td>
+                              <td className="p-4 text-right">{currency}{Number(payment.amount).toFixed(0)}</td>
+                              <td className="p-4 text-right text-red-600">{payment.deductions > 0 ? `-$${Number(payment.deductions).toFixed(0)}` : '-'}</td>
+                              <td className="p-4 text-right text-green-600">{payment.bonuses > 0 ? `+$${Number(payment.bonuses).toFixed(0)}` : '-'}</td>
+                              <td className="p-4 text-right font-bold text-emerald-600">{currency}{Number(payment.net_amount).toFixed(0)}</td>
                               {isAdmin && (
                                 <td className="p-4 text-center">
                                   <div className="flex items-center justify-center gap-1">

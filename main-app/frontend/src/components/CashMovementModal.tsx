@@ -137,7 +137,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
               <div>
                 <p className="text-sm text-gray-600 font-medium">Current Cash Balance</p>
                 <p className="text-3xl font-bold text-gray-800 mt-1">
-                  ${currentBalance.toFixed(2)}
+                  ${currentBalance.toFixed(0)}
                 </p>
               </div>
               {amount && validateAmount(amount) && (
@@ -146,7 +146,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
                   <p className={`text-2xl font-bold mt-1 ${
                     type === 'cash_in' ? 'text-emerald-600' : 'text-orange-600'
                   }`}>
-                    ${getNewBalance().toFixed(2)}
+                    ${getNewBalance().toFixed(0)}
                   </p>
                 </div>
               )}
@@ -231,7 +231,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
               <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
                 <AlertCircle size={16} />
                 {hasInsufficientFunds 
-                  ? `Insufficient funds. Available: $${currentBalance.toFixed(2)}` 
+                  ? `Insufficient funds. Available: $${currentBalance.toFixed(0)}` 
                   : 'Please enter a valid amount greater than 0'}
               </p>
             )}
@@ -325,13 +325,13 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
                       <strong>Type:</strong> {type === 'cash_in' ? 'Cash In ↓' : 'Cash Out ↑'}
                     </p>
                     <p className="text-gray-700">
-                      <strong>Amount:</strong> ${parseFloat(amount).toFixed(2)}
+                      <strong>Amount:</strong> ${parseFloat(amount).toFixed(0)}
                     </p>
                     <p className="text-gray-700">
                       <strong>Reason:</strong> {reason === 'Other' ? customReason : reason}
                     </p>
                     <p className="text-gray-700">
-                      <strong>New Balance:</strong> <span className="font-bold">{currency}{getNewBalance().toFixed(2)}</span>
+                      <strong>New Balance:</strong> <span className="font-bold">{currency}{getNewBalance().toFixed(0)}</span>
                     </p>
                   </div>
                 </div>

@@ -60,7 +60,7 @@ const getCompanyName = () => {
 };
 
 const fmt3 = (n: any) => Number(n || 0).toFixed(3);
-const fmt2 = (n: any) => Number(n || 0).toFixed(2);
+const fmt2 = (n: any) => Number(n || 0).toFixed(0);
 
 // ─── GRN (Goods Received Note) ────────────────────────────────
 export const printGRN = (voucher: any) => {

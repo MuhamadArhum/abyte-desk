@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2 } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
@@ -120,21 +120,21 @@ const CreditSales = () => {
   };
 
   const handlePrintRow = (cs: CreditSale) => {
-    const rows = [[`#${cs.sale_id}`, cs.customer_name, `${currency}${Number(cs.total_amount).toFixed(2)}`, `${currency}${Number(cs.paid_amount).toFixed(2)}`, `${currency}${Number(cs.balance_due).toFixed(2)}`, new Date(cs.due_date).toLocaleDateString(), cs.status]];
+    const rows = [[`#${cs.sale_id}`, cs.customer_name, `${currency}${Number(cs.total_amount).toFixed(0)}`, `${currency}${Number(cs.paid_amount).toFixed(0)}`, `${currency}${Number(cs.balance_due).toFixed(0)}`, new Date(cs.due_date).toLocaleDateString(), cs.status]];
     const content = buildTable(['Sale #', 'Customer', 'Total', 'Paid', 'Balance', 'Due Date', 'Status'], rows, { alignRight: [2, 3, 4] });
     printReport({ title: `Credit Sale - ${cs.customer_name}`, content });
   };
 
   const handlePrint = () => {
     let content = buildStatsCards([
-      { label: 'Total Outstanding', value: `${currency}${Number(stats.total_outstanding).toFixed(2)}` },
+      { label: 'Total Outstanding', value: `${currency}${Number(stats.total_outstanding).toFixed(0)}` },
       { label: 'Overdue', value: String(stats.overdue_count) },
-      { label: 'Collected This Month', value: `${currency}${Number(stats.collected_this_month).toFixed(2)}` },
+      { label: 'Collected This Month', value: `${currency}${Number(stats.collected_this_month).toFixed(0)}` },
       { label: 'Active Credit Sales', value: String(stats.active_count) },
     ]);
     const rows = sales.map(cs => [
-      `#${cs.sale_id}`, cs.customer_name, `${currency}${Number(cs.total_amount).toFixed(2)}`, `${currency}${Number(cs.paid_amount).toFixed(2)}`,
-      `${currency}${Number(cs.balance_due).toFixed(2)}`, new Date(cs.due_date).toLocaleDateString(), cs.status
+      `#${cs.sale_id}`, cs.customer_name, `${currency}${Number(cs.total_amount).toFixed(0)}`, `${currency}${Number(cs.paid_amount).toFixed(0)}`,
+      `${currency}${Number(cs.balance_due).toFixed(0)}`, new Date(cs.due_date).toLocaleDateString(), cs.status
     ]);
     content += buildTable(['Sale #', 'Customer', 'Total', 'Paid', 'Balance', 'Due Date', 'Status'], rows, { alignRight: [2, 3, 4] });
     printReport({ title: 'Credit Sales Report', content });
@@ -157,7 +157,7 @@ const CreditSales = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-rose-50 rounded-xl"><DollarSign size={24} className="text-rose-600" /></div>
-            <div><p className="text-2xl font-bold text-rose-600">{currency}{Number(stats.total_outstanding).toFixed(2)}</p><p className="text-sm text-gray-500">Total Outstanding</p></div>
+            <div><p className="text-2xl font-bold text-rose-600">{currency}{Number(stats.total_outstanding).toFixed(0)}</p><p className="text-sm text-gray-500">Total Outstanding</p></div>
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -169,7 +169,7 @@ const CreditSales = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-emerald-50 rounded-xl"><CheckCircle size={24} className="text-emerald-600" /></div>
-            <div><p className="text-2xl font-bold text-emerald-600">{currency}{Number(stats.collected_this_month).toFixed(2)}</p><p className="text-sm text-gray-500">Collected This Month</p></div>
+            <div><p className="text-2xl font-bold text-emerald-600">{currency}{Number(stats.collected_this_month).toFixed(0)}</p><p className="text-sm text-gray-500">Collected This Month</p></div>
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -221,9 +221,9 @@ const CreditSales = () => {
                     <tr key={cs.credit_sale_id} className={`hover:bg-gray-50 ${isOverdue(cs) ? 'bg-red-50/30' : ''}`}>
                       <td className="px-4 py-3 font-mono font-medium">#{cs.sale_id}</td>
                       <td className="px-4 py-3 text-gray-700 font-medium">{cs.customer_name}</td>
-                      <td className="px-4 py-3 text-right">{currency}{Number(cs.total_amount).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-emerald-600 font-medium">{currency}{Number(cs.paid_amount).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-rose-600">{currency}{Number(cs.balance_due).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right">{currency}{Number(cs.total_amount).toFixed(0)}</td>
+                      <td className="px-4 py-3 text-right text-emerald-600 font-medium">{currency}{Number(cs.paid_amount).toFixed(0)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-rose-600">{currency}{Number(cs.balance_due).toFixed(0)}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(cs.due_date).toLocaleDateString()}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>{badge.label}</span></td>
                       <td className="px-4 py-3">
@@ -265,7 +265,7 @@ const CreditSales = () => {
             <div className="p-6 space-y-4">
               <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-center">
                 <p className="text-sm text-rose-600">Balance Due</p>
-                <p className="text-2xl font-bold text-rose-700">{currency}{Number(paymentModal.balance_due).toFixed(2)}</p>
+                <p className="text-2xl font-bold text-rose-700">{currency}{Number(paymentModal.balance_due).toFixed(0)}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>

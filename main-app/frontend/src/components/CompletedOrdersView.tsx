@@ -88,20 +88,20 @@ const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => 
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-800 font-medium">{item.product_name}</td>
                     <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(0)}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(0)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="space-y-2 bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(2)}</span></div>
-            {discount > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {discount.toFixed(2)}</span></div>}
-            {taxPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax ({taxPercent}%)</span><span>{cs} {(subtotal * taxPercent / 100).toFixed(2)}</span></div>}
-            {additionalPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Additional ({additionalPercent}%)</span><span>{cs} {(subtotal * additionalPercent / 100).toFixed(2)}</span></div>}
+            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(0)}</span></div>
+            {discount > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {discount.toFixed(0)}</span></div>}
+            {taxPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax ({taxPercent}%)</span><span>{cs} {(subtotal * taxPercent / 100).toFixed(0)}</span></div>}
+            {additionalPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Additional ({additionalPercent}%)</span><span>{cs} {(subtotal * additionalPercent / 100).toFixed(0)}</span></div>}
             <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-2">
-              <span>Grand Total</span><span className="text-emerald-600">{cs} {grandTotal.toFixed(2)}</span>
+              <span>Grand Total</span><span className="text-emerald-600">{cs} {grandTotal.toFixed(0)}</span>
             </div>
           </div>
         </div>

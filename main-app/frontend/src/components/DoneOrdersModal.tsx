@@ -137,7 +137,7 @@ const DoneOrdersModal: React.FC<DoneOrdersModalProps> = ({ isOpen, onClose }) =>
                           {sale.customer_name || 'Walk-in'}
                         </td>
                         <td className="px-6 py-4 font-bold text-emerald-600">
-                          ${parseFloat(sale.total_amount).toFixed(2)}
+                          ${parseFloat(sale.total_amount).toFixed(0)}
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium capitalize border border-emerald-100">

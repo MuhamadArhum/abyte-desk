@@ -225,15 +225,15 @@ const SalarySheet = () => {
       n(r.holidays),
       n(r.adjustment_days),
       fmt(n(r.total_attendance), 2),
-      n(r.salary).toFixed(2),
+      n(r.salary).toFixed(0),
       n(r.daily_rate).toFixed(4),
-      n(r.earned_salary).toFixed(2),
-      n(r.total_allowances).toFixed(2),
-      n(r.gross_salary).toFixed(2),
-      n(r.total_comp_deductions).toFixed(2),
+      n(r.earned_salary).toFixed(0),
+      n(r.total_allowances).toFixed(0),
+      n(r.gross_salary).toFixed(0),
+      n(r.total_comp_deductions).toFixed(0),
       r.salary_account_code || '',
-      r.salary_account_id ? n(r.salary_account_balance).toFixed(2) : '',
-      n(r.net_salary).toFixed(2),
+      r.salary_account_id ? n(r.salary_account_balance).toFixed(0) : '',
+      n(r.net_salary).toFixed(0),
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

@@ -285,7 +285,7 @@ const ProductVariants = () => {
             {selectedProduct && (
               <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
                 <p className="text-sm font-semibold text-blue-800">{selectedProduct.product_name}</p>
-                <p className="text-xs text-blue-600 mt-0.5">Base price: Rs. {parseFloat(String(selectedProduct.price)).toFixed(2)}</p>
+                <p className="text-xs text-blue-600 mt-0.5">Base price: Rs. {parseFloat(String(selectedProduct.price)).toFixed(0)}</p>
               </div>
             )}
           </div>
@@ -375,7 +375,7 @@ const ProductVariants = () => {
                         <td className="px-4 py-3 text-right">
                           <span className={`font-medium ${parseFloat(String(variant.price_adjustment)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                             {parseFloat(String(variant.price_adjustment)) >= 0 ? '+' : ''}
-                            Rs. {parseFloat(String(variant.price_adjustment)).toFixed(2)}
+                            Rs. {parseFloat(String(variant.price_adjustment)).toFixed(0)}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">

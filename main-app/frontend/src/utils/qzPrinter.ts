@@ -161,21 +161,21 @@ function buildESCPOS(d: QZReceiptData): Uint8Array {
   for (const item of d.items) {
     const name  = item.name.substring(0, 20).padEnd(20);
     const qty   = String(item.quantity).padStart(3);
-    const price = (d.currencySymbol + item.price.toFixed(2)).padStart(8);
+    const price = (d.currencySymbol + item.price.toFixed(0)).padStart(8);
     lines.push(`${name}${qty}  ${price}`);
   }
   lines.push(dashes);
 
   // Totals
   const cs = d.currencySymbol;
-  if (d.discount > 0)     lines.push(split('Discount:', `-${cs}${d.discount.toFixed(2)}`));
-  if (d.taxAmount > 0)    lines.push(split(`Tax (${d.taxPercent}%):`, `${cs}${d.taxAmount.toFixed(2)}`));
-  if (d.chargesAmount > 0) lines.push(split('Charges:', `${cs}${d.chargesAmount.toFixed(2)}`));
+  if (d.discount > 0)     lines.push(split('Discount:', `-${cs}${d.discount.toFixed(0)}`));
+  if (d.taxAmount > 0)    lines.push(split(`Tax (${d.taxPercent}%):`, `${cs}${d.taxAmount.toFixed(0)}`));
+  if (d.chargesAmount > 0) lines.push(split('Charges:', `${cs}${d.chargesAmount.toFixed(0)}`));
   lines.push('='.repeat(w));
-  lines.push(split('TOTAL:', `${cs}${d.totalAmount.toFixed(2)}`));
+  lines.push(split('TOTAL:', `${cs}${d.totalAmount.toFixed(0)}`));
   lines.push('='.repeat(w));
-  lines.push(split(`Paid (${d.paymentMethod}):`, `${cs}${d.amountPaid.toFixed(2)}`));
-  if (d.changeDue > 0) lines.push(split('Change Due:', `${cs}${d.changeDue.toFixed(2)}`));
+  lines.push(split(`Paid (${d.paymentMethod}):`, `${cs}${d.amountPaid.toFixed(0)}`));
+  if (d.changeDue > 0) lines.push(split('Change Due:', `${cs}${d.changeDue.toFixed(0)}`));
   lines.push(dashes);
 
   // Footer

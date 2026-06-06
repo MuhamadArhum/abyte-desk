@@ -189,7 +189,7 @@ const EditSalaryPaymentModal = ({ isOpen, onClose, onSuccess, payment, staffName
           <div className="bg-gray-50 rounded-lg p-4 text-center">
             <p className="text-sm text-gray-500">Net Amount</p>
             <p className={`text-2xl font-bold ${netAmount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              ${netAmount.toFixed(2)}
+              ${netAmount.toFixed(0)}
             </p>
           </div>
 

@@ -273,7 +273,7 @@ const Customers = () => {
                   purchaseHistory.map((purchase) => (
                     <div key={purchase.sale_id} className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
                       <div>
-                        <p className="font-semibold text-gray-800">{currency}{parseFloat(purchase.net_amount).toFixed(2)}</p>
+                        <p className="font-semibold text-gray-800">{currency}{parseFloat(purchase.net_amount).toFixed(0)}</p>
                         <p className="text-xs text-gray-500">{new Date(purchase.sale_date).toLocaleDateString()} • {new Date(purchase.sale_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                       </div>
                       <div className="text-right">

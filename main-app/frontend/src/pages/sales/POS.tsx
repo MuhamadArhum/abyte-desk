@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Trash2, Minus, Plus, Archive, Barcode, Scan, FileText, User, UserPlus, BarChart, X, Lock, DollarSign, Loader2, ShoppingBag, Keyboard, Percent, Calculator, Tag, Phone, Truck, MapPin, CheckCircle, UtensilsCrossed, Coffee, Table2 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
@@ -1283,7 +1283,7 @@ const POS = () => {
                   : 'Walk-In'}
               </h2>
               <p className="text-gray-400 text-xs">
-                {cart.length === 0 ? 'No items' : `${cart.length} item${cart.length > 1 ? 's' : ''} · Rs. ${subtotal.toFixed(2)}`}
+                {cart.length === 0 ? 'No items' : `${cart.length} item${cart.length > 1 ? 's' : ''} · Rs. ${subtotal.toFixed(0)}`}
               </p>
             </div>
           </div>
@@ -1579,8 +1579,8 @@ const POS = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-black text-emerald-600 text-base">Rs. {(item.price * item.quantity).toFixed(2)}</p>
-                    <p className="text-xs text-gray-400">@ {item.price.toFixed(2)}</p>
+                    <p className="font-black text-emerald-600 text-base">Rs. {(item.price * item.quantity).toFixed(0)}</p>
+                    <p className="text-xs text-gray-400">@ {item.price.toFixed(0)}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
@@ -1606,7 +1606,7 @@ const POS = () => {
                       <Plus size={12} />
                     </button>
                   </div>
-                  <span className="text-xs text-gray-400">× Rs. {item.price.toFixed(2)}</span>
+                  <span className="text-xs text-gray-400">× Rs. {item.price.toFixed(0)}</span>
                   <button
                     onClick={() => removeFromCart(item.product_id)}
                     className="w-7 h-7 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -1626,7 +1626,7 @@ const POS = () => {
           <div className="px-4 pt-3 pb-2 space-y-1.5 border-b border-gray-100">
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">Subtotal</span>
-              <span className="font-bold text-gray-700">Rs. {subtotal.toFixed(2)}</span>
+              <span className="font-bold text-gray-700">Rs. {subtotal.toFixed(0)}</span>
             </div>
             {/* Tax row */}
             <div className="flex items-center justify-between text-sm">
@@ -1642,7 +1642,7 @@ const POS = () => {
                 />
                 <span className="text-gray-400 text-xs">%</span>
               </div>
-              <span className="font-medium text-gray-600 text-sm">Rs. {taxAmount.toFixed(2)}</span>
+              <span className="font-medium text-gray-600 text-sm">Rs. {taxAmount.toFixed(0)}</span>
             </div>
             {/* Service Charges row */}
             <div className="flex items-center justify-between text-sm">
@@ -1662,7 +1662,7 @@ const POS = () => {
                 />
                 <span className="text-gray-400 text-xs">%</span>
               </div>
-              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * serviceRate / 100).toFixed(2)}</span>
+              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * serviceRate / 100).toFixed(0)}</span>
             </div>
             {/* Other Charges row */}
             <div className="flex items-center justify-between text-sm">
@@ -1682,24 +1682,24 @@ const POS = () => {
                 />
                 <span className="text-gray-400 text-xs">%</span>
               </div>
-              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * otherRate / 100).toFixed(2)}</span>
+              <span className="font-medium text-gray-600 text-sm">Rs. {(subtotal * otherRate / 100).toFixed(0)}</span>
             </div>
             {orderType === 'delivery' && delivCharges > 0 && (
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-500 flex items-center gap-1.5"><Truck size={12} /> Delivery</span>
-                <span className="font-medium text-gray-600">Rs. {delivCharges.toFixed(2)}</span>
+                <span className="font-medium text-gray-600">Rs. {delivCharges.toFixed(0)}</span>
               </div>
             )}
             {appliedBundles.length > 0 && (
               <div className="bg-emerald-50 border border-green-200 rounded-lg p-2 space-y-0.5">
                 <div className="flex items-center justify-between text-sm font-bold text-emerald-700">
                   <span>🎁 Bundle Savings</span>
-                  <span>- Rs. {bundleDiscount.toFixed(2)}</span>
+                  <span>- Rs. {bundleDiscount.toFixed(0)}</span>
                 </div>
                 {appliedBundles.map((bundle, idx) => (
                   <div key={idx} className="text-xs text-emerald-600 flex justify-between">
                     <span className="flex-1 truncate">{bundle.bundle_name}</span>
-                    <span className="font-semibold ml-2">- Rs. {bundle.discount_amount.toFixed(2)}</span>
+                    <span className="font-semibold ml-2">- Rs. {bundle.discount_amount.toFixed(0)}</span>
                   </div>
                 ))}
               </div>
@@ -1713,7 +1713,7 @@ const POS = () => {
               <span className="text-gray-300 font-semibold text-sm">Grand Total</span>
             </div>
             <span className="text-2xl font-black text-emerald-400">
-              Rs. {(total + delivCharges).toFixed(2)}
+              Rs. {(total + delivCharges).toFixed(0)}
             </span>
           </div>
 
@@ -1946,13 +1946,13 @@ const POS = () => {
                   {cart.map(item => (
                     <div key={item.product_id} className="flex justify-between text-sm text-gray-700">
                       <span className="truncate flex-1">{item.product_name} × {item.quantity}</span>
-                      <span className="font-medium ml-2">Rs. {(item.price * item.quantity).toFixed(2)}</span>
+                      <span className="font-medium ml-2">Rs. {(item.price * item.quantity).toFixed(0)}</span>
                     </div>
                   ))}
                 </div>
                 <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between text-sm font-bold text-gray-800">
                   <span>Total</span>
-                  <span>Rs. {(total + delivCharges).toFixed(2)}</span>
+                  <span>Rs. {(total + delivCharges).toFixed(0)}</span>
                 </div>
               </div>
               {/* Customer */}

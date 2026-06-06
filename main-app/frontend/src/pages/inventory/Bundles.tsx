@@ -531,7 +531,7 @@ const Bundles = () => {
                           className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-purple-50 text-sm text-left transition-colors"
                         >
                           <span className="font-medium text-gray-700">{p.product_name}</span>
-                          <span className="text-gray-400">Rs. {parseFloat(String(p.price)).toFixed(2)}</span>
+                          <span className="text-gray-400">Rs. {parseFloat(String(p.price)).toFixed(0)}</span>
                         </button>
                       ))}
                     </div>

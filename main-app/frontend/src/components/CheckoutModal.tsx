@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -247,7 +247,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           return;
         }
         finalAmountPaid = finalTotal;
-        noteStr = `${note ? note + ' | ' : ''}Split: Cash Rs. ${cash.toFixed(2)}, Card Rs. ${card.toFixed(2)}`;
+        noteStr = `${note ? note + ' | ' : ''}Split: Cash Rs. ${cash.toFixed(0)}, Card Rs. ${card.toFixed(0)}`;
       }
 
       if (paymentMethod === 'credit') {

@@ -94,8 +94,8 @@ export function buildInvoiceHTML(
       <td style="padding:10px 8px; font-size:13px; color:#6b7280;">${idx + 1}</td>
       <td style="padding:10px 8px; font-size:13px; color:#1f2937;">${item.description || item.product_name || 'Item'}</td>
       <td style="padding:10px 8px; font-size:13px; color:#1f2937; text-align:right;">${item.quantity}</td>
-      <td style="padding:10px 8px; font-size:13px; color:#1f2937; text-align:right;">${currency} ${Number(item.unit_price).toFixed(2)}</td>
-      <td style="padding:10px 8px; font-size:13px; color:#1f2937; text-align:right; font-weight:600;">${currency} ${Number(item.total_price).toFixed(2)}</td>
+      <td style="padding:10px 8px; font-size:13px; color:#1f2937; text-align:right;">${currency} ${Number(item.unit_price).toFixed(0)}</td>
+      <td style="padding:10px 8px; font-size:13px; color:#1f2937; text-align:right; font-weight:600;">${currency} ${Number(item.total_price).toFixed(0)}</td>
     </tr>
   `).join('');
 
@@ -132,7 +132,7 @@ export function buildInvoiceHTML(
   const taxRowHtml = (showTax && !tenant.is_tax_exempt && Number(invoice.tax_amount) > 0) ? `
     <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px; border-bottom:1px solid #e5e7eb;">
       <span style="color:#6b7280;">${taxLabel}</span>
-      <span style="color:#1f2937; font-weight:500;">${currency} ${Number(invoice.tax_amount).toFixed(2)}</span>
+      <span style="color:#1f2937; font-weight:500;">${currency} ${Number(invoice.tax_amount).toFixed(0)}</span>
     </div>
   ` : '';
 
@@ -205,7 +205,7 @@ export function buildInvoiceHTML(
         <div style="width:290px;">
           <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px; border-bottom:1px solid #e5e7eb;">
             <span style="color:#6b7280;">Subtotal</span>
-            <span style="color:#1f2937; font-weight:500;">${currency} ${Number(invoice.subtotal).toFixed(2)}</span>
+            <span style="color:#1f2937; font-weight:500;">${currency} ${Number(invoice.subtotal).toFixed(0)}</span>
           </div>
 
           ${taxRowHtml}
@@ -213,12 +213,12 @@ export function buildInvoiceHTML(
           ${Number(invoice.discount) > 0 ? `
           <div style="display:flex; justify-content:space-between; padding:8px 0; font-size:13px; border-bottom:1px solid #e5e7eb;">
             <span style="color:#6b7280;">Discount</span>
-            <span style="color:#dc2626; font-weight:500;">- ${currency} ${Number(invoice.discount).toFixed(2)}</span>
+            <span style="color:#dc2626; font-weight:500;">- ${currency} ${Number(invoice.discount).toFixed(0)}</span>
           </div>` : ''}
 
           <div style="display:flex; justify-content:space-between; padding:14px 0 8px; border-top:2px solid ${accentColor}; margin-top:4px;">
             <span style="font-size:17px; font-weight:800; color:${accentColor};">Grand Total</span>
-            <span style="font-size:17px; font-weight:800; color:${accentColor};">${currency} ${Number(invoice.total_amount).toFixed(2)}</span>
+            <span style="font-size:17px; font-weight:800; color:${accentColor};">${currency} ${Number(invoice.total_amount).toFixed(0)}</span>
           </div>
         </div>
       </div>

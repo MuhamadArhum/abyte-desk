@@ -291,7 +291,7 @@ const Returns = () => {
                 </div>
                 <div>
                   <span className="text-gray-500">Total</span>
-                  <p className="font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(2)}</p>
+                  <p className="font-bold text-emerald-600">{currency}{parseFloat(sale.total_amount).toFixed(0)}</p>
                 </div>
               </div>
             </div>
@@ -314,7 +314,7 @@ const Returns = () => {
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product_name}</p>
                       <p className="text-sm text-gray-500">
-                        ${parseFloat(item.unit_price).toFixed(2)} each | Bought: {item.quantity}
+                        ${parseFloat(item.unit_price).toFixed(0)} each | Bought: {item.quantity}
                         {item.already_returned > 0 && <span className="text-orange-500"> | Already returned: {item.already_returned}</span>}
                       </p>
                     </div>
@@ -409,7 +409,7 @@ const Returns = () => {
               <h3 className="font-semibold text-gray-800 mb-3">Refund Summary</h3>
               <div className="text-center">
                 <p className="text-sm text-gray-500">Total Refund Amount</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{currency}{totalRefund.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{currency}{totalRefund.toFixed(0)}</p>
                 <p className="text-xs text-gray-400 mt-1">{Object.keys(selectedItems).length} item(s) selected</p>
               </div>
 
@@ -449,7 +449,7 @@ const Returns = () => {
                     <td className="p-4">#{r.sale_id}</td>
                     <td className="p-4 text-gray-500">{new Date(r.return_date).toLocaleDateString()}</td>
                     <td className="p-4 text-gray-600 capitalize">{(r.reason || '').replace(/_/g, ' ')}</td>
-                    <td className="p-4 font-medium text-red-600">{currency}{parseFloat(r.refund_amount || 0).toFixed(2)}</td>
+                    <td className="p-4 font-medium text-red-600">{currency}{parseFloat(r.refund_amount || 0).toFixed(0)}</td>
                     <td className="p-4 text-gray-600">{r.processed_by}</td>
                   </tr>
                 ))}

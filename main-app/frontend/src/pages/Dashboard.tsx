@@ -309,7 +309,7 @@ const Dashboard = () => {
                     <Tooltip
                       contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -5px rgb(0 0 0 / 0.15)', padding: '12px 16px' }}
                       formatter={(value: any, name: any) =>
-                        name === 'sales' ? [`${currency}${Number(value).toFixed(2)}`, 'Revenue'] : [value, 'Orders']
+                        name === 'sales' ? [`${currency}${Number(value).toFixed(0)}`, 'Revenue'] : [value, 'Orders']
                       }
                     />
                     <Area type="monotone" dataKey="sales" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSales)" dot={false} activeDot={{ r: 5, fill: '#10B981' }} />
@@ -511,7 +511,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-800 text-sm">{currency}{Number(order.total).toFixed(2)}</p>
+                      <p className="font-bold text-gray-800 text-sm">{currency}{Number(order.total).toFixed(0)}</p>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs">
                         <CheckCircle size={9} /> Done
                       </span>

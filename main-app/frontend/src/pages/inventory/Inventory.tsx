@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Search, Edit, Trash2, Barcode, Package, DollarSign, AlertTriangle, XCircle, Download } from 'lucide-react';
 import api from '../../utils/api';
@@ -126,8 +126,8 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
     const rows = products.map(p => [
       p.product_name,
       p.category_name || 'Uncategorized',
-      Number(p.price).toFixed(2),
-      p.cost_price ? Number(p.cost_price).toFixed(2) : '',
+      Number(p.price).toFixed(0),
+      p.cost_price ? Number(p.cost_price).toFixed(0) : '',
       String(p.available_stock ?? p.stock_quantity ?? 0),
       p.barcode || '',
       p.sku || '',
@@ -284,9 +284,9 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{product.category_name || 'Uncategorized'}</td>
-                      <td className="px-4 py-3 text-right text-gray-900 font-medium">{currency}{Number(product.price).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-gray-900 font-medium">{currency}{Number(product.price).toFixed(0)}</td>
                       <td className="px-4 py-3 text-right text-gray-500">
-                        {product.cost_price ? `${currency}${Number(product.cost_price).toFixed(2)}` : '-'}
+                        {product.cost_price ? `${currency}${Number(product.cost_price).toFixed(0)}` : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {margin ? (

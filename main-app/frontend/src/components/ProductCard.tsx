@@ -55,7 +55,7 @@ const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onAddToCa
 
       {/* Price + Add button */}
       <div className="flex items-center justify-between mt-2">
-        <span className="text-sm font-black text-emerald-600">Rs. {product.price.toFixed(2)}</span>
+        <span className="text-sm font-black text-emerald-600">Rs. {product.price.toFixed(0)}</span>
         {viewOnly ? (
           <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">View</span>
         ) : (

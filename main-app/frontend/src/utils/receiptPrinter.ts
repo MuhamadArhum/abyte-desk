@@ -1,4 +1,4 @@
-﻿import api from './api';
+import api from './api';
 
 interface ReceiptSale {
   sale_id: number;
@@ -55,7 +55,7 @@ function escapeHtml(str: string): string {
 }
 
 function formatCurrency(amount: number, currencySymbol: string = '$'): string {
-  return `${currencySymbol}${amount.toFixed(2)}`;
+  return `${currencySymbol}${amount.toFixed(0)}`;
 }
 
 function parseNumber(value: number | string): number {
@@ -750,20 +750,20 @@ export function generatePlainTextReceipt(
   sale.items.forEach(item => {
     const qty = item.quantity;
     const price = parseNumber(item.unit_price);
-    const lineTotal = (qty * price).toFixed(2);
+    const lineTotal = (qty * price).toFixed(0);
     text += `${item.product_name}\n`;
-    text += `  ${qty} x $${price.toFixed(2)} = $${lineTotal}\n`;
+    text += `  ${qty} x $${price.toFixed(0)} = $${lineTotal}\n`;
   });
   
   text += `------------------------------\n`;
-  text += `Subtotal: $${subtotal.toFixed(2)}\n`;
-  if (taxAmount > 0) text += `Tax (${taxPercent}%): $${taxAmount.toFixed(2)}\n`;
-  if (chargesAmount > 0) text += `Charges: $${chargesAmount.toFixed(2)}\n`;
-  if (discount > 0) text += `Discount: -$${discount.toFixed(2)}\n`;
-  text += `TOTAL: $${totalAmount.toFixed(2)}\n\n`;
+  text += `Subtotal: $${subtotal.toFixed(0)}\n`;
+  if (taxAmount > 0) text += `Tax (${taxPercent}%): $${taxAmount.toFixed(0)}\n`;
+  if (chargesAmount > 0) text += `Charges: $${chargesAmount.toFixed(0)}\n`;
+  if (discount > 0) text += `Discount: -$${discount.toFixed(0)}\n`;
+  text += `TOTAL: $${totalAmount.toFixed(0)}\n\n`;
   
-  text += `Paid (${sale.payment_method || 'cash'}): $${amountPaid.toFixed(2)}\n`;
-  if (changeDue > 0) text += `Change: $${changeDue.toFixed(2)}\n\n`;
+  text += `Paid (${sale.payment_method || 'cash'}): $${amountPaid.toFixed(0)}\n`;
+  if (changeDue > 0) text += `Change: $${changeDue.toFixed(0)}\n\n`;
   
   if (sale.note) text += `Note: ${sale.note}\n\n`;
   

@@ -112,8 +112,8 @@ const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: 
                       {item.variant_name && <p className="text-gray-400 text-xs">{item.variant_name}</p>}
                     </td>
                     <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
-                    <td className="px-3 py-2 text-right text-gray-500">{cs} {parseFloat(item.unit_price).toFixed(2)}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right text-gray-500">{cs} {parseFloat(item.unit_price).toFixed(0)}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -122,25 +122,25 @@ const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: 
 
           {/* Totals breakdown */}
           <div className="space-y-1.5 bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(0)}</span></div>
             {taxRate > 0 && (
               <div className="flex justify-between text-sm text-orange-600">
-                <span>Tax ({taxRate}%)</span><span>+ {cs} {taxAmount.toFixed(2)}</span>
+                <span>Tax ({taxRate}%)</span><span>+ {cs} {taxAmount.toFixed(0)}</span>
               </div>
             )}
             {chargesRate > 0 && (
               <div className="flex justify-between text-sm text-gray-600">
-                <span>Service Charges ({chargesRate}%)</span><span>+ {cs} {chargesAmount.toFixed(2)}</span>
+                <span>Service Charges ({chargesRate}%)</span><span>+ {cs} {chargesAmount.toFixed(0)}</span>
               </div>
             )}
             {discountAmount > 0 && (
               <div className="flex justify-between text-sm text-green-600">
-                <span>Discount</span><span>- {cs} {discountAmount.toFixed(2)}</span>
+                <span>Discount</span><span>- {cs} {discountAmount.toFixed(0)}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-1">
               <span>Grand Total</span>
-              <span className="text-emerald-600 text-lg">{cs} {grandTotal.toFixed(2)}</span>
+              <span className="text-emerald-600 text-lg">{cs} {grandTotal.toFixed(0)}</span>
             </div>
           </div>
 
@@ -455,7 +455,7 @@ const WalkInOrders = () => {
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={14} className="text-emerald-500" /> Total</span>
-                          <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
+                          <span className="font-bold text-lg text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(0)}</span>
                         </div>
                         {sale.note && (
                           <div className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 mt-1">
@@ -534,7 +534,7 @@ const WalkInOrders = () => {
                               <span className="text-sm font-semibold text-blue-700">{sale.cashier_name || 'Staff'}</span>
                             </td>
                             <td className="px-4 py-3">
-                              <span className="font-semibold text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(2)}</span>
+                              <span className="font-semibold text-emerald-600">{cs} {parseFloat(sale.total_amount).toFixed(0)}</span>
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500">
                               {new Date(sale.sale_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -604,7 +604,7 @@ const WalkInOrders = () => {
                     <Package size={16} /> Total Active: <strong>{activeSummary.order_count}</strong>
                   </span>
                   <span className="text-base font-bold text-emerald-800">
-                    Pending Amount: {cs} {activeSummary.total_amount.toFixed(2)}
+                    Pending Amount: {cs} {activeSummary.total_amount.toFixed(0)}
                   </span>
                 </div>
               )}

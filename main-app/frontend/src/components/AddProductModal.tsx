@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Save, Package, DollarSign, Boxes, Barcode, Tag, FileText, AlertCircle, PackagePlus } from 'lucide-react';
 import api from '../utils/api';
 
@@ -127,8 +127,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onSu
       const sell = parseFloat(price);
       if (!isNaN(cost) && !isNaN(sell) && cost > 0) {
         const profit = sell - cost;
-        const profitPercent = ((profit / cost) * 100).toFixed(2);
-        return { profit: profit.toFixed(2), profitPercent };
+        const profitPercent = ((profit / cost) * 100).toFixed(0);
+        return { profit: profit.toFixed(0), profitPercent };
       }
     }
     return null;

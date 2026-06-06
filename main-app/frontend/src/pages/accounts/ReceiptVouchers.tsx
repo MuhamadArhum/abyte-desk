@@ -375,7 +375,7 @@ const ReceiptVouchers = () => {
 
   const exportCSV = () => {
     const header = 'Voucher #,Date,Account,Narration,Amount';
-    const rows = vouchers.map(v => [v.voucher_number, new Date(v.voucher_date).toLocaleDateString(), `"${v.account_name || ''}"`, `"${v.description || v.received_from || ''}"`, Number(v.amount).toFixed(2)].join(','));
+    const rows = vouchers.map(v => [v.voucher_number, new Date(v.voucher_date).toLocaleDateString(), `"${v.account_name || ''}"`, `"${v.description || v.received_from || ''}"`, Number(v.amount).toFixed(0)].join(','));
     const csv = [header, ...rows].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));

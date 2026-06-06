@@ -164,7 +164,7 @@ export default function OpeningStock() {
                     {p.barcode && <div className="text-xs text-gray-400">{p.barcode}</div>}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono">{Number(p.current_stock).toFixed(3)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono">{Number(p.avg_cost).toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono">{Number(p.avg_cost).toFixed(0)}</td>
                   <td className="px-4 py-2.5 text-right text-gray-500">{Number(p.opening_qty).toFixed(3)}</td>
                   <td className="px-4 py-2.5 text-center">
                     <input
@@ -184,7 +184,7 @@ export default function OpeningStock() {
                       step="0.01"
                       value={entry.cost}
                       onChange={e => handleChange(p.product_id, 'cost', e.target.value)}
-                      placeholder={Number(p.avg_cost).toFixed(2)}
+                      placeholder={Number(p.avg_cost).toFixed(0)}
                       className="w-28 border rounded-lg px-2 py-1.5 text-sm text-right focus:ring-2 focus:ring-teal-300 focus:border-teal-400"
                     />
                   </td>
@@ -224,7 +224,7 @@ export default function OpeningStock() {
                       <tr key={h.entry_id} className="border-b hover:bg-gray-50">
                         <td className="px-4 py-2.5 font-medium">{h.product_name}</td>
                         <td className="px-4 py-2.5 text-right font-mono">{Number(h.quantity).toFixed(3)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono">{Number(h.unit_cost).toFixed(2)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono">{Number(h.unit_cost).toFixed(0)}</td>
                         <td className="px-4 py-2.5 text-gray-500">{h.entry_date}</td>
                         <td className="px-4 py-2.5 text-gray-500">{h.created_by_name}</td>
                       </tr>

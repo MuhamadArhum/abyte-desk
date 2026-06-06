@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
@@ -269,7 +269,7 @@ const Quotations = () => {
                     <tr key={q.quotation_id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono font-medium text-emerald-700">{q.quotation_number}</td>
                       <td className="px-4 py-3 text-gray-700">{q.customer_name}</td>
-                      <td className="px-4 py-3 text-right font-semibold">{currency}{Number(q.total_amount).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{currency}{Number(q.total_amount).toFixed(0)}</td>
                       <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>{badge.label}</span></td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{q.valid_until ? new Date(q.valid_until).toLocaleDateString() : '-'}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{new Date(q.created_at).toLocaleDateString()}</td>
@@ -314,15 +314,15 @@ const Quotations = () => {
                 <thead className="bg-gray-50"><tr><th className="px-3 py-2 text-left">Product</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Price</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
                 <tbody className="divide-y">
                   {(detailQt.items || []).map((item: any, idx: number) => (
-                    <tr key={idx}><td className="px-3 py-2">{item.product_name}</td><td className="px-3 py-2 text-right">{item.quantity}</td><td className="px-3 py-2 text-right">{currency}{Number(item.unit_price).toFixed(2)}</td><td className="px-3 py-2 text-right">{currency}{Number(item.total_price).toFixed(2)}</td></tr>
+                    <tr key={idx}><td className="px-3 py-2">{item.product_name}</td><td className="px-3 py-2 text-right">{item.quantity}</td><td className="px-3 py-2 text-right">{currency}{Number(item.unit_price).toFixed(0)}</td><td className="px-3 py-2 text-right">{currency}{Number(item.total_price).toFixed(0)}</td></tr>
                   ))}
                 </tbody>
               </table>
               <div className="border-t pt-3 space-y-1 text-sm text-right">
-                <p>Subtotal: <span className="font-medium">{currency}{Number(detailQt.subtotal || 0).toFixed(2)}</span></p>
-                {Number(detailQt.tax_amount) > 0 && <p>Tax: <span className="font-medium">{currency}{Number(detailQt.tax_amount).toFixed(2)}</span></p>}
-                {Number(detailQt.discount) > 0 && <p>Discount: <span className="font-medium text-red-600">-${Number(detailQt.discount).toFixed(2)}</span></p>}
-                <p className="text-lg font-bold">Total: ${Number(detailQt.total_amount).toFixed(2)}</p>
+                <p>Subtotal: <span className="font-medium">{currency}{Number(detailQt.subtotal || 0).toFixed(0)}</span></p>
+                {Number(detailQt.tax_amount) > 0 && <p>Tax: <span className="font-medium">{currency}{Number(detailQt.tax_amount).toFixed(0)}</span></p>}
+                {Number(detailQt.discount) > 0 && <p>Discount: <span className="font-medium text-red-600">-${Number(detailQt.discount).toFixed(0)}</span></p>}
+                <p className="text-lg font-bold">Total: ${Number(detailQt.total_amount).toFixed(0)}</p>
               </div>
               {detailQt.notes && <p className="mt-4 text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">{detailQt.notes}</p>}
             </div>
@@ -358,7 +358,7 @@ const Quotations = () => {
                 {productSearch && (
                   <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-white shadow-lg">
                     {filteredProducts.slice(0, 10).map((p: any) => (
-                      <button key={p.product_id} onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">{currency}{Number(p.price).toFixed(2)}</span></button>
+                      <button key={p.product_id} onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">{currency}{Number(p.price).toFixed(0)}</span></button>
                     ))}
                   </div>
                 )}
@@ -372,7 +372,7 @@ const Quotations = () => {
                         <td className="px-3 py-2">{item.product_name}</td>
                         <td className="px-3 py-2"><input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-2 py-1 border rounded text-right" /></td>
                         <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unit_price} onChange={(e) => updateItem(idx, 'unit_price', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-right" /></td>
-                        <td className="px-3 py-2 text-right font-medium">{currency}{(item.quantity * item.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-medium">{currency}{(item.quantity * item.unit_price).toFixed(0)}</td>
                         <td className="px-3 py-2"><button onClick={() => setFormItems(formItems.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 rounded p-1"><Trash2 size={14} /></button></td>
                       </tr>
                     ))}
@@ -382,7 +382,7 @@ const Quotations = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Tax Amount</label><input type="number" min="0" step="0.01" value={formTax} onChange={(e) => setFormTax(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Discount</label><input type="number" min="0" step="0.01" value={formDiscount} onChange={(e) => setFormDiscount(e.target.value)} className="w-full px-3 py-2 border rounded-lg" /></div>
-                <div className="flex items-end"><div className="w-full bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-center"><p className="text-xs text-emerald-600">Total</p><p className="text-lg font-bold text-emerald-800">{currency}{(subtotal + (parseFloat(formTax) || 0) - (parseFloat(formDiscount) || 0)).toFixed(2)}</p></div></div>
+                <div className="flex items-end"><div className="w-full bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-center"><p className="text-xs text-emerald-600">Total</p><p className="text-lg font-bold text-emerald-800">{currency}{(subtotal + (parseFloat(formTax) || 0) - (parseFloat(formDiscount) || 0)).toFixed(0)}</p></div></div>
               </div>
               <div><label className="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded-lg" placeholder="Optional notes" /></div>
             </div>
@@ -425,7 +425,7 @@ const Quotations = () => {
                 {editProductSearch && (
                   <div className="border rounded-lg mt-1 max-h-32 overflow-y-auto bg-white shadow-lg">
                     {allProducts.filter(p => p.product_name.toLowerCase().includes(editProductSearch.toLowerCase())).slice(0, 10).map((p: any) => (
-                      <button key={p.product_id} onClick={() => addEditProduct(p)} className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">Rs. {Number(p.price).toFixed(2)}</span></button>
+                      <button key={p.product_id} onClick={() => addEditProduct(p)} className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm flex justify-between"><span>{p.product_name}</span><span className="text-gray-400">Rs. {Number(p.price).toFixed(0)}</span></button>
                     ))}
                   </div>
                 )}
@@ -439,7 +439,7 @@ const Quotations = () => {
                         <td className="px-3 py-2">{item.product_name}</td>
                         <td className="px-3 py-2"><input type="number" min="1" value={item.quantity} onChange={(e) => updateEditItem(idx, 'quantity', parseInt(e.target.value) || 1)} className="w-full px-2 py-1 border rounded text-right" /></td>
                         <td className="px-3 py-2"><input type="number" min="0" step="0.01" value={item.unit_price} onChange={(e) => updateEditItem(idx, 'unit_price', parseFloat(e.target.value) || 0)} className="w-full px-2 py-1 border rounded text-right" /></td>
-                        <td className="px-3 py-2 text-right font-medium">Rs. {(item.quantity * item.unit_price).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-medium">Rs. {(item.quantity * item.unit_price).toFixed(0)}</td>
                         <td className="px-3 py-2"><button onClick={() => setEditFormItems(editFormItems.filter((_, i) => i !== idx))} className="text-red-500 hover:bg-red-50 rounded p-1"><Trash2 size={14} /></button></td>
                       </tr>
                     ))}
@@ -452,7 +452,7 @@ const Quotations = () => {
                 <div className="flex items-end">
                   <div className="w-full bg-indigo-50 border border-indigo-200 rounded-lg p-2 text-center">
                     <p className="text-xs text-indigo-600">Total</p>
-                    <p className="text-lg font-bold text-indigo-800">Rs. {(editFormItems.reduce((s, i) => s + i.quantity * i.unit_price, 0) + (parseFloat(editFormTax) || 0) - (parseFloat(editFormDiscount) || 0)).toFixed(2)}</p>
+                    <p className="text-lg font-bold text-indigo-800">Rs. {(editFormItems.reduce((s, i) => s + i.quantity * i.unit_price, 0) + (parseFloat(editFormTax) || 0) - (parseFloat(editFormDiscount) || 0)).toFixed(0)}</p>
                   </div>
                 </div>
               </div>

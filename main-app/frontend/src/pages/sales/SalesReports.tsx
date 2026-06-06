@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -78,7 +78,7 @@ const SalesReports = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><DollarSign size={24} className="text-emerald-600" /></div>
-              <div><p className="text-2xl font-bold text-gray-800">{currency}{summary.total_sales.toFixed(2)}</p><p className="text-sm text-gray-500">Total Revenue</p></div></div>
+              <div><p className="text-2xl font-bold text-gray-800">{currency}{summary.total_sales.toFixed(0)}</p><p className="text-sm text-gray-500">Total Revenue</p></div></div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><ShoppingCart size={24} className="text-emerald-600" /></div>
@@ -86,7 +86,7 @@ const SalesReports = () => {
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-3"><div className="p-3 bg-emerald-50 rounded-xl"><BarChart3 size={24} className="text-emerald-600" /></div>
-              <div><p className="text-2xl font-bold text-gray-800">{currency}{summary.avg_order.toFixed(2)}</p><p className="text-sm text-gray-500">Avg Order Value</p></div></div>
+              <div><p className="text-2xl font-bold text-gray-800">{currency}{summary.avg_order.toFixed(0)}</p><p className="text-sm text-gray-500">Avg Order Value</p></div></div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
               <div className="flex items-center gap-3">
@@ -107,7 +107,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="hour" tick={{ fontSize: 11 }} tickFormatter={(h) => `${h}:00`} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(2)}`, 'Revenue'] : ['$0.00', 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
+                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`, 'Revenue'] : ['$0.00', 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
                   <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -124,7 +124,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(2)}`, 'Revenue'] : ['$0.00', 'Revenue']} />
+                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`, 'Revenue'] : ['$0.00', 'Revenue']} />
                   <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -138,7 +138,7 @@ const SalesReports = () => {
               {paymentBreakdown.length === 0 ? <p className="text-center text-gray-400 py-8">No data</p> : (
                 <div className="space-y-3">{paymentBreakdown.map((p) => (
                   <div key={p.method}>
-                    <div className="flex justify-between text-sm mb-1"><span className="font-medium">{p.method}</span><span className="text-gray-500">{currency}{Number(p.total).toFixed(2)} ({p.percentage}%)</span></div>
+                    <div className="flex justify-between text-sm mb-1"><span className="font-medium">{p.method}</span><span className="text-gray-500">{currency}{Number(p.total).toFixed(0)} ({p.percentage}%)</span></div>
                     <div className="w-full bg-gray-100 rounded-full h-2.5"><div className={`h-2.5 rounded-full ${METHOD_COLORS[p.method] || 'bg-gray-400'}`} style={{ width: `${p.percentage}%` }} /></div>
                   </div>
                 ))}</div>
@@ -156,7 +156,7 @@ const SalesReports = () => {
                   <div key={c.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">{idx + 1}</div>
                     <div className="flex-1"><p className="font-medium text-sm">{c.cashier_name}</p><p className="text-xs text-gray-400">{c.order_count} orders</p></div>
-                    <div className="text-right"><p className="font-bold text-sm">{currency}{Number(c.total_sales).toFixed(2)}</p><p className="text-xs text-gray-400">avg ${Number(c.avg_sale).toFixed(2)}</p></div>
+                    <div className="text-right"><p className="font-bold text-sm">{currency}{Number(c.total_sales).toFixed(0)}</p><p className="text-xs text-gray-400">avg ${Number(c.avg_sale).toFixed(0)}</p></div>
                   </div>
                 ))}</div>
               )}
@@ -173,7 +173,7 @@ const SalesReports = () => {
                   <div key={c.customer_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">{idx + 1}</div>
                     <div className="flex-1"><p className="font-medium text-sm">{c.customer_name}</p><p className="text-xs text-gray-400">{c.order_count} orders</p></div>
-                    <p className="font-bold text-sm">{currency}{Number(c.total_spent).toFixed(2)}</p>
+                    <p className="font-bold text-sm">{currency}{Number(c.total_spent).toFixed(0)}</p>
                   </div>
                 ))}</div>
               )}
@@ -224,10 +224,10 @@ const SalesReports = () => {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-700">{row.total_orders}</td>
-                          <td className="px-4 py-3 text-right font-bold text-emerald-600">{currency}{Number(row.total_sales).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_tax).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_charges).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.avg_order).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-600">{currency}{Number(row.total_sales).toFixed(0)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_tax).toFixed(0)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.total_charges).toFixed(0)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600">{currency}{Number(row.avg_order).toFixed(0)}</td>
                         </tr>
                       );
                     })}
@@ -236,9 +236,9 @@ const SalesReports = () => {
                     <tr>
                       <td className="px-4 py-3 font-bold text-gray-700">Total</td>
                       <td className="px-4 py-3 text-right font-bold text-gray-700">{categoryBreakdown.reduce((s, r) => s + r.total_orders, 0)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_sales), 0).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_tax), 0).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_charges), 0).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_sales), 0).toFixed(0)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_tax), 0).toFixed(0)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-700">{currency}{categoryBreakdown.reduce((s, r) => s + Number(r.total_charges), 0).toFixed(0)}</td>
                       <td className="px-4 py-3"></td>
                     </tr>
                   </tfoot>

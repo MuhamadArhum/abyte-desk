@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, Minus, Plus, FileText } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
@@ -278,7 +278,7 @@ const SalaryPaymentModal = ({ isOpen, onClose, onSuccess, staffMember }: SalaryP
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold text-gray-700">Net Amount:</span>
                     <span className={`text-2xl font-bold ${netAmount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      ${netAmount.toFixed(2)}
+                      ${netAmount.toFixed(0)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-600 mt-2">

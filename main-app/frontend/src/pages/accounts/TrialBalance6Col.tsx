@@ -355,15 +355,15 @@ const TrialBalance6Col = () => {
     const header = 'Level,Code,Account Name,Opening Dr,Opening Cr,Current Dr,Current Cr,Closing Dr,Closing Cr';
     const rows = displayRows.map(r =>
       [r.level, r.account_code, `"${r.account_name}"`,
-       r.agg_opening_dr.toFixed(2), r.agg_opening_cr.toFixed(2),
-       r.agg_period_dr.toFixed(2),  r.agg_period_cr.toFixed(2),
-       r.agg_closing_dr.toFixed(2), r.agg_closing_cr.toFixed(2)].join(',')
+       r.agg_opening_dr.toFixed(0), r.agg_opening_cr.toFixed(0),
+       r.agg_period_dr.toFixed(0),  r.agg_period_cr.toFixed(0),
+       r.agg_closing_dr.toFixed(0), r.agg_closing_cr.toFixed(0)].join(',')
     );
     if (totals) {
       rows.push(['', 'GRAND TOTAL', '',
-        totals.opening_dr.toFixed(2), totals.opening_cr.toFixed(2),
-        totals.period_dr.toFixed(2),  totals.period_cr.toFixed(2),
-        totals.closing_dr.toFixed(2), totals.closing_cr.toFixed(2)].join(','));
+        totals.opening_dr.toFixed(0), totals.opening_cr.toFixed(0),
+        totals.period_dr.toFixed(0),  totals.period_cr.toFixed(0),
+        totals.closing_dr.toFixed(0), totals.closing_cr.toFixed(0)].join(','));
     }
     const csv = [header, ...rows].join('\n');
     const a = document.createElement('a');

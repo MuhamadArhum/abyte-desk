@@ -172,7 +172,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                     <DollarSign className="text-emerald-600" size={20} />
                     <h3 className="font-semibold text-gray-800">Total Amount</h3>
                   </div>
-                  <p className="text-2xl font-bold text-emerald-600">{currency}{Number(po.total_amount || 0).toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-emerald-600">{currency}{Number(po.total_amount || 0).toFixed(0)}</p>
                 </div>
               </div>
 
@@ -223,10 +223,10 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                           </span>
                         </td>
                         <td className="p-4 text-right text-gray-700">
-                          ${Number(item.unit_cost).toFixed(2)}
+                          ${Number(item.unit_cost).toFixed(0)}
                         </td>
                         <td className="p-4 text-right font-semibold text-gray-900">
-                          ${Number(item.total_cost).toFixed(2)}
+                          ${Number(item.total_cost).toFixed(0)}
                         </td>
                       </tr>
                     ))}
@@ -235,13 +235,13 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
                     {Number(po.additional_charges) > 0 && (
                       <tr className="border-t border-gray-200">
                         <td colSpan={4} className="p-3 text-right text-gray-600 text-sm">Additional Charges:</td>
-                        <td className="p-3 text-right text-sm">{Number(po.additional_charges).toFixed(2)}</td>
+                        <td className="p-3 text-right text-sm">{Number(po.additional_charges).toFixed(0)}</td>
                       </tr>
                     )}
                     <tr>
                       <td colSpan={4} className="p-4 text-right font-bold text-gray-800 text-lg">Grand Total:</td>
                       <td className="p-4 text-right font-bold text-emerald-600 text-xl">
-                        {Number(po.total_amount || 0).toFixed(2)}
+                        {Number(po.total_amount || 0).toFixed(0)}
                       </td>
                     </tr>
                   </tfoot>

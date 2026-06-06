@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { X, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
 import api from '../utils/api';
@@ -386,7 +386,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                               className="w-full text-right border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-400"
                             />
                           </td>
-                          <td className="p-3 text-right font-semibold">{Number(item.total_cost).toFixed(2)}</td>
+                          <td className="p-3 text-right font-semibold">{Number(item.total_cost).toFixed(0)}</td>
                           <td className="p-3 text-center">
                             <button onClick={() => removeItem(index)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition">
                               <Trash2 size={16} />
@@ -399,7 +399,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                       <tr className="border-t-2 border-gray-300 bg-emerald-50">
                         <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Total:</td>
                         <td className="p-3 text-right font-bold text-emerald-700 text-base">
-                          {calculateTotal().toFixed(2)}
+                          {calculateTotal().toFixed(0)}
                         </td>
                         <td></td>
                       </tr>
@@ -469,8 +469,8 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                       <tr key={index} className="border-t">
                         <td className="p-3">{item.product_name}</td>
                         <td className="p-3 text-center">{item.quantity}</td>
-                        <td className="p-3 text-right">{currency}{Number(item.unit_cost).toFixed(2)}</td>
-                        <td className="p-3 text-right font-semibold">{currency}{Number(item.total_cost).toFixed(2)}</td>
+                        <td className="p-3 text-right">{currency}{Number(item.unit_cost).toFixed(0)}</td>
+                        <td className="p-3 text-right font-semibold">{currency}{Number(item.total_cost).toFixed(0)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -478,7 +478,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
                     <tr>
                       <td colSpan={3} className="p-3 text-right font-bold text-gray-800">Total:</td>
                       <td className="p-3 text-right font-bold text-green-600 text-xl">
-                        {calculateTotal().toFixed(2)}
+                        {calculateTotal().toFixed(0)}
                       </td>
                     </tr>
                   </tfoot>

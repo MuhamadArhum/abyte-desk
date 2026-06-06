@@ -183,10 +183,10 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                       </td>
                       <td className="py-3 text-sm text-gray-800 text-right">{item.quantity}</td>
                       <td className="py-3 text-sm text-gray-800 text-right">
-                        Rs. {Number(item.unit_price).toFixed(2)}
+                        Rs. {Number(item.unit_price).toFixed(0)}
                       </td>
                       <td className="py-3 text-sm text-gray-800 text-right font-medium">
-                        Rs. {Number(item.total_price).toFixed(2)}
+                        Rs. {Number(item.total_price).toFixed(0)}
                       </td>
                     </tr>
                   ))}
@@ -198,23 +198,23 @@ const InvoicePrintModal = ({ invoiceId, onClose }: InvoicePrintModalProps) => {
                 <div className="w-72">
                   <div className="flex justify-between py-2 text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-800 font-medium">Rs. {Number(invoice.subtotal).toFixed(2)}</span>
+                    <span className="text-gray-800 font-medium">Rs. {Number(invoice.subtotal).toFixed(0)}</span>
                   </div>
                   {Number(invoice.tax_amount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Tax</span>
-                      <span className="text-gray-800 font-medium">Rs. {Number(invoice.tax_amount).toFixed(2)}</span>
+                      <span className="text-gray-800 font-medium">Rs. {Number(invoice.tax_amount).toFixed(0)}</span>
                     </div>
                   )}
                   {Number(invoice.discount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Discount</span>
-                      <span className="text-red-600 font-medium">-Rs. {Number(invoice.discount).toFixed(2)}</span>
+                      <span className="text-red-600 font-medium">-Rs. {Number(invoice.discount).toFixed(0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between py-3 border-t-2 border-gray-800 mt-2">
                     <span className="text-lg font-bold text-gray-800">Grand Total</span>
-                    <span className="text-lg font-bold text-gray-800">Rs. {Number(invoice.total_amount).toFixed(2)}</span>
+                    <span className="text-lg font-bold text-gray-800">Rs. {Number(invoice.total_amount).toFixed(0)}</span>
                   </div>
                 </div>
               </div>

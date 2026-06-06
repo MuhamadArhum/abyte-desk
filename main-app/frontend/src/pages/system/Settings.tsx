@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import {
   Save,
@@ -594,12 +594,12 @@ const Settings = () => {
                   {settings.receipt_show_tax && (
                     <div className="text-left text-xs">
                       <div className="flex justify-between"><span>Subtotal</span><span>{settings.currency_symbol} 750.00</span></div>
-                      <div className="flex justify-between text-gray-500"><span>Tax ({settings.tax_rate}%)</span><span>{settings.currency_symbol} {(750 * (settings.tax_rate || 0) / 100).toFixed(2)}</span></div>
+                      <div className="flex justify-between text-gray-500"><span>Tax ({settings.tax_rate}%)</span><span>{settings.currency_symbol} {(750 * (settings.tax_rate || 0) / 100).toFixed(0)}</span></div>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-sm mt-1">
                     <span>Total</span>
-                    <span>{settings.currency_symbol} {(750 + 750 * (settings.tax_rate || 0) / 100).toFixed(2)}</span>
+                    <span>{settings.currency_symbol} {(750 + 750 * (settings.tax_rate || 0) / 100).toFixed(0)}</span>
                   </div>
                   <div className="border-t border-dashed border-gray-300 my-3"></div>
                   {settings.receipt_footer && <p className="text-xs text-gray-500">{settings.receipt_footer}</p>}

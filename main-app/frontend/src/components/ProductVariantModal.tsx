@@ -84,7 +84,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
               Select Variant - {product.product_name}
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Base Price: ${product.price.toFixed(2)}
+              Base Price: ${product.price.toFixed(0)}
             </p>
           </div>
           <button
@@ -160,7 +160,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="w-4 h-4 text-gray-500" />
                       <span className="text-lg font-bold text-green-600">
-                        ${finalPrice.toFixed(2)}
+                        ${finalPrice.toFixed(0)}
                       </span>
                       {variant.price_adjustment !== 0 && (
                         <span
@@ -171,7 +171,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
                           }`}
                         >
                           ({variant.price_adjustment > 0 ? '+' : ''}
-                          {variant.price_adjustment.toFixed(2)})
+                          {variant.price_adjustment.toFixed(0)})
                         </span>
                       )}
                     </div>

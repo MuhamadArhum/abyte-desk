@@ -781,7 +781,7 @@ const Deliveries = () => {
                   <Truck size={16} /> Running Deliveries: <strong>{sortedRunning.length}</strong>
                 </span>
                 <span className="text-sm font-bold text-emerald-800">
-                  Total Charges: {cs} {sortedRunning.reduce((s, d) => s + parseFloat(String(d.delivery_charges || 0)), 0).toFixed(2)}
+                  Total Charges: {cs} {sortedRunning.reduce((s, d) => s + parseFloat(String(d.delivery_charges || 0)), 0).toFixed(0)}
                 </span>
               </div>
             </>

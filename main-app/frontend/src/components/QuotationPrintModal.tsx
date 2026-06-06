@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Printer, Zap } from 'lucide-react';
 import api from '../utils/api';
 import { printReport } from '../utils/reportPrinter';
@@ -87,8 +87,8 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
         <td style="padding:10px 8px;font-size:13px;color:#666;">${idx + 1}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;">${item.product_name}</td>
         <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">${item.quantity}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">Rs. ${Number(item.unit_price).toFixed(2)}</td>
-        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;font-weight:500;">Rs. ${Number(item.total_price).toFixed(2)}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;">Rs. ${Number(item.unit_price).toFixed(0)}</td>
+        <td style="padding:10px 8px;font-size:13px;color:#1f2937;text-align:right;font-weight:500;">Rs. ${Number(item.total_price).toFixed(0)}</td>
       </tr>`
     ).join('');
 
@@ -143,19 +143,19 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
           <div style="width:280px;">
             <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Subtotal</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.subtotal).toFixed(2)}</span>
+              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.subtotal).toFixed(0)}</span>
             </div>
             ${Number(quotation.tax_amount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Tax</span>
-              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.tax_amount).toFixed(2)}</span>
+              <span style="color:#1f2937;font-weight:500;">Rs. ${Number(quotation.tax_amount).toFixed(0)}</span>
             </div>` : ''}
             ${Number(quotation.discount) > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;">
               <span style="color:#666;">Discount</span>
-              <span style="color:#dc2626;font-weight:500;">-Rs. ${Number(quotation.discount).toFixed(2)}</span>
+              <span style="color:#dc2626;font-weight:500;">-Rs. ${Number(quotation.discount).toFixed(0)}</span>
             </div>` : ''}
             <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid #1f2937;margin-top:8px;">
               <span style="font-size:16px;font-weight:bold;color:#1f2937;">Grand Total</span>
-              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Rs. ${Number(quotation.total_amount).toFixed(2)}</span>
+              <span style="font-size:16px;font-weight:bold;color:#1f2937;">Rs. ${Number(quotation.total_amount).toFixed(0)}</span>
             </div>
           </div>
         </div>
@@ -307,10 +307,10 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
                       <td className="py-3 text-sm text-gray-800">{item.product_name}</td>
                       <td className="py-3 text-sm text-gray-800 text-right">{item.quantity}</td>
                       <td className="py-3 text-sm text-gray-800 text-right">
-                        Rs. {Number(item.unit_price).toFixed(2)}
+                        Rs. {Number(item.unit_price).toFixed(0)}
                       </td>
                       <td className="py-3 text-sm text-gray-800 text-right font-medium">
-                        Rs. {Number(item.total_price).toFixed(2)}
+                        Rs. {Number(item.total_price).toFixed(0)}
                       </td>
                     </tr>
                   ))}
@@ -322,23 +322,23 @@ const QuotationPrintModal = ({ quotationId, onClose }: QuotationPrintModalProps)
                 <div className="w-72">
                   <div className="flex justify-between py-2 text-sm">
                     <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-800 font-medium">Rs. {Number(quotation.subtotal).toFixed(2)}</span>
+                    <span className="text-gray-800 font-medium">Rs. {Number(quotation.subtotal).toFixed(0)}</span>
                   </div>
                   {Number(quotation.tax_amount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Tax</span>
-                      <span className="text-gray-800 font-medium">Rs. {Number(quotation.tax_amount).toFixed(2)}</span>
+                      <span className="text-gray-800 font-medium">Rs. {Number(quotation.tax_amount).toFixed(0)}</span>
                     </div>
                   )}
                   {Number(quotation.discount) > 0 && (
                     <div className="flex justify-between py-2 text-sm">
                       <span className="text-gray-600">Discount</span>
-                      <span className="text-red-600 font-medium">-Rs. {Number(quotation.discount).toFixed(2)}</span>
+                      <span className="text-red-600 font-medium">-Rs. {Number(quotation.discount).toFixed(0)}</span>
                     </div>
                   )}
                   <div className="flex justify-between py-3 border-t-2 border-gray-800 mt-2">
                     <span className="text-lg font-bold text-gray-800">Grand Total</span>
-                    <span className="text-lg font-bold text-gray-800">Rs. {Number(quotation.total_amount).toFixed(2)}</span>
+                    <span className="text-lg font-bold text-gray-800">Rs. {Number(quotation.total_amount).toFixed(0)}</span>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { BookOpen, Search, Download, DollarSign, CreditCard, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
@@ -95,8 +95,8 @@ const EmployeeLedger = () => {
       e.date,
       e.type,
       `"${e.description.replace(/"/g, '""')}"`,
-      e.debit > 0 ? e.debit.toFixed(2) : '',
-      e.credit > 0 ? e.credit.toFixed(2) : ''
+      e.debit > 0 ? e.debit.toFixed(0) : '',
+      e.credit > 0 ? e.credit.toFixed(0) : ''
     ]);
     const csv = [
       `Employee Ledger - ${staffInfo.full_name} (${staffInfo.employee_id || 'N/A'})`,

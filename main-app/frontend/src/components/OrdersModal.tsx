@@ -237,7 +237,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                           Total Amount
                         </span>
                         <span className="font-bold text-lg text-emerald-600">
-                          Rs. {parseFloat(sale.total_amount).toFixed(2)}
+                          Rs. {parseFloat(sale.total_amount).toFixed(0)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -384,7 +384,7 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
                               {sale.customer_name || 'Walk-in Customer'}
                             </td>
                             <td className="px-6 py-4 font-bold text-lg text-emerald-600">
-                              Rs. {parseFloat(sale.total_amount).toFixed(2)}
+                              Rs. {parseFloat(sale.total_amount).toFixed(0)}
                             </td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 text-xs rounded-full font-bold capitalize border border-emerald-200 shadow-sm">
