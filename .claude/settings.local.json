@@ -151,7 +151,14 @@
       "Bash(/c/Program Files/MariaDB 12.2/bin/mysql.exe *)",
       "Bash(\"/c/Program Files/MariaDB 12.2/bin/mysql.exe\" -u root -p12345 abyte_pos -e \"SHOW TABLES;\")",
       "Bash(eas --version)",
-      "Bash(npx expo-doctor *)"
+      "Bash(npx expo-doctor *)",
+      "Bash(taskkill /F /IM ABytePrinterAgent.exe)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(netstat *)",
+      "PowerShell(tasklist *)",
+      "Bash(npm run *)",
+      "Bash(cmd *)",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }
