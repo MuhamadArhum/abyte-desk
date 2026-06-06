@@ -1,7 +1,9 @@
-﻿const { query } = require('../config/database');
+﻿const { query, queryDb } = require('../config/database');
+const { masterQuery }    = require('../config/masterDatabase');
 const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const net = require('net');
 const https = require('https');
 const http = require('http');
@@ -822,6 +824,41 @@ exports.updatePrintJobStatus = async (req, res) => {
       [status, error_message || null, id]
     );
     res.json({ success: true });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Get Agent Config (tenant_code + agent_token) ---
+exports.getAgentConfig = async (req, res) => {
+  try {
+    const rows = await query('SELECT agent_token FROM store_settings WHERE setting_id = 1');
+    const agentToken = rows[0]?.agent_token || null;
+
+    // Get tenant_code from master DB using tenant_id in JWT
+    let tenantCode = '';
+    try {
+      const tenantId = req.tenantId;
+      if (tenantId) {
+        const tenants = await masterQuery('SELECT tenant_code FROM tenants WHERE tenant_id = ?', [tenantId]);
+        tenantCode = tenants[0]?.tenant_code || '';
+      }
+    } catch {}
+
+    res.json({ tenant_code: tenantCode, agent_token: agentToken });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Regenerate Agent Token ---
+exports.regenerateAgentToken = async (req, res) => {
+  try {
+    const newToken = crypto.randomBytes(24).toString('hex');
+    await query('UPDATE store_settings SET agent_token = ? WHERE setting_id = 1', [newToken]);
+    res.json({ agent_token: newToken });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });

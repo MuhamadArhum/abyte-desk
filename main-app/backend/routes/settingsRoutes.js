@@ -45,6 +45,10 @@ router.get('/categories', settingsController.getCategories);
 // Test printer connection (legacy): Admin only
 router.post('/test-printer', authorize('Admin'), settingsController.testPrinter);
 
+// Agent config: get tenant_code + agent_token, regenerate token
+router.get('/agent-config', authorize('Admin'), settingsController.getAgentConfig);
+router.post('/agent-token/regenerate', authorize('Admin'), settingsController.regenerateAgentToken);
+
 // System info: Admin only
 router.get('/system-info', authorize('Admin'), settingsController.getSystemInfo);
 

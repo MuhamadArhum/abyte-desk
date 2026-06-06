@@ -106,7 +106,6 @@ const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => 
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
-          <div className="flex-1 text-xs text-gray-400">Press <kbd className="bg-white border border-gray-200 px-1.5 py-0.5 rounded font-mono font-bold">Ctrl+P</kbd> to print</div>
           <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
           <button
             onClick={() => { printToThermalPrinter(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}

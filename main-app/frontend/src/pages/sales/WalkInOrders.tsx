@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Clock, DollarSign, User, Calendar, CreditCard,
   Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List,
-  UtensilsCrossed, Coffee, Truck, Filter,
+  UtensilsCrossed, Coffee, Truck, Filter, Eye, Loader2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
@@ -200,6 +200,25 @@ const WalkInOrders = () => {
 
   // Modal
   const [previewSaleId, setPreviewSaleId] = useState<number | null>(null);
+
+  // Direct print state
+  const [printingId, setPrintingId] = useState<number | null>(null);
+
+  const handleDirectPrint = async (sale: any) => {
+    if (printingId !== null) return;
+    setPrintingId(sale.sale_id);
+    try {
+      const [saleRes, settingsRes] = await Promise.all([
+        api.get(`/sales/${sale.sale_id}`),
+        api.get('/settings'),
+      ]);
+      await printToThermalPrinter(saleRes.data, settingsRes.data, saleRes.data.cashier_name || 'Staff', saleRes.data.customer_name);
+    } catch (e) {
+      console.error('Print failed:', e);
+    } finally {
+      setPrintingId(null);
+    }
+  };
 
   // Layout toggle
   const [layout, setLayout] = useState<'card' | 'table'>(() =>
@@ -470,8 +489,12 @@ const WalkInOrders = () => {
                             <Edit2 size={14} /> Edit
                           </button>
                           <button onClick={() => setPreviewSaleId(sale.sale_id)}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 font-medium text-sm">
-                            <Printer size={14} /> Print
+                            className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-100 transition-all border border-gray-200">
+                            <Eye size={14} />
+                          </button>
+                          <button onClick={() => handleDirectPrint(sale)} disabled={printingId === sale.sale_id}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all border border-emerald-200 font-medium text-sm disabled:opacity-60">
+                            {printingId === sale.sale_id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} Print
                           </button>
                           {isAdmin && (
                             <button onClick={() => handleDeleteActive(sale)}
@@ -556,8 +579,12 @@ const WalkInOrders = () => {
                                   <Edit2 size={15} />
                                 </button>
                                 <button onClick={() => setPreviewSaleId(sale.sale_id)}
-                                  className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="Print">
-                                  <Printer size={15} />
+                                  className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="View Bill">
+                                  <Eye size={15} />
+                                </button>
+                                <button onClick={() => handleDirectPrint(sale)} disabled={printingId === sale.sale_id}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-60" title="Print to Thermal">
+                                  {printingId === sale.sale_id ? <Loader2 size={15} className="animate-spin" /> : <Printer size={15} />}
                                 </button>
                                 {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                                   <button onClick={() => handleReprintKOT(sale)}

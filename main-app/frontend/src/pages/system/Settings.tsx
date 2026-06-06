@@ -40,6 +40,111 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/Toast';
 
+// ── Agent Config Section ──────────────────────────────────────────────────────
+const AgentConfigSection = () => {
+  const toast = useToast();
+  const [data, setData] = useState<{ tenant_code: string; agent_token: string | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [regen, setRegen] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get('/settings/agent-config')
+      .then(r => setData(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const regenerate = async () => {
+    if (!confirm('Regenerate token? The old token will stop working — update the Printer Agent too.')) return;
+    setRegen(true);
+    try {
+      const r = await api.post('/settings/agent-token/regenerate');
+      setData(d => d ? { ...d, agent_token: r.data.agent_token } : d);
+      toast.success('Token regenerated — update it in Printer Agent dashboard');
+    } catch { toast.error('Failed'); }
+    finally { setRegen(false); }
+  };
+
+  const copy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
+
+  if (loading) return null;
+
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-gray-700 mb-3">Printer Agent — Server Connection</h2>
+      <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
+        <p className="text-xs text-gray-500">Enter these values in the Printer Agent dashboard (<code className="bg-white border border-gray-200 px-1 rounded">http://localhost:3001</code>) under <strong>Server Connection</strong>.</p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Server URL */}
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Server URL</p>
+            <div className="flex items-center gap-2">
+              <code className="text-sm text-gray-800 flex-1 truncate">https://erp.abytesol.com</code>
+              <button onClick={() => copy('https://erp.abytesol.com', 'url')}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
+                {copied === 'url' ? '✓' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tenant Code */}
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Tenant Code</p>
+            {data?.tenant_code ? (
+              <div className="flex items-center gap-2">
+                <code className="text-sm text-gray-800 flex-1 truncate">{data.tenant_code}</code>
+                <button onClick={() => copy(data.tenant_code, 'tenant')}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
+                  {copied === 'tenant' ? '✓' : 'Copy'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic">Not available</p>
+            )}
+          </div>
+
+          {/* Agent Token */}
+          <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Agent Token</p>
+            {data?.agent_token ? (
+              <div className="flex items-center gap-2">
+                <code className="text-sm text-gray-800 flex-1 truncate">{data.agent_token.substring(0, 20)}…</code>
+                <button onClick={() => copy(data!.agent_token!, 'token')}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
+                  {copied === 'token' ? '✓' : 'Copy'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-600 italic">Not generated yet</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={regenerate} disabled={regen}
+            className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold rounded-lg transition disabled:opacity-60">
+            {regen ? <Loader2 size={13} className="animate-spin" /> : <Key size={13} />}
+            {data?.agent_token ? 'Regenerate Token' : 'Generate Token'}
+          </button>
+          {data?.agent_token && (
+            <a href="http://localhost:3001" target="_blank" rel="noreferrer"
+              className="text-xs text-blue-600 underline hover:no-underline">
+              Open Agent Dashboard →
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface User {
   user_id: number;
   username: string;
@@ -1002,19 +1107,21 @@ const Settings = () => {
                 </div>
               </div>
 
+              {/* ── Agent Config (Server Connection) ── */}
+              <AgentConfigSection />
+
               {/* ── Mobile Print Queue Info ── */}
               <div>
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">Mobile Print Queue</h2>
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 space-y-2">
                   <p className="text-xs font-semibold text-emerald-800">How it works</p>
                   <ol className="text-xs text-emerald-700 space-y-1 list-decimal list-inside">
-                    <li>Mobile app sends print job → saved in database</li>
-                    <li>Cashier PC browser (this app) checks every 5 seconds</li>
-                    <li>Browser forwards job to local Printer Agent (localhost:3001)</li>
-                    <li>Agent prints on the thermal printer</li>
+                    <li>Mobile app (Waiter App) sends print job → saved in database</li>
+                    <li>Printer Agent polls backend every 3s <strong>(configure below)</strong></li>
+                    <li>Agent sends ESC/POS commands to thermal printer</li>
                   </ol>
                   <p className="text-xs text-emerald-600 mt-2">
-                    No configuration needed — just keep the POS open on the cashier PC and make sure the Printer Agent is running.
+                    Configure Agent Token below, then enter it in the Printer Agent dashboard.
                   </p>
                 </div>
               </div>

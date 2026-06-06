@@ -30,6 +30,8 @@ const path     = require('path');
 const os       = require('os');
 const { exec } = require('child_process');
 const crypto   = require('crypto');
+const http     = require('http');
+const https    = require('https');
 
 const app     = express();
 const PORT    = process.env.PORT || 3001;
@@ -43,7 +45,7 @@ const BASE_DIR  = isPkg ? path.dirname(process.execPath) : __dirname;
 const CONFIG_FILE = path.join(BASE_DIR, 'config.json');
 const LOG_FILE    = path.join(BASE_DIR, 'agent.log');
 
-const DEFAULT_CONFIG = { printers: [] };
+const DEFAULT_CONFIG = { printers: [], server_url: '', tenant_code: '', agent_token: '' };
 
 function loadConfig() {
   try {
@@ -477,6 +479,33 @@ function buildUI() {
 
   <div class="section">
     <div class="section-header">
+      <div class="section-title"><span>🌐</span> Server Connection</div>
+      <span id="poll-status" style="font-size:12px;color:var(--muted)">Not configured</span>
+    </div>
+    <div style="padding:16px;display:grid;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Server URL</label>
+          <input class="form-input" id="sc-url" placeholder="https://erp.abytesol.com">
+          <div class="form-hint">Base URL of your AByte backend</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tenant Code</label>
+          <input class="form-input" id="sc-tenant" placeholder="e.g. khayyam">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Agent Token</label>
+          <input class="form-input" id="sc-token" placeholder="From Settings → Printers">
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="saveServerConfig()">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
       <div class="section-title"><span>🖨️</span> Configured Printers</div>
       <button class="btn btn-primary" onclick="openAddModal()">+ Add Printer</button>
     </div>
@@ -647,6 +676,44 @@ function buildUI() {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
   }
+
+  // Server Config
+  async function loadServerConfig() {
+    try {
+      const res = await fetch('/server-config');
+      const d   = await res.json();
+      document.getElementById('sc-url').value    = d.server_url   || '';
+      document.getElementById('sc-tenant').value = d.tenant_code  || '';
+      document.getElementById('sc-token').value  = d.agent_token  || '';
+      const lbl = document.getElementById('poll-status');
+      if (d.server_url && d.tenant_code && d.agent_token) {
+        lbl.textContent = '✅ Polling ' + d.server_url;
+        lbl.style.color = 'var(--green)';
+      } else {
+        lbl.textContent = '⚠️ Not configured';
+        lbl.style.color = 'var(--muted)';
+      }
+    } catch {}
+  }
+
+  async function saveServerConfig() {
+    const payload = {
+      server_url:  document.getElementById('sc-url').value.trim(),
+      tenant_code: document.getElementById('sc-tenant').value.trim(),
+      agent_token: document.getElementById('sc-token').value.trim(),
+    };
+    try {
+      await fetch('/server-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      toast('Server config saved! Polling started.');
+      loadServerConfig();
+    } catch { toast('Save failed', 'red'); }
+  }
+
+  loadServerConfig();
 
   // Fetch
   async function load() {
@@ -1059,6 +1126,24 @@ app.post('/printers/:id/test', async (req, res) => {
   }
 });
 
+// ── Server Config API ─────────────────────────────────────────
+app.get('/server-config', (req, res) => {
+  res.json({
+    server_url:   config.server_url   || '',
+    tenant_code:  config.tenant_code  || '',
+    agent_token:  config.agent_token  || '',
+  });
+});
+
+app.post('/server-config', (req, res) => {
+  const { server_url, tenant_code, agent_token } = req.body;
+  config.server_url  = (server_url  || '').trim();
+  config.tenant_code = (tenant_code || '').trim();
+  config.agent_token = (agent_token || '').trim();
+  saveConfig();
+  res.json({ success: true });
+});
+
 app.post('/print/invoice', async (req, res) => {
   const { receiptData, printerId } = req.body;
   if (!receiptData) return res.status(400).json({ error: 'receiptData is required' });
@@ -1168,6 +1253,81 @@ app.post('/print/kot', async (req, res) => {
   res.status(allOk ? 200 : 207).json({ success: allOk, results });
 });
 
+// ── Backend Polling ───────────────────────────────────────────
+// Polls the AByte backend print queue directly so jobs from the
+// mobile app are processed even when no browser tab is open.
+
+function backendRequest(url, options = {}, body = null) {
+  return new Promise((resolve, reject) => {
+    let parsed;
+    try { parsed = new URL(url); } catch { return reject(new Error('Invalid URL: ' + url)); }
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const reqOpts = {
+      hostname: parsed.hostname,
+      port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path:     parsed.pathname + (parsed.search || ''),
+      method:   options.method || 'GET',
+      headers:  Object.assign({}, options.headers),
+      timeout:  10000,
+    };
+    let bodyStr = null;
+    if (body) {
+      bodyStr = JSON.stringify(body);
+      reqOpts.headers['Content-Type']   = 'application/json';
+      reqOpts.headers['Content-Length'] = Buffer.byteLength(bodyStr);
+    }
+    const req = lib.request(reqOpts, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
+        catch  { resolve({ status: res.statusCode, data }); }
+      });
+    });
+    req.on('error',   reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+let _polling = false;
+async function pollBackend() {
+  if (_polling) return;
+  const cfg = config;
+  if (!cfg.server_url || !cfg.tenant_code || !cfg.agent_token) return;
+
+  _polling = true;
+  try {
+    const base    = cfg.server_url.replace(/\/$/, '');
+    const headers = { 'X-Tenant-Code': cfg.tenant_code, 'X-Agent-Token': cfg.agent_token };
+    const res     = await backendRequest(base + '/api/agent/print-queue/pending', { headers });
+    if (res.status !== 200 || !Array.isArray(res.data.jobs)) return;
+
+    for (const job of res.data.jobs) {
+      let status = 'failed', errMsg = null;
+      try {
+        const endpoint  = job.type === 'kot' ? '/print/kot' : '/print/invoice';
+        const body      = job.type === 'kot'
+          ? { kotData:     job.payload.kotData }
+          : { receiptData: job.payload.receiptData };
+        const pr = await backendRequest(`http://localhost:${PORT}${endpoint}`, { method: 'POST' }, body);
+        if (pr.status === 200) status = 'done';
+        else errMsg = (pr.data && pr.data.error) || `Agent error ${pr.status}`;
+      } catch (e) { errMsg = e.message; }
+
+      try {
+        await backendRequest(
+          base + `/api/agent/print-queue/${job.id}`,
+          { method: 'PATCH', headers },
+          { status, error_message: errMsg }
+        );
+      } catch {}
+    }
+  } catch { /* network unavailable — skip silently */ }
+  finally { _polling = false; }
+}
+
 // ── Start ─────────────────────────────────────────────────────
 const server = app.listen(PORT, '0.0.0.0', () => {
   const printers = getPrinters();
@@ -1183,6 +1343,13 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`    [${p.type.toUpperCase()}] ${p.name} → ${t}`);
   });
   console.log(`========================================\n`);
+  if (config.server_url && config.tenant_code && config.agent_token) {
+    console.log(`  Server  : ${config.server_url}`);
+    console.log(`  Tenant  : ${config.tenant_code}`);
+    console.log(`  Polling : every 3s`);
+    console.log(`========================================\n`);
+  }
+  setInterval(pollBackend, 3000);
 });
 
 server.on('error', (err) => {
