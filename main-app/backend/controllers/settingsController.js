@@ -738,17 +738,20 @@ exports.getCategories = async (req, res) => {
 
 // --- Get System Info ---
 exports.getSystemInfo = async (req, res) => {
+  const safeCount = async (sql) => {
+    try { const [r] = await query(sql); return r?.total ?? 0; } catch { return 0; }
+  };
+
   try {
-    const [userCount] = await query('SELECT COUNT(*) as total FROM users');
-    const [productCount] = await query('SELECT COUNT(*) as total FROM products');
-    const [orderCount] = await query('SELECT COUNT(*) as total FROM sales');
-    const [customerCount] = await query('SELECT COUNT(*) as total FROM customers');
+    const [users, products, orders, customers] = await Promise.all([
+      safeCount('SELECT COUNT(*) as total FROM users'),
+      safeCount('SELECT COUNT(*) as total FROM products'),
+      safeCount('SELECT COUNT(*) as total FROM sales'),
+      safeCount('SELECT COUNT(*) as total FROM customers'),
+    ]);
 
     res.json({
-      users: userCount.total,
-      products: productCount.total,
-      orders: orderCount.total,
-      customers: customerCount.total,
+      users, products, orders, customers,
       node_version: process.version,
       platform: process.platform,
       uptime: Math.floor(process.uptime()),
