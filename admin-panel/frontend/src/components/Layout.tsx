@@ -44,7 +44,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
           <div>
             <h1 className="text-white font-bold text-base leading-tight">
-              AByte <span className="text-emerald-400">ERP</span>
+              Abyte <span className="text-emerald-400">ERP</span>
             </h1>
             <p className="text-[10px] text-slate-500 font-medium tracking-wide">Admin Console</p>
           </div>
