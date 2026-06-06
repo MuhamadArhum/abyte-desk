@@ -21,6 +21,15 @@ interface TenantActivity {
   } | null;
 }
 
+const avatarGradients = [
+  'from-emerald-500 to-teal-600',
+  'from-blue-500 to-indigo-600',
+  'from-purple-500 to-violet-600',
+  'from-orange-500 to-rose-500',
+  'from-cyan-500 to-blue-600',
+  'from-amber-500 to-orange-600',
+];
+
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins  = Math.floor(diff / 60000);
@@ -77,44 +86,64 @@ export default function ActivityPage() {
   const onlineNow     = data.filter(t => t.last_login && isOnline(t.last_login.created_at)).length;
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Usage & Activity</h2>
-          <p className="text-slate-500 text-sm mt-0.5">Real-time login tracking across all clients</p>
+      <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-blue-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Usage & Activity</h2>
+            <p className="text-slate-400 text-sm mt-0.5">
+              {loading ? '...' : (
+                <><span className="font-semibold text-blue-600">{onlineNow}</span> clients online now</>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
-        >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "Online Now",       value: onlineNow,     icon: Wifi,         bg: 'bg-emerald-50', text: 'text-emerald-600', sub: 'last 30 min' },
-          { label: "Logged In Today",  value: activeToday,   icon: CheckCircle2, bg: 'bg-blue-50',   text: 'text-blue-600',   sub: 'unique clients' },
-          { label: "Total Logins Today",value: totalToday,   icon: Activity,     bg: 'bg-purple-50', text: 'text-purple-600', sub: 'all sessions' },
-          { label: "No Activity Today",value: data.length - activeToday, icon: WifiOff, bg: 'bg-slate-100', text: 'text-slate-500', sub: 'not logged in' },
-        ].map(({ label, value, icon: Icon, bg, text, sub }) => (
-          <div key={label} className="bg-white rounded-2xl border border-slate-200 p-4">
-            <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon size={17} className={text} />
+          { label: "Online Now",        value: onlineNow,             icon: Wifi,         gradient: true,          sub: 'last 30 min' },
+          { label: "Logged In Today",   value: activeToday,           icon: CheckCircle2, bg: 'bg-blue-50',   text: 'text-blue-600',   sub: 'unique clients' },
+          { label: "Total Logins Today",value: totalToday,            icon: Activity,     bg: 'bg-purple-50', text: 'text-purple-600', sub: 'all sessions' },
+          { label: "No Activity Today", value: data.length - activeToday, icon: WifiOff,  bg: 'bg-slate-100', text: 'text-slate-500',  sub: 'not logged in' },
+        ].map(({ label, value, icon: Icon, bg, text, sub, gradient }: any) => (
+          gradient ? (
+            <div key={label} className="relative bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 overflow-hidden shadow-md shadow-emerald-200 group hover:-translate-y-0.5 transition-transform duration-200">
+              <div className="absolute -bottom-3 -right-3 w-16 h-16 bg-white/10 rounded-full blur-xl pointer-events-none" />
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Icon size={17} className="text-white" />
+              </div>
+              <p className="text-2xl font-bold text-white">{loading ? '—' : value}</p>
+              <p className="text-emerald-100 text-xs font-medium mt-0.5">{label}</p>
+              <p className="text-emerald-200/70 text-xs">{sub}</p>
             </div>
-            <p className="text-2xl font-bold text-slate-800">{loading ? '—' : value}</p>
-            <p className="text-slate-600 text-xs font-medium mt-0.5">{label}</p>
-            <p className="text-slate-400 text-xs">{sub}</p>
-          </div>
+          ) : (
+            <div key={label} className="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+              <div className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center mb-3`}>
+                <Icon size={17} className={text} />
+              </div>
+              <p className="text-2xl font-bold text-slate-800">{loading ? '—' : value}</p>
+              <p className="text-slate-600 text-xs font-medium mt-0.5">{label}</p>
+              <p className="text-slate-400 text-xs">{sub}</p>
+            </div>
+          )
         ))}
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 mb-4 bg-slate-100 rounded-xl p-1 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
         {([
           { key: 'all',      label: 'All Clients',    count: data.length },
           { key: 'today',    label: 'Active Today',   count: activeToday },
@@ -155,7 +184,7 @@ export default function ActivityPage() {
             <tbody>
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
-                : filtered.map(t => {
+                : filtered.map((t, idx) => {
                     const ll    = t.last_login;
                     const online = ll && isOnline(ll.created_at);
                     const today  = ll && isToday(ll.created_at);
@@ -168,10 +197,13 @@ export default function ActivityPage() {
                         {/* Client */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                              online ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {t.display_name.charAt(0).toUpperCase()}
+                            <div className="relative flex-shrink-0">
+                              <div className={`w-9 h-9 bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]} rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-sm`}>
+                                {t.display_name.charAt(0).toUpperCase()}
+                              </div>
+                              {online && (
+                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full" />
+                              )}
                             </div>
                             <div>
                               <p className="font-semibold text-slate-800 leading-tight">{t.display_name}</p>

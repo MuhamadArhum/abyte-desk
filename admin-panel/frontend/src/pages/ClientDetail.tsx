@@ -447,64 +447,84 @@ export default function ClientDetail() {
   ];
 
   return (
-    <div className="p-6 max-w-6xl space-y-6">
+    <div className="p-6 max-w-6xl space-y-5">
 
       {/* Back + Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/clients')}
-            className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition">
-            <ArrowLeft size={18} />
-          </button>
-          <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
-            {(tenant.company_name || tenant.tenant_name).charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-800">
-                {tenant.company_name || tenant.tenant_name}
-              </h2>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                tenant.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${tenant.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                {tenant.is_active ? 'Active' : 'Inactive'}
-              </span>
+      <div className="relative bg-white border border-slate-100 rounded-2xl px-5 py-4 shadow-sm overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-emerald-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/clients')}
+              className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition flex-shrink-0">
+              <ArrowLeft size={18} />
+            </button>
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-emerald-200 flex-shrink-0">
+              {(tenant.company_name || tenant.tenant_name).charAt(0).toUpperCase()}
             </div>
-            <p className="text-slate-400 text-sm font-mono">{tenant.tenant_code} · {tenant.admin_email}</p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-bold text-slate-800">
+                  {tenant.company_name || tenant.tenant_name}
+                </h2>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                  tenant.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${tenant.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  {tenant.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <p className="text-slate-400 text-sm font-mono mt-0.5">{tenant.tenant_code} · {tenant.admin_email}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowModules(true)}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
-            Manage Modules
-          </button>
-          <button onClick={() => setShowReset(true)}
-            className="px-3 py-2 text-sm border border-amber-200 rounded-xl text-amber-600 hover:bg-amber-50 transition">
-            Reset Password
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button onClick={() => setShowModules(true)}
+              className="px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium">
+              Manage Modules
+            </button>
+            <button onClick={() => setShowReset(true)}
+              className="px-3 py-2 text-sm border border-amber-200 rounded-xl text-amber-600 hover:bg-amber-50 transition font-medium">
+              Reset Password
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon size={18} className={color} />
+        {stats.map(({ label, value, icon: Icon, color, bg }, i) => (
+          i === 2 ? (
+            <div key={label} className="relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-5 overflow-hidden shadow-lg shadow-purple-200 group hover:-translate-y-0.5 transition-transform duration-200">
+              <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                <Icon size={18} className="text-white" />
+              </div>
+              <p className="text-xl font-bold text-white">{value}</p>
+              <p className="text-purple-100 text-sm">{label}</p>
             </div>
-            <p className="text-xl font-bold text-slate-800">{value}</p>
-            <p className="text-slate-500 text-sm">{label}</p>
-          </div>
+          ) : (
+            <div key={label} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow duration-200 group">
+              <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform`}>
+                <Icon size={18} className={color} />
+              </div>
+              <p className="text-xl font-bold text-slate-800">{value}</p>
+              <p className="text-slate-500 text-sm">{label}</p>
+            </div>
+          )
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Modules + Info */}
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Active Modules</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Package size={13} className="text-purple-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">Active Modules</h3>
+            </div>
             <div className="space-y-2">
               {mods.length === 0 ? (
                 <p className="text-slate-400 text-sm">No modules enabled</p>
@@ -525,8 +545,13 @@ export default function ClientDetail() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Client Info</h3>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Building2 size={13} className="text-slate-500" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">Client Info</h3>
+            </div>
             <div className="space-y-2.5 text-sm">
               {[
                 { label: 'Database', value: tenant.db_name },
@@ -544,28 +569,32 @@ export default function ClientDetail() {
         </div>
 
         {/* Recent Logins */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Clock size={15} className="text-slate-400" />
-            <h3 className="text-sm font-semibold text-slate-700">Recent Logins</h3>
+            <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Clock size={14} className="text-slate-500" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Recent Logins</h3>
           </div>
           {recent_logins.length === 0 ? (
             <div className="py-12 text-center text-slate-400 text-sm">No login records</div>
           ) : (
             <div className="divide-y divide-slate-50">
               {recent_logins.map((l, i) => (
-                <div key={i} className="flex items-center gap-4 px-5 py-3">
-                  <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <User size={13} className="text-slate-500" />
+                <div key={i} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/60 transition-colors">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-sm ${
+                    i === 0 ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'
+                  }`}>
+                    {(l.user_name || 'U').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700">{l.user_name || 'Unknown'}</p>
+                    <p className="text-sm font-semibold text-slate-700">{l.user_name || 'Unknown'}</p>
                     <p className="text-xs text-slate-400 flex items-center gap-1">
                       <Globe size={10} /> {l.ip_address || '—'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-500 font-medium">{timeAgo(l.created_at)}</p>
+                    <p className="text-xs font-medium text-slate-500">{timeAgo(l.created_at)}</p>
                     <p className="text-xs text-slate-400">
                       {new Date(l.created_at).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -578,15 +607,17 @@ export default function ClientDetail() {
       </div>
 
       {/* Branches Management */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building2 size={15} className="text-slate-400" />
-            <h3 className="text-sm font-semibold text-slate-700">Branches / Stores ({branches.length})</h3>
+            <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Building2 size={14} className="text-emerald-600" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Branches / Stores <span className="text-slate-400 font-normal">({branches.length})</span></h3>
           </div>
           <button
             onClick={() => { setEditBranch(null); setShowBranchModal(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-xl hover:bg-emerald-600 transition shadow-sm shadow-emerald-200">
             <Plus size={13} />
             Add Branch
           </button>
@@ -652,15 +683,17 @@ export default function ClientDetail() {
       </div>
 
       {/* Users Management */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users size={15} className="text-slate-400" />
-            <h3 className="text-sm font-semibold text-slate-700">Users ({users.length})</h3>
+            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Users size={14} className="text-blue-600" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Users <span className="text-slate-400 font-normal">({users.length})</span></h3>
           </div>
           <button
             onClick={() => { setEditUser(null); setShowUserModal(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-xl hover:bg-blue-600 transition shadow-sm shadow-blue-200">
             <UserPlus size={13} />
             Add User
           </button>

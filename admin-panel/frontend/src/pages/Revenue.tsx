@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, Users, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar
@@ -17,6 +17,15 @@ interface RevenueData {
   monthly_chart: MonthData[];
   client_breakdown: ClientRow[];
 }
+
+const avatarGradients = [
+  'from-emerald-500 to-teal-600',
+  'from-blue-500 to-indigo-600',
+  'from-purple-500 to-violet-600',
+  'from-orange-500 to-rose-500',
+  'from-cyan-500 to-blue-600',
+  'from-amber-500 to-orange-600',
+];
 
 const MODULE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   sales:     { bg: 'bg-blue-50',    text: 'text-blue-600',    label: 'Sales' },
@@ -88,33 +97,61 @@ export default function Revenue() {
   ] : [];
 
   return (
-    <div className="p-6 max-w-6xl space-y-6">
+    <div className="p-6 max-w-6xl space-y-5">
 
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-800">Revenue</h2>
-        <p className="text-slate-500 text-sm mt-0.5">Monthly recurring revenue & client breakdown</p>
+      <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-purple-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Revenue</h2>
+            <p className="text-slate-400 text-sm mt-0.5">
+              {loading ? '...' : (
+                <>Monthly recurring revenue &amp; client breakdown</>
+              )}
+            </p>
+          </div>
+          {!loading && data && (
+            <div className="hidden sm:flex flex-col items-end gap-1">
+              <span className="text-2xl font-black text-slate-800">Rs. {data.current_mrr.toLocaleString()}</span>
+              <p className="text-xs text-slate-400 font-medium">Current MRR</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {loading
           ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
-          : statCards.map(({ label, value, sub, icon: Icon, bg, color }) => (
-              <div key={label} className="bg-white rounded-2xl border border-slate-200 p-5">
-                <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
-                  <Icon size={18} className={color} />
+          : statCards.map(({ label, value, sub, icon: Icon, bg, color }, i) => (
+              i === 0 ? (
+                <div key={label} className="relative bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 overflow-hidden shadow-lg shadow-emerald-200 group hover:-translate-y-0.5 transition-transform duration-200">
+                  <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <Icon size={18} className="text-white" />
+                  </div>
+                  <p className="text-2xl font-bold text-white mb-0.5">{value}</p>
+                  <p className="text-emerald-100 text-sm">{label}</p>
+                  <p className="text-emerald-200/70 text-xs mt-0.5">{sub}</p>
                 </div>
-                <p className="text-2xl font-bold text-slate-800 mb-0.5">{value}</p>
-                <p className="text-slate-500 text-sm">{label}</p>
-                <p className="text-slate-400 text-xs mt-0.5">{sub}</p>
-              </div>
+              ) : (
+                <div key={label} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow duration-200 group">
+                  <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform`}>
+                    <Icon size={18} className={color} />
+                  </div>
+                  <p className="text-2xl font-bold text-slate-800 mb-0.5">{value}</p>
+                  <p className="text-slate-500 text-sm">{label}</p>
+                  <p className="text-slate-400 text-xs mt-0.5">{sub}</p>
+                </div>
+              )
             ))
         }
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-sm font-semibold text-slate-700">Growth — Last 12 Months</h3>
@@ -169,9 +206,12 @@ export default function Revenue() {
       </div>
 
       {/* Client Breakdown */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-700">Per-Client Revenue</h3>
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <TrendingUp size={14} className="text-emerald-600" />
+          </div>
+          <h3 className="text-sm font-bold text-slate-700">Per-Client Revenue</h3>
         </div>
         {loading ? (
           <div className="p-5 space-y-3 animate-pulse">
@@ -190,11 +230,18 @@ export default function Revenue() {
               <tbody>
                 {(data?.client_breakdown || [])
                   .sort((a, b) => b.monthly_price - a.monthly_price)
-                  .map(c => (
+                  .map((c, idx) => (
                     <tr key={c.tenant_id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
                       <td className="px-5 py-3.5">
-                        <p className="font-semibold text-slate-800">{c.display_name}</p>
-                        <p className="text-slate-400 text-xs font-mono">{c.tenant_code}</p>
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]} rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-sm`}>
+                            {c.display_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800">{c.display_name}</p>
+                            <p className="text-slate-400 text-xs font-mono">{c.tenant_code}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex flex-wrap gap-1">
@@ -211,10 +258,10 @@ export default function Revenue() {
                         Rs. {(c.monthly_price * 12).toLocaleString()}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${
-                          c.is_active ? 'text-emerald-600' : 'text-slate-400'
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          c.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
                         }`}>
-                          {c.is_active ? <CheckCircle size={13} /> : <XCircle size={13} />}
+                          <span className={`w-1.5 h-1.5 rounded-full ${c.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                           {c.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </td>

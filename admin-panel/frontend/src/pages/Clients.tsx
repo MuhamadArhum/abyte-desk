@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Building2, AlertCircle, Eye, Package } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, AlertCircle, Eye, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -15,6 +15,15 @@ interface Tenant {
 
 interface ResetTarget  { id: number; name: string; }
 interface ModuleTarget { id: number; name: string; modules: string[]; }
+
+const avatarGradients = [
+  'from-emerald-500 to-teal-600',
+  'from-blue-500 to-indigo-600',
+  'from-purple-500 to-violet-600',
+  'from-orange-500 to-rose-500',
+  'from-cyan-500 to-blue-600',
+  'from-amber-500 to-orange-600',
+];
 
 const moduleStyles: Record<string, { bg: string; text: string; label: string }> = {
   sales:     { bg: 'bg-blue-50',   text: 'text-blue-600',   label: 'Sales' },
@@ -84,43 +93,49 @@ export default function Clients() {
   });
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Clients</h2>
-          <p className="text-slate-500 text-sm mt-0.5">
-            {loading ? '...' : `${clients.length} total client${clients.length !== 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={load}
-            disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-emerald-200 transition"
-          >
-            <Plus size={16} />
-            <span className="hidden sm:inline">Add Client</span>
-          </button>
+      <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-emerald-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Clients</h2>
+            <p className="text-slate-400 text-sm mt-0.5">
+              {loading ? '...' : (
+                <><span className="font-semibold text-emerald-600">{clients.length}</span> total client{clients.length !== 1 ? 's' : ''} registered</>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={load}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-200 transition"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Add Client</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Search */}
-      <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="relative max-w-sm">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search clients..."
-          className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white text-slate-700 placeholder-slate-400"
+          placeholder="Search by name, email, or code..."
+          className="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white text-slate-700 placeholder-slate-400 shadow-sm"
         />
       </div>
 
@@ -140,7 +155,7 @@ export default function Clients() {
             <tbody>
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
-                : filtered.map(c => {
+                : filtered.map((c, idx) => {
                     const mods = getModules(c.modules_enabled);
                     const monthly = getMonthly(mods);
                     const isToggling = toggling === c.tenant_id;
@@ -150,8 +165,8 @@ export default function Clients() {
                         {/* Client */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                              <Building2 size={14} className="text-slate-500" />
+                            <div className={`w-9 h-9 bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]} rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm`}>
+                              {(c.company_name || c.tenant_name).charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <p className="font-semibold text-slate-800 leading-tight">
