@@ -213,7 +213,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     loyaltyDiscount = maxPts * parseFloat(loyaltyInfo.config.amount_per_point || 0);
   }
 
-  const finalTotal = Math.max(0, baseTotal - discountValue - couponDiscount - loyaltyDiscount);
+  const finalTotal = Math.round(Math.max(0, baseTotal - discountValue - couponDiscount - loyaltyDiscount));
   const effectiveAmountPaid = parseFloat(amountPaid) || 0;
   const changeDue = (paymentMethod === 'split' || paymentMethod === 'credit' || amountPaid === '')
     ? 0
