@@ -20,13 +20,12 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
-Main App Changes:
-1; Checkout or shift Close main jo sale aaa rahi wo points main aaa rahi hai usko round krdo 
-
 
 
 Mobile App Changes:
-
+1: main Frontscreen Ka Theme Change Krna hai White Background and Logo Hona chaye
+2: AByte Waiter ..> Abyte Waiter
+3: 
 
 
 

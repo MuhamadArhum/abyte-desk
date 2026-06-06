@@ -37,20 +37,22 @@ export default function Layout({ children }: { children: ReactNode }) {
   const SidebarContent = () => (
     <>
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-white/10">
+      <div className="px-4 py-5 border-b border-white/[0.08] relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg bg-white">
+          <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-900/50 bg-white flex-shrink-0">
             <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 className="text-white font-bold text-base leading-tight">AByte POS</h1>
-            <p className="text-slate-400 text-xs">Admin Console</p>
+            <h1 className="text-white font-bold text-base leading-tight">
+              AByte <span className="text-emerald-400">ERP</span>
+            </h1>
+            <p className="text-[10px] text-slate-500 font-medium tracking-wide">Admin Console</p>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 relative z-10">
         {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -58,17 +60,25 @@ export default function Layout({ children }: { children: ReactNode }) {
             end={to === '/'}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+              `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden ${
                 isActive
-                  ? 'bg-emerald-500/20 text-emerald-400 shadow-sm'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={17} className={isActive ? 'text-emerald-400' : ''} />
-                {label}
+                {isActive && (
+                  <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-emerald-400 rounded-r-full" />
+                )}
+                <Icon
+                  size={17}
+                  className={`flex-shrink-0 transition-colors ${
+                    isActive ? 'text-emerald-400' : 'text-slate-500 group-hover:text-emerald-400'
+                  }`}
+                />
+                <span>{label}</span>
                 {isActive && <ChevronRight size={14} className="ml-auto text-emerald-400/60" />}
               </>
             )}
@@ -77,40 +87,65 @@ export default function Layout({ children }: { children: ReactNode }) {
       </nav>
 
       {/* User + Logout */}
-      <div className="px-3 py-4 border-t border-white/10 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 text-xs font-bold flex-shrink-0">
-            {initials}
+      <div className="px-3 py-3 border-t border-white/[0.08] relative z-10">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-white/[0.06] border border-white/[0.07] rounded-xl mb-1.5">
+          <div className="relative flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-emerald-900/40">
+              {initials}
+            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-900 rounded-full" />
           </div>
-          <div className="min-w-0">
-            <p className="text-slate-200 text-xs font-medium truncate">{admin?.name || 'Admin'}</p>
-            <p className="text-slate-500 text-xs truncate">{admin?.email}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-slate-200 text-xs font-semibold truncate">{admin?.name || 'Admin'}</p>
+            <p className="text-slate-500 text-[10px] truncate">{admin?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-medium transition-all duration-150"
+          className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-red-400 hover:bg-red-500/8 rounded-lg text-sm font-medium transition-all duration-150 group"
         >
-          <LogOut size={17} />
+          <LogOut size={15} className="group-hover:text-red-400 transition-colors" />
           Sign Out
         </button>
+        <div className="mt-2.5 mx-0.5 px-3 py-1.5 bg-white/[0.03] border border-white/[0.05] rounded-lg flex items-center justify-between">
+          <p className="text-[10px] text-slate-600 font-medium">AByte ERP</p>
+          <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-1.5 py-0.5 rounded font-bold tracking-wide">v1.0</span>
+        </div>
       </div>
     </>
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-50/60">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-60 flex-col flex-shrink-0 bg-slate-900">
-        <SidebarContent />
+      <aside
+        style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0f172a 45%, #111827 100%)' }}
+        className="hidden lg:flex w-60 flex-col flex-shrink-0 border-r border-white/[0.06] relative shadow-xl"
+      >
+        {/* Ambient glow */}
+        <div className="absolute top-0 left-0 right-0 h-36 bg-emerald-500/6 blur-3xl pointer-events-none" />
+        {/* Dot grid */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.025]" style={{
+          backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }} />
+        <div className="relative flex flex-col h-full">
+          <SidebarContent />
+        </div>
       </aside>
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-          <aside className="relative w-60 h-full flex flex-col bg-slate-900 shadow-2xl">
-            <SidebarContent />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <aside
+            style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0f172a 50%, #111827 100%)' }}
+            className="relative w-60 h-full flex flex-col shadow-2xl border-r border-white/[0.06]"
+          >
+            <div className="absolute top-0 left-0 right-0 h-32 bg-emerald-500/6 blur-3xl pointer-events-none" />
+            <div className="relative flex flex-col h-full">
+              <SidebarContent />
+            </div>
           </aside>
         </div>
       )}
@@ -118,28 +153,41 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center px-4 lg:px-6 gap-4 flex-shrink-0">
+        <header
+          className="h-14 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 flex items-center px-4 lg:px-6 gap-4 flex-shrink-0"
+          style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.05), 0 2px 10px rgba(0,0,0,0.04)' }}
+        >
           <button
-            className="lg:hidden p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+            className="lg:hidden p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu size={20} />
           </button>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="text-slate-400">AByte</span>
-            <ChevronRight size={14} />
-            <span className="text-slate-700 font-medium">{breadcrumb}</span>
+
+          {/* Page title with accent */}
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-0.5 bg-gradient-to-b from-emerald-400 to-teal-500 rounded-full" />
+            <div>
+              <p className="text-sm font-bold text-slate-800 leading-tight">{breadcrumb}</p>
+              <p className="text-[11px] text-slate-400 leading-tight font-medium">
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
           </div>
+
           <div className="ml-auto flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="hidden sm:flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
               Super Admin
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-slate-50/50">
           {children}
         </main>
       </div>

@@ -40,16 +40,13 @@ export default function Login() {
     <div className="min-h-screen flex">
 
       {/* ── Left brand panel ── */}
-      <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between p-12 bg-slate-900 overflow-hidden">
+      <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between p-12 overflow-hidden" style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0f172a 45%, #111827 100%)' }}>
 
-        {/* Decorative grid */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
+        {/* Dot grid */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'radial-gradient(circle, #10b981 1px, transparent 1px)',
+          backgroundSize: '24px 24px'
+        }} />
 
         {/* Glow blobs */}
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -60,7 +57,7 @@ export default function Login() {
           <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-emerald-500/30 bg-white">
             <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">AByte POS</span>
+          <span className="text-white font-bold text-lg tracking-tight">AByte <span className="text-emerald-400">ERP</span></span>
         </div>
 
         {/* Center copy */}
@@ -99,8 +96,9 @@ export default function Login() {
       </div>
 
       {/* ── Right form panel ── */}
-      <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12">
-        <div className="w-full max-w-sm">
+      <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(16,185,129,0.05),_transparent_60%)] pointer-events-none" />
+        <div className="w-full max-w-sm relative z-10">
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 justify-center mb-10">
