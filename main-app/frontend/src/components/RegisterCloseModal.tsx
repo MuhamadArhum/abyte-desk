@@ -12,6 +12,8 @@ interface RegisterCloseModalProps {
   register: any;
 }
 
+const r = (n: number) => Math.round(n);
+
 const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
   isOpen,
   onClose,
@@ -153,7 +155,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   Opening Balance
                 </span>
                 <span className="font-bold text-gray-800">
-                  ${parseFloat(register.opening_balance || 0).toFixed(2)}
+                  ${r(parseFloat(register.opening_balance || 0))}
                 </span>
               </div>
 
@@ -164,7 +166,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   Cash Sales
                 </span>
                 <span className="font-bold text-emerald-700">
-                  +${parseFloat(register.cash_sales_total || 0).toFixed(2)}
+                  +${r(parseFloat(register.cash_sales_total || 0))}
                 </span>
               </div>
 
@@ -174,7 +176,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   💳 Card Sales
                 </span>
                 <span className="font-bold text-emerald-700">
-                  ${parseFloat(register.card_sales_total || 0).toFixed(2)}
+                  ${r(parseFloat(register.card_sales_total || 0))}
                 </span>
               </div>
 
@@ -185,7 +187,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   Expenses (This Shift)
                 </span>
                 <span className="font-bold text-red-700">
-                  -${shiftExpenses.toFixed(2)}
+                  -${r(shiftExpenses)}
                 </span>
               </div>
 
@@ -199,7 +201,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   </span>
                 </span>
                 <span className="font-bold text-2xl text-emerald-900">
-                  ${expectedCash.toFixed(2)}
+                  ${r(expectedCash)}
                 </span>
               </div>
             </div>
@@ -225,16 +227,16 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
             <div className="grid grid-cols-3 gap-2 mt-4">
               <div className="bg-white rounded-xl p-3 text-center border border-emerald-200">
                 <p className="text-xs text-gray-500 mb-1">Cash Sales</p>
-                <p className="font-bold text-emerald-700 text-base">{currency}{parseFloat(register.cash_sales_total || 0).toFixed(2)}</p>
+                <p className="font-bold text-emerald-700 text-base">{currency}{r(parseFloat(register.cash_sales_total || 0))}</p>
               </div>
               <div className="bg-white rounded-xl p-3 text-center border border-blue-200">
                 <p className="text-xs text-gray-500 mb-1">Card / Online</p>
-                <p className="font-bold text-blue-700 text-base">{currency}{parseFloat(register.card_sales_total || 0).toFixed(2)}</p>
+                <p className="font-bold text-blue-700 text-base">{currency}{r(parseFloat(register.card_sales_total || 0))}</p>
               </div>
               <div className="bg-white rounded-xl p-3 text-center border border-gray-300">
                 <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
                 <p className="font-bold text-gray-800 text-base">
-                  {currency}{(parseFloat(register.cash_sales_total || 0) + parseFloat(register.card_sales_total || 0)).toFixed(2)}
+                  {currency}{r(parseFloat(register.cash_sales_total || 0) + parseFloat(register.card_sales_total || 0))}
                 </p>
               </div>
             </div>
@@ -268,7 +270,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                                                                'bg-blue-100 text-blue-700'
                           }`}>{sale.payment_method}</span>
                           <span className="text-sm font-bold text-gray-800">
-                            {currency}{parseFloat(sale.total_amount).toFixed(2)}
+                            {currency}{r(parseFloat(sale.total_amount))}
                           </span>
                         </div>
                       </div>
@@ -328,8 +330,8 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   {Math.abs(difference) < 0.01 
                     ? '✓ Perfect Balance!' 
                     : difference > 0 
-                    ? `⚠️ Cash Over by $${difference.toFixed(2)}` 
-                    : `⚠️ Cash Short by $${Math.abs(difference).toFixed(2)}`}
+                    ? `⚠️ Cash Over by $${r(difference)}`
+                    : `⚠️ Cash Short by $${r(Math.abs(difference))}`}
                 </p>
                 <p className="text-sm opacity-90">
                   {Math.abs(difference) < 0.01 
@@ -342,11 +344,11 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <p className="text-xs opacity-75">Expected:</p>
-                      <p className="font-bold">{currency}{expectedCash.toFixed(2)}</p>
+                      <p className="font-bold">{currency}{r(expectedCash)}</p>
                     </div>
                     <div>
                       <p className="text-xs opacity-75">Actual:</p>
-                      <p className="font-bold">{currency}{closingValue.toFixed(2)}</p>
+                      <p className="font-bold">{currency}{r(closingValue)}</p>
                     </div>
                   </div>
                 </div>
@@ -362,7 +364,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
                 <div className="flex-1">
                   <p className="font-bold text-amber-800 mb-2">Confirmation Required</p>
                   <p className="text-sm text-amber-700 mb-3">
-                    You are about to close the register with a discrepancy of <strong>{currency}{Math.abs(difference).toFixed(2)}</strong>. 
+                    You are about to close the register with a discrepancy of <strong>{currency}{r(Math.abs(difference))}</strong>.
                     Please verify your cash count is accurate before proceeding.
                   </p>
                   <div className="flex gap-3">

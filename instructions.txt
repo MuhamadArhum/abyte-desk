@@ -19,12 +19,15 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
+Main App Changes:
+1; Checkout or shift Close main jo sale aaa rahi wo points main aaa rahi hai usko round krdo 
 
 
 
 Mobile App Changes:
-1: Mobile app main Jo ALerts aye sucess messages aaa rahy hain unka UI thora update krna hai wo Bilkul Normal Lag rahy hain Jo Bhi Erorr wagera hain unko Aik Achy Sy UI main Show krwana hai 
-2: Mobile app main jo Sidebar hai us main Aik Button bnana hai Jo POri App Ko hard refresh Kry ga yani Menu wagera,har chiz Refresh Kr dy ga Wo button Bnana hai Sidebar main..
+
+
+
 
 
 

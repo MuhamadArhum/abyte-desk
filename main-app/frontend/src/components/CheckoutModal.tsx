@@ -18,6 +18,8 @@ interface CheckoutModalProps {
   deliveryCharges?: number;
 }
 
+const r = (n: number) => Math.round(n);
+
 const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [], deliveryId, deliveryCharges = 0 }) => {
   const { cart, subtotal, clearCart, additionalRate, bundleDiscount } = useCart();
   const { user } = useAuth();
@@ -240,7 +242,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         const cash = parseFloat(splitCash) || 0;
         const card = parseFloat(splitCard) || 0;
         if (Math.abs((cash + card) - finalTotal) > 0.01) {
-          alert(`Split amounts (Rs. ${(cash + card).toFixed(2)}) do not match Total (Rs. ${finalTotal.toFixed(2)})`);
+          alert(`Split amounts (Rs. ${r(cash + card)}) do not match Total (Rs. ${r(finalTotal)})`);
           setIsProcessing(false);
           return;
         }
@@ -458,13 +460,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
 
           {paymentMethod === 'credit' ? (
             <p className="text-gray-500 mb-8">
-              Amount Due: <span className="font-bold text-orange-600">Rs. {finalTotal.toFixed(2)}</span>
+              Amount Due: <span className="font-bold text-orange-600">Rs. {r(finalTotal)}</span>
               <br />
               <span className="text-sm">Due: {creditDueDate}</span>
             </p>
           ) : (
             <p className="text-gray-500 mb-8">
-              Change Due: <span className="font-bold text-emerald-600">Rs. {changeDueAmount.toFixed(2)}</span>
+              Change Due: <span className="font-bold text-emerald-600">Rs. {r(changeDueAmount)}</span>
             </p>
           )}
 
@@ -564,8 +566,8 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                               {item.variant_name && <p className="text-gray-400">{item.variant_name}</p>}
                             </td>
                             <td className="px-3 py-1.5 text-center text-gray-600 text-xs">{qty}</td>
-                            <td className="px-3 py-1.5 text-right text-gray-600 text-xs">Rs. {price.toFixed(2)}</td>
-                            <td className="px-3 py-1.5 text-right font-semibold text-gray-800 text-xs">Rs. {(price * qty).toFixed(2)}</td>
+                            <td className="px-3 py-1.5 text-right text-gray-600 text-xs">Rs. {r(price)}</td>
+                            <td className="px-3 py-1.5 text-right font-semibold text-gray-800 text-xs">Rs. {r(price * qty)}</td>
                           </tr>
                         );
                       })}
@@ -587,7 +589,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                       step="0.1" min="0"
                     />
                     {pendingTaxRate > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {effectiveTaxAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {r(effectiveTaxAmount)}</p>
                     )}
                   </div>
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
@@ -602,7 +604,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                       step="0.1" min="0"
                     />
                     {pendingAdditionalRate > 0 && (
-                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {effectiveChargesAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400 mt-1 text-center">Rs. {r(effectiveChargesAmount)}</p>
                     )}
                   </div>
                 </div>
@@ -614,7 +616,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
             <div className="flex justify-between items-center text-gray-600 text-sm">
               <span>Subtotal</span>
-              <span>Rs. {effectiveSubtotal.toFixed(2)}</span>
+              <span>Rs. {r(effectiveSubtotal)}</span>
             </div>
             {pendingTaxRate > 0 && (
               <div className={`flex justify-between items-center text-sm font-semibold ${paymentMethod === 'card' || paymentMethod === 'online' ? 'text-blue-600' : 'text-orange-600'}`}>
@@ -625,25 +627,25 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                     {paymentMethod === 'card' ? 'Card' : paymentMethod === 'online' ? 'Online' : paymentMethod === 'split' ? 'Split' : paymentMethod === 'credit' ? 'Credit' : 'Cash'}
                   </span>
                 </span>
-                <span>+ Rs. {effectiveTaxAmount.toFixed(2)}</span>
+                <span>+ Rs. {r(effectiveTaxAmount)}</span>
               </div>
             )}
             {pendingAdditionalRate > 0 && (
               <div className="flex justify-between items-center text-gray-500 text-sm">
                 <span>Charges ({pendingAdditionalRate}%)</span>
-                <span>+ Rs. {effectiveChargesAmount.toFixed(2)}</span>
+                <span>+ Rs. {r(effectiveChargesAmount)}</span>
               </div>
             )}
             {!isPendingMode && bundleDiscount > 0 && (
               <div className="flex justify-between items-center text-green-600 text-sm">
                 <span>Bundle Discount</span>
-                <span>- Rs. {bundleDiscount.toFixed(2)}</span>
+                <span>- Rs. {r(bundleDiscount)}</span>
               </div>
             )}
             {deliveryCharges > 0 && (
               <div className="flex justify-between items-center text-blue-600 text-sm">
                 <span className="flex items-center gap-1"><Truck size={12} /> Delivery Charges</span>
-                <span>+ Rs. {deliveryCharges.toFixed(2)}</span>
+                <span>+ Rs. {r(deliveryCharges)}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-gray-600">
@@ -662,13 +664,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             {couponDiscount > 0 && (
               <div className="flex justify-between items-center text-green-600">
                 <span className="flex items-center gap-1"><Tag size={14} /> Coupon</span>
-                <span>- Rs. {couponDiscount.toFixed(2)}</span>
+                <span>- Rs. {r(couponDiscount)}</span>
               </div>
             )}
             {loyaltyDiscount > 0 && (
               <div className="flex justify-between items-center text-amber-600">
                 <span className="flex items-center gap-1"><Star size={14} /> Points</span>
-                <span>- Rs. {loyaltyDiscount.toFixed(2)}</span>
+                <span>- Rs. {r(loyaltyDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between items-center text-lg pt-2 border-t border-gray-200">
@@ -680,7 +682,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                   </div>
                 )}
               </div>
-              <span className="font-bold text-2xl text-emerald-600">Rs. {finalTotal.toFixed(2)}</span>
+              <span className="font-bold text-2xl text-emerald-600">Rs. {r(finalTotal)}</span>
             </div>
           </div>
 
@@ -692,7 +694,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                 <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2">
                   <div>
                     <span className="font-bold text-green-700">{couponCode}</span>
-                    <span className="text-green-600 text-sm ml-2">-Rs. {couponDiscount.toFixed(2)} off</span>
+                    <span className="text-green-600 text-sm ml-2">-Rs. {r(couponDiscount)} off</span>
                   </div>
                   <button onClick={removeCoupon} className="text-red-400 hover:text-red-600"><X size={16} /></button>
                 </div>
@@ -753,7 +755,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                     />
                   )}
                   {redeemPoints && loyaltyDiscount > 0 && (
-                    <span className="text-xs text-amber-600">= Rs. {loyaltyDiscount.toFixed(2)} off</span>
+                    <span className="text-xs text-amber-600">= Rs. {r(loyaltyDiscount)} off</span>
                   )}
                 </div>
               )}
@@ -768,7 +770,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">Payment Method</label>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${paymentMethod === 'card' || paymentMethod === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                Tax: {pendingTaxRate}% — Rs. {effectiveTaxAmount.toFixed(2)}
+                Tax: {pendingTaxRate}% — Rs. {r(effectiveTaxAmount)}
               </span>
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -887,7 +889,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
              </div>
           ) : paymentMethod === 'credit' ? (
             <div className="text-center text-orange-700 text-sm font-medium py-2">
-              Full amount of Rs. {finalTotal.toFixed(2)} will be recorded as credit
+              Full amount of Rs. {r(finalTotal)} will be recorded as credit
             </div>
           ) : (
              <div className="space-y-2">
@@ -904,7 +906,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
                </div>
                <div className="flex justify-between items-center text-sm">
                  <span className="text-gray-500">Change Due</span>
-                 <span className="font-bold text-gray-800">Rs. {changeDue.toFixed(2)}</span>
+                 <span className="font-bold text-gray-800">Rs. {r(changeDue)}</span>
                </div>
              </div>
           )}
