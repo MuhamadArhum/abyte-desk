@@ -281,7 +281,7 @@ const AccessControl = () => {
   };
 
   // ── Delete role ───────────────────────────────────────────────────────────
-  const handleDeleteRole = async (roleName: string, roleId?: number) => {
+  const handleDeleteRole = async (roleName: string, _roleId?: number) => {
     if (!confirm(`Delete role "${roleName}"? This cannot be undone.`)) return;
     setDeletingRole(roleName);
     try {
