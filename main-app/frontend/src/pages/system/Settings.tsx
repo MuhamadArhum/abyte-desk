@@ -35,115 +35,13 @@ import {
   Percent,
   ShoppingBag,
   Layers,
+  Copy,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/Toast';
 
-// ── Agent Config Section ──────────────────────────────────────────────────────
-const AgentConfigSection = () => {
-  const toast = useToast();
-  const [data, setData] = useState<{ tenant_code: string; agent_token: string | null } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [regen, setRegen] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get('/settings/agent-config')
-      .then(r => setData(r.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  const regenerate = async () => {
-    if (!confirm('Regenerate token? The old token will stop working — update the Printer Agent too.')) return;
-    setRegen(true);
-    try {
-      const r = await api.post('/settings/agent-token/regenerate');
-      setData(d => d ? { ...d, agent_token: r.data.agent_token } : d);
-      toast.success('Token regenerated — update it in Printer Agent dashboard');
-    } catch { toast.error('Failed'); }
-    finally { setRegen(false); }
-  };
-
-  const copy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(key);
-      setTimeout(() => setCopied(null), 1500);
-    });
-  };
-
-  if (loading) return null;
-
-  return (
-    <div>
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Printer Agent — Server Connection</h2>
-      <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-3">
-        <p className="text-xs text-gray-500">Enter these values in the Printer Agent dashboard (<code className="bg-white border border-gray-200 px-1 rounded">http://localhost:3001</code>) under <strong>Server Connection</strong>.</p>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Server URL */}
-          <div className="bg-white rounded-lg border border-gray-200 p-3">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Server URL</p>
-            <div className="flex items-center gap-2">
-              <code className="text-sm text-gray-800 flex-1 truncate">https://erp.abytesol.com</code>
-              <button onClick={() => copy('https://erp.abytesol.com', 'url')}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
-                {copied === 'url' ? '✓' : 'Copy'}
-              </button>
-            </div>
-          </div>
-
-          {/* Tenant Code */}
-          <div className="bg-white rounded-lg border border-gray-200 p-3">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Tenant Code</p>
-            {data?.tenant_code ? (
-              <div className="flex items-center gap-2">
-                <code className="text-sm text-gray-800 flex-1 truncate">{data.tenant_code}</code>
-                <button onClick={() => copy(data.tenant_code, 'tenant')}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
-                  {copied === 'tenant' ? '✓' : 'Copy'}
-                </button>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 italic">Not available</p>
-            )}
-          </div>
-
-          {/* Agent Token */}
-          <div className="bg-white rounded-lg border border-gray-200 p-3">
-            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1">Agent Token</p>
-            {data?.agent_token ? (
-              <div className="flex items-center gap-2">
-                <code className="text-sm text-gray-800 flex-1 truncate">{data.agent_token.substring(0, 20)}…</code>
-                <button onClick={() => copy(data!.agent_token!, 'token')}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded font-medium text-gray-600 transition shrink-0">
-                  {copied === 'token' ? '✓' : 'Copy'}
-                </button>
-              </div>
-            ) : (
-              <p className="text-xs text-amber-600 italic">Not generated yet</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={regenerate} disabled={regen}
-            className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-semibold rounded-lg transition disabled:opacity-60">
-            {regen ? <Loader2 size={13} className="animate-spin" /> : <Key size={13} />}
-            {data?.agent_token ? 'Regenerate Token' : 'Generate Token'}
-          </button>
-          {data?.agent_token && (
-            <a href="http://localhost:3001" target="_blank" rel="noreferrer"
-              className="text-xs text-blue-600 underline hover:no-underline">
-              Open Agent Dashboard →
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 interface User {
   user_id: number;
@@ -249,8 +147,11 @@ const Settings = () => {
 
   const [agentStatus, setAgentStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   const [agentInfo, setAgentInfo] = useState<any>(null);
+  const [agentTokenSaving, setAgentTokenSaving] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const AGENT_URL = import.meta.env.VITE_PRINTER_AGENT_URL || 'http://localhost:3001';
+  const SERVER_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'https://erp.abytesol.com';
 
   const checkAgentStatus = async () => {
     setAgentStatus('checking');
@@ -259,6 +160,30 @@ const Settings = () => {
       if (res.ok) { setAgentInfo(await res.json()); setAgentStatus('available'); }
       else setAgentStatus('unavailable');
     } catch { setAgentStatus('unavailable'); }
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  };
+
+  const generateAndSaveAgentToken = async () => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const token = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    setAgentTokenSaving(true);
+    try {
+      await api.put('/settings', { ...settings, agent_token: token });
+      setSettings((prev: any) => ({ ...prev, agent_token: token }));
+      refreshSettings();
+      toast.success('Agent token regenerated');
+    } catch {
+      toast.error('Failed to save token');
+    } finally {
+      setAgentTokenSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -1108,7 +1033,75 @@ const Settings = () => {
               </div>
 
               {/* ── Agent Config (Server Connection) ── */}
-              <AgentConfigSection />
+              <div>
+                <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Server size={14} className="text-gray-500" /> Agent Server Configuration
+                </h2>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+                  <p className="text-xs text-gray-500">Enter these values in the Printer Agent dashboard under "Server Connection".</p>
+
+                  {/* Server URL */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Server URL</label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 font-mono truncate">
+                        {SERVER_URL}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(SERVER_URL, 'server_url')}
+                        className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                        title="Copy"
+                      >
+                        {copiedField === 'server_url' ? <CheckCircle size={15} className="text-emerald-600" /> : <Copy size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tenant Code */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Tenant Code</label>
+                    <p className="text-xs text-gray-500 px-3 py-2 bg-white border border-gray-200 rounded-lg">
+                      Your company login code (the code staff use to log in)
+                    </p>
+                  </div>
+
+                  {/* Agent Token */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Agent Token</label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 font-mono truncate">
+                        {settings.agent_token || <span className="text-gray-400 italic">No token generated yet</span>}
+                      </code>
+                      {settings.agent_token && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(settings.agent_token, 'agent_token')}
+                          className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Copy token"
+                        >
+                          {copiedField === 'agent_token' ? <CheckCircle size={15} className="text-emerald-600" /> : <Copy size={15} />}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={generateAndSaveAgentToken}
+                        disabled={agentTokenSaving}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition"
+                        title="Generate new token"
+                      >
+                        {agentTokenSaving ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                        {settings.agent_token ? 'Regenerate' : 'Generate'}
+                      </button>
+                    </div>
+                    {settings.agent_token && (
+                      <p className="text-xs text-amber-600 mt-1.5">
+                        Regenerating will disconnect the agent until you update the token in its dashboard.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               {/* ── Mobile Print Queue Info ── */}
               <div>
