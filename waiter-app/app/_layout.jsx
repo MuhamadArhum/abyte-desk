@@ -11,18 +11,17 @@ import RefreshLoader from '../components/RefreshLoader';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { loadAuth, isLoading } = useAuthStore();
+  const { loadAuth } = useAuthStore();
 
   useEffect(() => {
     loadAuth().finally(() => SplashScreen.hideAsync());
   }, []);
 
-  if (isLoading) return null;
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+          <Stack.Screen name="index" />
           <Stack.Screen name="login" />
           <Stack.Screen name="(main)" />
         </Stack>
