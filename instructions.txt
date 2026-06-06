@@ -18,8 +18,20 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
-Acha Aik Kaam kro Ab 
-1: Main App Main Printing Ko Thora Thi Krna hai Jab Bhi User Order Punch Kry to KOT Jani Chaye or Uski joob direct Agent KO Jani Chaye 
-2: Iss Trha Jab Bill ka Print diya jaye to bhi Window print popuo open hony ki bjaye direct wo print job agent ko jaye 
-or ye sara kaam sale module main hi krna hai bs baki modules main hum manual printer use krty hain Sirf sale module k Liye jo Prints hain wo automate krny hain yani without popup wo printing quee main chaly jain or agent printer ko bhej kr print kr dy 
+
+
+
+
+Mobile App Changes:
+1: Mobile app main Jo ALerts aye sucess messages aaa rahy hain unka UI thora update krna hai wo Bilkul Normal Lag rahy hain Jo Bhi Erorr wagera hain unko Aik Achy Sy UI main Show krwana hai 
+2: Mobile app main jo Sidebar hai us main Aik Button bnana hai Jo POri App Ko hard refresh Kry ga yani Menu wagera,har chiz Refresh Kr dy ga Wo button Bnana hai Sidebar main..
+
+
+
+
+
+Super Admin Pannel Changes:
+1: Sbse Phly to Hum jo bhi Client Bnaye gy Uski Requirement Dekhty hue hi Usko Feature Dy gain 
+2: For example Agr user kahy k mujy Just Sales waly Feature chaye ya agr kahy k mujy just deliveries chaye bs or usky sath Inventory wala Complete module chaye to humny just usko usi k mutabiq hi Db bhi Setup krni hai or Usko Woho Features enable kr k deny hain 
+
 

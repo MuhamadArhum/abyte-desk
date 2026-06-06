@@ -4,6 +4,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import useAuthStore from '../store/authStore';
+import Toast from '../components/Toast';
+import ConfirmDialog from '../components/ConfirmDialog';
+import RefreshLoader from '../components/RefreshLoader';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,6 +26,9 @@ export default function RootLayout() {
           <Stack.Screen name="login" />
           <Stack.Screen name="(main)" />
         </Stack>
+        <Toast />
+        <ConfirmDialog />
+        <RefreshLoader />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

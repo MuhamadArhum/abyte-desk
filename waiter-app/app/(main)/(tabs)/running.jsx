@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Modal, Alert, ScrollView,
+  RefreshControl, ActivityIndicator, Modal, ScrollView,
   Dimensions, Vibration, Animated,
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
 import useAuthStore from '../../../store/authStore';
+import useToastStore from '../../../store/toastStore';
 import { C, shadow } from '../../../constants/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -115,6 +116,7 @@ export default function RunningScreen() {
 
   const { setTable } = useCartStore();
   const { user } = useAuthStore();
+  const { showToast } = useToastStore();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -179,7 +181,7 @@ export default function RunningScreen() {
       setSelectedPayment(null);
       setBillStep('payment');
     } catch (err) {
-      Alert.alert('Error', 'Could not load bill details.');
+      showToast('Could not load bill details.', 'error');
     } finally {
       setBillLoading(false);
     }
@@ -227,10 +229,10 @@ export default function RunningScreen() {
       };
       await api.post('/settings/print-queue', { type: 'invoice', receiptData });
       haptic();
-      Alert.alert('Printed', 'Bill sent to printer successfully.');
+      showToast('Bill sent to printer successfully.', 'success');
     } catch (err) {
       const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
-      Alert.alert('Print Failed', msg);
+      showToast(msg, 'error');
     } finally {
       setPrinting(false);
     }
@@ -248,7 +250,7 @@ export default function RunningScreen() {
         all.filter((t) => t.status === 'available' && Number(t.has_pending_order) === 0)
       );
     } catch {
-      Alert.alert('Error', 'Could not load tables.');
+      showToast('Could not load tables.', 'error');
       setSwapOrder(null);
     } finally {
       setSwapLoading(false);
@@ -268,9 +270,9 @@ export default function RunningScreen() {
         )
       );
       setSwapOrder(null);
-      Alert.alert('Done', `Table changed to ${table.table_name}`);
+      showToast(`Table changed to ${table.table_name}`, 'success');
     } catch {
-      Alert.alert('Error', 'Could not update table.');
+      showToast('Could not update table.', 'error');
     } finally {
       setSwapSaving(false);
     }
@@ -500,10 +502,10 @@ export default function RunningScreen() {
                               },
                             });
                             closeBill();
-                            Alert.alert('Printed', 'Bill sent to printer successfully.');
+                            showToast('Bill sent to printer successfully.', 'success');
                           } catch (err) {
                             const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
-                            Alert.alert('Print Failed', msg);
+                            showToast(msg, 'error');
                             closeBill();
                           } finally {
                             setPrinting(false);

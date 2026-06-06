@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, Modal,
+  ScrollView, ActivityIndicator, Modal,
   TextInput, Dimensions, Vibration,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import api from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
+import useToastStore from '../../../store/toastStore';
+import useConfirmStore from '../../../store/confirmStore';
 import { C, shadow } from '../../../constants/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -48,6 +50,8 @@ export default function OrderScreen() {
     setItems, clearCart, existingSaleId,
     updateItemNote, customerName, customerPhone, setCustomerInfo,
   } = useCartStore();
+  const { showToast } = useToastStore();
+  const { show: showConfirm } = useConfirmStore();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
@@ -137,7 +141,7 @@ export default function OrderScreen() {
       }
     } catch (err) {
       console.error('loadData error:', err.message);
-      Alert.alert('Error', 'Failed to load menu. Please go back and try again.');
+      showToast('Failed to load menu. Please go back and try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -155,7 +159,7 @@ export default function OrderScreen() {
 
   const handleSendOrder = async () => {
     if (items.length === 0) {
-      Alert.alert('Empty Cart', 'Please add at least one item.');
+      showToast('Please add at least one item to the cart.', 'warning');
       return;
     }
 
@@ -164,10 +168,12 @@ export default function OrderScreen() {
       ? `Save changes to this order?\n${totalItems} item(s) • PKR ${totalAmount.toFixed(0)}`
       : `Send order for ${tableName} to kitchen?\n${totalItems} item(s) • PKR ${totalAmount.toFixed(0)}`;
 
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: isEditMode ? 'Update' : 'Send', onPress: submitOrder },
-    ]);
+    showConfirm({
+      title,
+      message,
+      confirmText: isEditMode ? 'Update' : 'Send',
+      onConfirm: submitOrder,
+    });
   };
 
   const submitOrder = async () => {
@@ -187,9 +193,9 @@ export default function OrderScreen() {
           additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
         });
 
-        Alert.alert('Updated!', 'Order has been updated.', [
-          { text: 'OK', onPress: () => { clearCart(); router.back(); } },
-        ]);
+        showToast('Order has been updated successfully.', 'success');
+        clearCart();
+        router.back();
       } else {
         const res = await api.post('/sales', {
           items: items.map((i) => ({
@@ -212,15 +218,13 @@ export default function OrderScreen() {
         });
 
         const token = res.data?.token_no || res.data?.sale?.token_no;
-        Alert.alert(
-          'Order Sent!',
-          `Token: ${token || '—'}\nOrder is now in the kitchen queue.`,
-          [{ text: 'OK', onPress: () => { clearCart(); router.back(); } }]
-        );
+        showToast(`Order sent! Token: ${token || '—'}`, 'success');
+        clearCart();
+        router.back();
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to send order. Try again.';
-      Alert.alert('Error', msg);
+      showToast(msg, 'error');
     } finally {
       setSending(false);
     }
