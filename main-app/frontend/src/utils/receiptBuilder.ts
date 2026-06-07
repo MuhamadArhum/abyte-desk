@@ -183,13 +183,14 @@ export function buildDeliveryReceipt(delivery: any, settings?: StoreSettings): R
 
 export function buildKOTReceipt(
   items: { name: string; quantity: number | string; category_name?: string; note?: string }[],
-  opts: { tokenNo?: string; tableNo?: string; cashierName?: string; date?: string; settings?: StoreSettings }
+  opts: { tokenNo?: string; tableNo?: string; orderType?: string; cashierName?: string; date?: string; settings?: StoreSettings }
 ): ReceiptData {
   return {
     ...storeBase(opts.settings),
     docType:     'kot',
     tokenNo:     opts.tokenNo,
     tableNo:     opts.tableNo,
+    orderType:   opts.orderType ? (ORDER_TYPE_LABELS[opts.orderType] || opts.orderType) : undefined,
     cashierName: opts.cashierName,
     date:        opts.date || new Date().toLocaleString(),
     items: items.map(i => ({

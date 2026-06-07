@@ -160,7 +160,9 @@
       "Bash(cmd *)",
       "PowerShell(Remove-Item *)",
       "Bash(taskkill /f /im ABytePrinterAgent.exe)",
-      "Bash(xargs basename *)"
+      "Bash(xargs basename *)",
+      "Bash(Invoice)",
+      "Bash(Receipt\")"
     ]
   }
 }
