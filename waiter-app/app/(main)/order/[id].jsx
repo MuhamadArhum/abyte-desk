@@ -13,6 +13,13 @@ import useCartStore from '../../../store/cartStore';
 import useToastStore from '../../../store/toastStore';
 import useConfirmStore from '../../../store/confirmStore';
 import { C, shadow } from '../../../constants/theme';
+import { ReceiptModal } from '../../../components/ReceiptView';
+
+const PAYMENT_METHODS = [
+  { value: 'cash',   label: 'Cash',   icon: 'cash-outline',           color: '#059669', bg: '#ECFDF5', border: '#6EE7B7' },
+  { value: 'card',   label: 'Card',   icon: 'card-outline',           color: '#2563EB', bg: '#EFF6FF', border: '#93C5FD' },
+  { value: 'online', label: 'Online', icon: 'phone-portrait-outline', color: '#7C3AED', bg: '#F5F3FF', border: '#C4B5FD' },
+];
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const haptic = () => Vibration.vibrate(8);
@@ -37,12 +44,14 @@ export default function OrderScreen() {
   const [selectedCat, setSelectedCat] = useState(null);
   const [orderType, setOrderType] = useState(orderTypeParam || 'dine_in');
   const [settings, setSettings] = useState(null);
+  const [saleInfo, setSaleInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [cartVisible, setCartVisible] = useState(false);
+  const [payModalVisible, setPayModalVisible] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState(null);
   const [note, setNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  // Track which item has its note input open (product_id or null)
   const [openNoteId, setOpenNoteId] = useState(null);
 
   const {
@@ -123,6 +132,7 @@ export default function OrderScreen() {
 
       if (saleRes?.data) {
         const saleData = saleRes.data;
+        setSaleInfo(saleData);
         if (saleData.order_type) setOrderType(saleData.order_type);
 
         const details = saleData?.items || saleData?.details || [];
@@ -230,6 +240,81 @@ export default function OrderScreen() {
     }
   };
 
+  const buildOrderReceiptData = (payMethod) => {
+    const s = settings || {};
+    const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+    const taxPct = (() => {
+      if (s.pos_mode === 'category' && s.pos_tax_config) {
+        const cat = s.pos_tax_config[getCatKey(orderType)] || {};
+        if (!cat.tax_enabled) return 0;
+      }
+      if (payMethod === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
+      if (payMethod === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
+      return parseFloat(s.tax_on_cash || s.tax_rate || 0);
+    })();
+    const taxAmt = Math.round(subtotal * taxPct / 100 * 100) / 100;
+    const addAmt = Math.round(subtotal * additionalPercent / 100 * 100) / 100;
+    const total  = Math.round((subtotal + taxAmt + addAmt) * 100) / 100;
+    const isPaid = saleInfo?.status === 'completed';
+    return {
+      docType:        'sale',
+      docNumber:      saleInfo?.invoice_no,
+      tokenNo:        saleInfo?.token_no,
+      date:           saleInfo?.sale_date ? new Date(saleInfo.sale_date).toLocaleString('en-PK') : new Date().toLocaleString('en-PK'),
+      storeName:      s.store_name || 'Restaurant',
+      storeAddress:   s.address,
+      storePhone:     s.phone,
+      logoUrl,
+      currencySymbol: s.currency_symbol || 'Rs.',
+      footer:         s.receipt_footer,
+      cashierName:    saleInfo?.cashier_name,
+      customerName:   saleInfo?.customer_name || (NEEDS_CUSTOMER_INFO.includes(orderType) ? customerName : undefined),
+      tableNo:        saleInfo?.table_name || tableName,
+      orderType:      ORDER_TYPE_LABEL[orderType] || orderType,
+      status:         isPaid ? 'PAID' : 'UNPAID',
+      items:          items.map((i) => ({ name: i.product_name, quantity: i.quantity, price: i.unit_price, note: i.note || undefined })),
+      subtotal,
+      taxAmount:      taxAmt || undefined,
+      taxPercent:     taxPct || undefined,
+      chargesAmount:  addAmt || undefined,
+      totalAmount:    total,
+      amountPaid:     isPaid ? total : undefined,
+      paymentMethod:  payMethod,
+    };
+  };
+
+  const handlePrintFromModal = async (data) => {
+    try {
+      await api.post('/settings/print-queue', {
+        type: 'invoice',
+        receiptData: {
+          storeName:      data.storeName,
+          storeAddress:   data.storeAddress || '',
+          storePhone:     data.storePhone || '',
+          saleId:         saleInfo?.sale_id,
+          tokenNo:        data.tokenNo,
+          tableName:      data.tableNo || '',
+          orderType:      data.orderType || '',
+          date:           data.date,
+          cashierName:    data.cashierName || '',
+          customerName:   data.customerName || '',
+          currencySymbol: data.currencySymbol || 'Rs.',
+          paymentMethod:  data.paymentMethod || 'cash',
+          items:          data.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
+          discount:       0,
+          taxAmount:      data.taxAmount || 0,
+          totalAmount:    data.totalAmount,
+          amountPaid:     data.amountPaid || data.totalAmount,
+          changeDue:      0,
+        },
+      });
+      haptic();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err?.response?.data?.message || 'Could not reach printer' };
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
@@ -257,14 +342,25 @@ export default function OrderScreen() {
             {isEditMode ? '  •  Editing order' : ''}
           </Text>
         </View>
-        <TouchableOpacity style={styles.cartIconBtn} onPress={() => { haptic(); setCartVisible(true); }} activeOpacity={0.7}>
-          <Ionicons name="cart-outline" size={23} color="#FFFFFF" />
-          {totalItems > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{totalItems}</Text>
-            </View>
+        <View style={styles.headerActions}>
+          {(isEditMode || items.length > 0) && (
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              onPress={() => { haptic(); setCartVisible(false); setPayModalVisible(true); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="receipt-outline" size={21} color="#FFFFFF" />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.cartIconBtn} onPress={() => { haptic(); setCartVisible(true); }} activeOpacity={0.7}>
+            <Ionicons name="cart-outline" size={23} color="#FFFFFF" />
+            {totalItems > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{totalItems}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Edit mode notice */}
@@ -398,7 +494,7 @@ export default function OrderScreen() {
             <Text style={styles.bottomTotal}>PKR {totalAmount.toFixed(0)}</Text>
           </View>
           <TouchableOpacity
-            style={styles.sendBtn}
+            style={[styles.sendBtn, { flex: 0, paddingHorizontal: 20 }]}
             onPress={() => { haptic(); handleSendOrder(); }}
             disabled={sending}
             activeOpacity={0.85}
@@ -415,6 +511,61 @@ export default function OrderScreen() {
             )}
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Payment Method Modal */}
+      <Modal
+        visible={payModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPayModalVisible(false)}
+      >
+        <View style={styles.modalWrap}>
+          <TouchableOpacity style={styles.modalOverlay} onPress={() => setPayModalVisible(false)} />
+          <View style={[styles.cartSheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Select Payment Type</Text>
+              <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setPayModalVisible(false)}>
+                <Ionicons name="close" size={18} color={C.t2} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.paySubText}>
+              How will the customer pay? This will appear on the bill.
+            </Text>
+            <View style={styles.payGrid}>
+              {PAYMENT_METHODS.map((pm) => (
+                <TouchableOpacity
+                  key={pm.value}
+                  style={[styles.payCard, { backgroundColor: pm.bg, borderColor: pm.border }]}
+                  onPress={() => {
+                    haptic();
+                    setPayModalVisible(false);
+                    setReceiptModalData(buildOrderReceiptData(pm.value));
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.payIconCircle, { backgroundColor: pm.color }]}>
+                    <Ionicons name={pm.icon} size={26} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.payLabel, { color: pm.color }]}>{pm.label}</Text>
+                  <Text style={styles.payDesc}>
+                    {pm.value === 'cash' ? 'Physical cash' : pm.value === 'card' ? 'Debit / Credit' : 'Online transfer'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Receipt View Modal */}
+      {receiptModalData && (
+        <ReceiptModal
+          data={receiptModalData}
+          onClose={() => setReceiptModalData(null)}
+          onPrint={handlePrintFromModal}
+        />
       )}
 
       {/* Cart modal */}
@@ -562,7 +713,7 @@ export default function OrderScreen() {
 
             {items.length > 0 && (
               <View style={styles.sheetFooter}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.sheetTotals}>
                   <View style={styles.taxRow}>
                     <Text style={styles.taxLabel}>Subtotal</Text>
                     <Text style={styles.taxValue}>PKR {subtotal.toFixed(0)}</Text>
@@ -578,22 +729,32 @@ export default function OrderScreen() {
                     <Text style={styles.sheetTotalAmount}>PKR {totalAmount.toFixed(0)}</Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={styles.sendBtn}
-                  onPress={() => { setCartVisible(false); handleSendOrder(); }}
-                  disabled={sending}
-                >
-                  {sending ? (
-                    <ActivityIndicator color="#FFF" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="send" size={17} color="#FFFFFF" />
-                      <Text style={styles.sendBtnText}>
-                        {isEditMode ? 'Update Order' : 'Send to Kitchen'}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                <View style={styles.sheetBtns}>
+                  <TouchableOpacity
+                    style={styles.viewBillBtn}
+                    onPress={() => { haptic(); setCartVisible(false); setPayModalVisible(true); }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="receipt-outline" size={16} color={C.purple} />
+                    <Text style={styles.viewBillBtnText}>View Bill</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.sendBtn}
+                    onPress={() => { setCartVisible(false); handleSendOrder(); }}
+                    disabled={sending}
+                  >
+                    {sending ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="send" size={17} color="#FFFFFF" />
+                        <Text style={styles.sendBtnText}>
+                          {isEditMode ? 'Update Order' : 'Send to Kitchen'}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -704,8 +865,8 @@ const styles = StyleSheet.create({
   bottomCount: { fontSize: 12, color: C.t3, marginBottom: 2 },
   bottomTotal: { fontSize: 22, fontWeight: '800', color: C.t1, letterSpacing: -0.5 },
   sendBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: C.primary, paddingVertical: 14, paddingHorizontal: 20,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: C.primary, paddingVertical: 14,
     borderRadius: 14,
     shadowColor: C.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
@@ -799,10 +960,9 @@ const styles = StyleSheet.create({
     minHeight: 64, backgroundColor: C.surface, textAlignVertical: 'top',
   },
   sheetFooter: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'column',
     paddingHorizontal: 20, paddingTop: 14,
     borderTopWidth: 1, borderTopColor: C.borderLt,
-    gap: 14,
   },
   sheetTotalLabel: { fontSize: 13, fontWeight: '700', color: C.t1 },
   sheetTotalAmount: { fontSize: 20, fontWeight: '800', color: C.t1, letterSpacing: -0.4 },
@@ -828,4 +988,40 @@ const styles = StyleSheet.create({
   },
   searchEmptyTitle: { fontSize: 16, fontWeight: '700', color: C.t1 },
   searchEmptySub: { fontSize: 13, color: C.t3 },
+
+  // Header actions
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerIconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Cart sheet footer
+  sheetTotals: { flex: 1 },
+  sheetBtns: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  viewBillBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 13, borderRadius: 14,
+    backgroundColor: '#F5F3FF', borderWidth: 1.5, borderColor: '#C4B5FD',
+  },
+  viewBillBtnText: { fontSize: 13, fontWeight: '700', color: C.purple },
+
+  // Payment modal
+  paySubText: {
+    fontSize: 13, color: C.t2, textAlign: 'center',
+    paddingHorizontal: 20, marginBottom: 20, lineHeight: 20,
+  },
+  payGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 8 },
+  payCard: {
+    flex: 1, borderRadius: 18, borderWidth: 1.5,
+    padding: 16, alignItems: 'center', gap: 7,
+    ...shadow.sm,
+  },
+  payIconCircle: {
+    width: 56, height: 56, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  payLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  payDesc: { fontSize: 11, color: C.t3, textAlign: 'center', lineHeight: 15 },
 });
