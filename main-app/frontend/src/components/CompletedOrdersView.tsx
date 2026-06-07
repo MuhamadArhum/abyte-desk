@@ -14,110 +14,10 @@ import {
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
+import { ReceiptModal } from './ReceiptView';
+import { buildSaleReceipt } from '../utils/receiptBuilder';
 import api from '../utils/api';
-import { printToThermalPrinter } from '../utils/receiptPrinter';
 import { localToday } from '../utils/dateUtils';
-
-// ─── Bill Preview Modal ─────────────────────────────────────────────────────
-const BillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
-  const [sale, setSale] = useState<any>(null);
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')])
-      .then(([s, st]) => { setSale(s.data); setSettings(st.data); })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [saleId]);
-
-  if (loading) return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3"></div>
-        <p className="text-gray-500">Loading receipt...</p>
-      </div>
-    </div>
-  );
-  if (!sale) return null;
-
-  const cs = settings?.currency_symbol || 'Rs.';
-  const items: any[] = sale.items || [];
-  const subtotal = items.reduce((s: number, i: any) => s + parseFloat(i.unit_price) * parseFloat(i.quantity), 0);
-  const taxPercent        = parseFloat(sale.tax_percent || 0);
-  const additionalPercent = parseFloat(sale.additional_charges_percent || 0);
-  const discount          = parseFloat(sale.discount || 0);
-  const grandTotal        = parseFloat(sale.total_amount || 0);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-gray-800">Bill Preview</h2>
-            {sale.token_no && <p className="text-sm text-amber-600 font-bold">{sale.token_no}</p>}
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={22} /></button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {[
-              ['Order',    sale.invoice_no || `#${sale.sale_id}`],
-              ['Date',     new Date(sale.sale_date).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' })],
-              ['Customer', sale.customer_name || 'Walk-in'],
-              ['Cashier',  sale.cashier_name  || 'Staff'],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-400 text-xs mb-0.5">{label}</p>
-                <p className="font-semibold text-gray-700 text-sm">{value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-gray-600 font-semibold">Item</th>
-                  <th className="px-3 py-2 text-center text-gray-600 font-semibold">Qty</th>
-                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Price</th>
-                  <th className="px-3 py-2 text-right text-gray-600 font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {items.map((item: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-800 font-medium">{item.product_name}</td>
-                    <td className="px-3 py-2 text-center text-gray-600">{item.quantity}</td>
-                    <td className="px-3 py-2 text-right text-gray-600">{cs} {parseFloat(item.unit_price).toFixed(0)}</td>
-                    <td className="px-3 py-2 text-right font-semibold text-gray-800">{cs} {(parseFloat(item.unit_price) * parseFloat(item.quantity)).toFixed(0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="space-y-2 bg-gray-50 rounded-xl p-4">
-            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{cs} {subtotal.toFixed(0)}</span></div>
-            {discount > 0 && <div className="flex justify-between text-sm text-red-600"><span>Discount</span><span>- {cs} {discount.toFixed(0)}</span></div>}
-            {taxPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Tax ({taxPercent}%)</span><span>{cs} {(subtotal * taxPercent / 100).toFixed(0)}</span></div>}
-            {additionalPercent > 0 && <div className="flex justify-between text-sm text-gray-600"><span>Additional ({additionalPercent}%)</span><span>{cs} {(subtotal * additionalPercent / 100).toFixed(0)}</span></div>}
-            <div className="flex justify-between text-base font-bold text-gray-900 border-t border-gray-200 pt-2 mt-2">
-              <span>Grand Total</span><span className="text-emerald-600">{cs} {grandTotal.toFixed(0)}</span>
-            </div>
-          </div>
-        </div>
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center gap-3 shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">Close</button>
-          <button
-            onClick={() => { printToThermalPrinter(sale, settings, sale.cashier_name || 'Staff', sale.customer_name); onClose(); }}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-md"
-          >
-            <Printer size={16} /> Print
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─── Password Gate Modal ────────────────────────────────────────────────────
 const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
@@ -216,8 +116,9 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [cs,         setCs]         = useState('Rs.');
 
   // Modals
-  const [previewId,    setPreviewId]    = useState<number | null>(null);
-  const [unlocked,     setUnlocked]     = useState(false);
+  const [receiptData,    setReceiptData]    = useState<any>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [unlocked,       setUnlocked]       = useState(false);
   const [pwModal,      setPwModal]      = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
   const [passwords,    setPasswords]    = useState({ view_completed: '', refund: '' });
   const [syncingSaleId, setSyncingSaleId] = useState<number | null>(null);
@@ -344,6 +245,15 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
     } finally {
       setSyncingSaleId(null);
     }
+  };
+
+  const openReceipt = async (saleId: number) => {
+    setReceiptLoading(true);
+    try {
+      const [sRes, stRes] = await Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')]);
+      setReceiptData(buildSaleReceipt(sRes.data, stRes.data));
+    } catch { /* silent */ }
+    finally { setReceiptLoading(false); }
   };
 
   // ── Shift info banner ───────────────────────────────────────────────────
@@ -675,15 +585,17 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-center gap-1">
                             <button
-                              onClick={() => setPreviewId(sale.sale_id)}
-                              className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all"
+                              onClick={() => openReceipt(sale.sale_id)}
+                              disabled={receiptLoading}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all disabled:opacity-50"
                               title="View Bill"
                             >
                               <Eye size={15} />
                             </button>
                             <button
-                              onClick={() => setPreviewId(sale.sale_id)}
-                              className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all"
+                              onClick={() => openReceipt(sale.sale_id)}
+                              disabled={receiptLoading}
+                              className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-all disabled:opacity-50"
                               title="Print Receipt"
                             >
                               <Printer size={15} />
@@ -741,7 +653,15 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       </div>
 
       {/* Modals */}
-      {previewId !== null && <BillPreviewModal saleId={previewId} onClose={() => setPreviewId(null)} />}
+      {receiptData && <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />}
+      {receiptLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
+            <span className="text-gray-600 font-medium">Loading receipt...</span>
+          </div>
+        </div>
+      )}
 
       {pwModal && (
         <PasswordModal

@@ -78,6 +78,10 @@ export function buildSaleReceipt(sale: any, settings?: StoreSettings, cashierNam
     amountPaid:    paid    || undefined,
     changeDue:     paid > total ? paid - total : undefined,
     paymentMethod: sale.payment_method || undefined,
+    status: sale.status === 'completed' ? 'PAID'
+          : sale.status === 'refunded'  ? 'REFUNDED'
+          : sale.status === 'pending'   ? 'UNPAID'
+          : sale.status?.toUpperCase()  || undefined,
   };
 }
 
