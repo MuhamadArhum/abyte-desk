@@ -223,6 +223,7 @@ interface InvoiceModalProps {
 export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
   const [printing, setPrinting] = useState(false);
   const [msg, setMsg]           = useState('');
+  const invoiceRef              = useRef<HTMLDivElement>(null);
 
   const handlePrintRef = useRef<() => void>(() => {});
   useEffect(() => { handlePrintRef.current = () => { if (!printing) handlePrint(); }; });
@@ -237,12 +238,27 @@ export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  const printFromDOM = () => {
+    if (!invoiceRef.current) { printReceiptAsBrowser(data); return; }
+    const content = invoiceRef.current.outerHTML;
+    const styleLinks   = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(el => el.outerHTML).join('\n');
+    const inlineStyles = Array.from(document.querySelectorAll('style')).map(el => `<style>${(el as HTMLStyleElement).textContent}</style>`).join('\n');
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${styleLinks}${inlineStyles}<style>@page{size:80mm auto;margin:4mm;}body{margin:0;padding:4px;background:white;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}</style></head><body>${content}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},150);});<\/script></body></html>`;
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';
+    document.body.appendChild(iframe);
+    iframe.contentDocument!.open();
+    iframe.contentDocument!.write(html);
+    iframe.contentDocument!.close();
+    setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 15000);
+  };
+
   const handlePrint = async () => {
     setPrinting(true);
     setMsg('');
     try {
-      // Browser print — matches exactly what you see (works on mobile too)
-      printReceiptAsBrowser(data);
+      // Print the actual rendered InvoiceView DOM — view and print are identical
+      printFromDOM();
 
       // Also send to thermal printer queue (if agent is running on cashier PC)
       const paperWidth = data.paperWidth ?? 80;
@@ -307,7 +323,9 @@ export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
 
         {/* Invoice scroll area */}
         <div className="flex-1 overflow-y-auto p-5">
-          <InvoiceView data={data} />
+          <div ref={invoiceRef}>
+            <InvoiceView data={data} />
+          </div>
         </div>
 
         {/* Footer actions */}
