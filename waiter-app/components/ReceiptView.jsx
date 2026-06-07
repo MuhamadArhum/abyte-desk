@@ -125,6 +125,9 @@ export function ReceiptView({ data }) {
           label={data.docType === 'quotation' ? 'Quote #' : data.docType === 'return' ? 'Return #' : 'Invoice'}
           value={data.docNumber}
         />
+        {data.status ? (
+          <MetaRow label="Status" value={data.status.toUpperCase()} />
+        ) : null}
         <MetaRow label="Token"    value={data.tokenNo}     bold />
         <MetaRow label="Date"     value={data.date} />
         <MetaRow label="Cashier"  value={data.cashierName} />
@@ -133,9 +136,6 @@ export function ReceiptView({ data }) {
         <MetaRow label="Type"     value={data.orderType} />
         <MetaRow label="Rider"    value={data.riderName} />
         <MetaRow label="Due Date" value={data.dueDate} />
-        {data.status ? (
-          <MetaRow label="Status" value={data.status.toUpperCase()} />
-        ) : null}
         <MetaRow label="Reason"   value={data.reason} />
       </View>
 
