@@ -11,6 +11,7 @@ import useCartStore from '../../../store/cartStore';
 import useAuthStore from '../../../store/authStore';
 import useToastStore from '../../../store/toastStore';
 import { C, shadow } from '../../../constants/theme';
+import { ReceiptModal } from '../../../components/ReceiptView';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -103,10 +104,9 @@ export default function RunningScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [billData, setBillData] = useState(null);
   const [billLoading, setBillLoading] = useState(false);
-  const [billMode, setBillMode] = useState('view'); // 'view' | 'print'
   const [billStep, setBillStep] = useState('payment');
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const [printing, setPrinting] = useState(false);
+  const [receiptModalData, setReceiptModalData] = useState(null);
 
   // Table swap state
   const [swapOrder, setSwapOrder] = useState(null);
@@ -148,9 +148,8 @@ export default function RunningScreen() {
     router.push(`/(main)/order/${order.table_id || 0}?saleId=${order.sale_id}&name=${name}`);
   };
 
-  const handleBillPress = async (order, mode = 'view') => {
+  const handleBillPress = async (order) => {
     haptic();
-    setBillMode(mode);
     setBillLoading(true);
     try {
       const [saleRes, settingsRes] = await Promise.all([
@@ -191,50 +190,91 @@ export default function RunningScreen() {
     setBillData(null);
     setSelectedPayment(null);
     setBillStep('payment');
-    setBillMode('view');
-    setPrinting(false);
   };
 
-  const handlePrint = async () => {
-    if (!billData || printing) return;
-    setPrinting(true);
+  const buildReceiptData = (bd, payMethod) => {
+    const s    = bd.settings || {};
+    const sale = bd.sale || {};
+    const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+
+    const taxPct = (() => {
+      if (s.pos_mode === 'category' && s.pos_tax_config) {
+        const cat = s.pos_tax_config[getCatKey(bd.orderType)] || {};
+        if (!cat.tax_enabled) return 0;
+      }
+      if (payMethod === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
+      if (payMethod === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
+      return parseFloat(s.tax_on_cash || s.tax_rate || 0);
+    })();
+
+    const sub    = bd.subtotal || 0;
+    const taxAmt = round2(sub * taxPct / 100);
+    const addAmt = bd.addAmt || 0;
+    const total  = round2(sub + taxAmt + addAmt);
+
+    return {
+      docType:        'sale',
+      docNumber:      sale.invoice_no,
+      tokenNo:        sale.token_no || `#${sale.sale_id}`,
+      date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString('en-PK') : new Date().toLocaleString('en-PK'),
+      storeName:      s.store_name || 'Restaurant',
+      storeAddress:   s.address,
+      storePhone:     s.phone,
+      logoUrl,
+      currencySymbol: s.currency_symbol || 'Rs.',
+      footer:         s.receipt_footer,
+      cashierName:    sale.cashier_name,
+      customerName:   sale.customer_name,
+      tableNo:        sale.table_name,
+      orderType:      ORDER_TYPE_LABEL[sale.order_type] || sale.order_type,
+      items: bd.items.map((i) => ({
+        name:     i.product_name || 'Item',
+        quantity: i.quantity,
+        price:    parseFloat(i.unit_price || 0),
+        note:     i.note,
+      })),
+      subtotal:      sub,
+      discount:      parseFloat(sale.discount || 0) || undefined,
+      taxAmount:     taxAmt || undefined,
+      taxPercent:    taxPct || undefined,
+      chargesAmount: addAmt || undefined,
+      totalAmount:   total,
+      amountPaid:    total,
+      paymentMethod: payMethod,
+    };
+  };
+
+  const handlePrintFromModal = async (data) => {
+    const s    = billData?.settings || {};
+    const sale = billData?.sale || {};
     try {
-      const s = billData.settings || {};
-      const sale = billData.sale || {};
-      const receiptData = {
-        storeName:      s.store_name || 'Restaurant',
-        storeAddress:   s.address || '',
-        storePhone:     s.phone || '',
-        storeEmail:     s.email || '',
-        saleId:         sale.sale_id,
-        tokenNo:        sale.token_no || `#${sale.sale_id}`,
-        tableName:      sale.table_name || '',
-        orderType:      ORDER_TYPE_LABEL[sale.order_type] || sale.order_type || '',
-        date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
-        cashierName:    sale.cashier_name || '',
-        customerName:   sale.customer_name || '',
-        currencySymbol: s.currency_symbol || 'Rs.',
-        paymentMethod:  selectedPayment || 'cash',
-        items: billData.items.map((i) => ({
-          name:     i.product_name || 'Item',
-          quantity: i.quantity,
-          price:    parseFloat(i.unit_price || 0),
-        })),
-        discount:    parseFloat(sale.discount || 0),
-        taxAmount:   billTaxAmt,
-        totalAmount: billTotal,
-        amountPaid:  billTotal,
-        changeDue:   0,
-        note:        sale.note || '',
-      };
-      await api.post('/settings/print-queue', { type: 'invoice', receiptData });
+      await api.post('/settings/print-queue', {
+        type: 'invoice',
+        receiptData: {
+          storeName:      data.storeName,
+          storeAddress:   data.storeAddress || '',
+          storePhone:     data.storePhone || '',
+          saleId:         sale.sale_id,
+          tokenNo:        data.tokenNo,
+          tableName:      data.tableNo || '',
+          orderType:      data.orderType || '',
+          date:           data.date,
+          cashierName:    data.cashierName || '',
+          customerName:   data.customerName || '',
+          currencySymbol: data.currencySymbol || 'Rs.',
+          paymentMethod:  data.paymentMethod || 'cash',
+          items:          data.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price ?? 0 })),
+          discount:       data.discount || 0,
+          taxAmount:      data.taxAmount || 0,
+          totalAmount:    data.totalAmount,
+          amountPaid:     data.amountPaid || data.totalAmount,
+          changeDue:      0,
+        },
+      });
       haptic();
-      showToast('Bill sent to printer successfully.', 'success');
+      return { success: true };
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
-      showToast(msg, 'error');
-    } finally {
-      setPrinting(false);
+      return { success: false, error: err?.response?.data?.message || 'Could not reach printer' };
     }
   };
 
@@ -292,26 +332,6 @@ export default function RunningScreen() {
     new Date(d).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
 
   if (loading) return <OrderSkeleton />;
-
-  const pm = selectedPayment ? PAYMENT_METHODS.find((p) => p.value === selectedPayment) : null;
-
-  const billTaxPercent = (() => {
-    if (!billData?.settings) return 0;
-    const s  = billData.settings;
-    const pm = selectedPayment || 'cash';
-    if (s.pos_mode === 'category' && s.pos_tax_config) {
-      const cat = s.pos_tax_config[getCatKey(billData.orderType)] || {};
-      if (!cat.tax_enabled) return 0;
-    }
-    if (pm === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
-    if (pm === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
-    return parseFloat(s.tax_on_cash || s.tax_rate || 0);
-  })();
-  const billSubtotal = billData?.subtotal || 0;
-  const billTaxAmt   = round2(billSubtotal * billTaxPercent / 100);
-  const billAddPct   = billData?.addPercent || 0;
-  const billAddAmt   = billData?.addAmt || 0;
-  const billTotal    = round2(billSubtotal + billTaxAmt + billAddAmt);
 
   return (
     <View style={styles.container}>
@@ -398,7 +418,7 @@ export default function RunningScreen() {
                   )}
                   <TouchableOpacity
                     style={styles.viewBtn}
-                    onPress={() => handleBillPress(item, 'view')}
+                    onPress={() => handleBillPress(item)}
                     disabled={billLoading}
                     activeOpacity={0.8}
                   >
@@ -407,11 +427,11 @@ export default function RunningScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.billBtn}
-                    onPress={() => handleBillPress(item, 'print')}
+                    onPress={() => handleBillPress(item)}
                     disabled={billLoading}
                     activeOpacity={0.8}
                   >
-                    {billLoading && billMode === 'print'
+                    {billLoading
                       ? <ActivityIndicator size="small" color="#FFFFFF" />
                       : (<><Ionicons name="print-outline" size={15} color="#FFFFFF" /><Text style={styles.billBtnText}>Bill</Text></>)
                     }
@@ -430,13 +450,6 @@ export default function RunningScreen() {
           <View style={styles.billSheet}>
             <View style={styles.sheetHandle} />
 
-            {billStep === 'printing' && (
-              <View style={styles.printingWrap}>
-                <ActivityIndicator size="large" color="#059669" />
-                <Text style={styles.printingText}>Sending to printer...</Text>
-              </View>
-            )}
-
             {billStep === 'payment' && (
               <View style={styles.payStepWrap}>
                 <View style={styles.sheetHeaderRow}>
@@ -453,66 +466,12 @@ export default function RunningScreen() {
                     <TouchableOpacity
                       key={pm.value}
                       style={[styles.payCard, { backgroundColor: pm.bg, borderColor: pm.border }]}
-                      onPress={async () => {
+                      onPress={() => {
                         haptic();
                         setSelectedPayment(pm.value);
-                        if (billMode === 'print') {
-                          // Direct print — no preview
-                          setPrinting(true);
-                          setBillStep('printing');
-                          try {
-                            const s = billData.settings || {};
-                            const sale = billData.sale || {};
-                            const tax = (() => {
-                              if (!s) return 0;
-                              if (pm.value === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
-                              if (pm.value === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
-                              return parseFloat(s.tax_on_cash || s.tax_rate || 0);
-                            })();
-                            const sub   = billData.subtotal || 0;
-                            const taxAmt = Math.round(sub * tax / 100 * 100) / 100;
-                            const addAmt = billData.addAmt || 0;
-                            const total  = Math.round((sub + taxAmt + addAmt) * 100) / 100;
-                            await api.post('/settings/print-queue', {
-                              type: 'invoice',
-                              receiptData: {
-                                storeName:      s.store_name || 'Restaurant',
-                                storeAddress:   s.address || '',
-                                storePhone:     s.phone || '',
-                                saleId:         sale.sale_id,
-                                tokenNo:        sale.token_no || `#${sale.sale_id}`,
-                                tableName:      sale.table_name || '',
-                                orderType:      ORDER_TYPE_LABEL[sale.order_type] || sale.order_type || '',
-                                date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
-                                cashierName:    sale.cashier_name || '',
-                                customerName:   sale.customer_name || '',
-                                currencySymbol: s.currency_symbol || 'Rs.',
-                                paymentMethod:  pm.value,
-                                items: billData.items.map((i) => ({
-                                  name: i.product_name || 'Item',
-                                  quantity: i.quantity,
-                                  price: parseFloat(i.unit_price || 0),
-                                })),
-                                discount:    parseFloat(sale.discount || 0),
-                                taxAmount:   taxAmt,
-                                totalAmount: total,
-                                amountPaid:  total,
-                                changeDue:   0,
-                                note:        sale.note || '',
-                              },
-                            });
-                            closeBill();
-                            showToast('Bill sent to printer successfully.', 'success');
-                          } catch (err) {
-                            const msg = err?.response?.data?.message || 'Could not reach printer. Check printer settings.';
-                            showToast(msg, 'error');
-                            closeBill();
-                          } finally {
-                            setPrinting(false);
-                          }
-                        } else {
-                          setBillStep('preview');
-                        }
+                        const rd = buildReceiptData(billData, pm.value);
+                        closeBill();
+                        setReceiptModalData(rd);
                       }}
                       activeOpacity={0.75}
                     >
@@ -529,130 +488,18 @@ export default function RunningScreen() {
               </View>
             )}
 
-            {billStep === 'preview' && billData && (
-              <>
-                <View style={styles.sheetHeaderRow}>
-                  <TouchableOpacity onPress={() => setBillStep('payment')} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={18} color="#6B7280" />
-                  </TouchableOpacity>
-                  <Text style={styles.sheetTitle}>Bill Preview</Text>
-                  <TouchableOpacity onPress={closeBill} style={styles.closeBtn}>
-                    <Ionicons name="close" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: SCREEN_H * 0.62 }}>
-                  <View style={styles.receiptHeader}>
-                    <View style={styles.receiptLogoCircle}>
-                      <Ionicons name="restaurant" size={22} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.receiptStoreName}>
-                      {billData.settings?.store_name || 'AByte Restaurant'}
-                    </Text>
-                    <Text style={styles.receiptSubLabel}>CUSTOMER RECEIPT</Text>
-                  </View>
-
-                  {pm && (
-                    <View style={[styles.pmBanner, { backgroundColor: pm.bg, borderColor: pm.border }]}>
-                      <Ionicons name={pm.icon} size={16} color={pm.color} />
-                      <Text style={[styles.pmBannerText, { color: pm.color }]}>
-                        Payment: {pm.label}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.receiptInfo}>
-                    {[
-                      { label: 'Token',      value: billData.sale.token_no || `#${billData.sale.sale_id}` },
-                      { label: 'Table',      value: billData.sale.table_name || '—' },
-                      { label: 'Order Type', value: ORDER_TYPE_LABEL[billData.sale.order_type] || billData.sale.order_type || '—' },
-                      { label: 'Date',       value: formatDate(billData.sale.sale_date) },
-                      { label: 'Time',       value: formatTime(billData.sale.sale_date) },
-                      { label: 'Waiter',     value: billData.sale.cashier_name || '—' },
-                    ].map((row) => (
-                      <View key={row.label} style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>{row.label}</Text>
-                        <Text style={styles.infoValue}>{row.value}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.divider} />
-
-                  <View style={styles.itemsSection}>
-                    <View style={styles.itemsHeader}>
-                      <Text style={[styles.itemCol, { flex: 3 }]}>Item</Text>
-                      <Text style={[styles.itemCol, styles.colCenter]}>Qty</Text>
-                      <Text style={[styles.itemCol, styles.colRight]}>PKR</Text>
-                    </View>
-                    {billData.items.map((item, idx) => (
-                      <View key={idx}>
-                        <View style={styles.itemRow}>
-                          <Text style={[styles.itemName, { flex: 3 }]} numberOfLines={2}>
-                            {item.product_name || 'Item'}
-                          </Text>
-                          <Text style={[styles.itemQty, styles.colCenter]}>{item.quantity}</Text>
-                          <Text style={[styles.itemAmt, styles.colRight]}>
-                            {(parseFloat(item.unit_price) * item.quantity).toFixed(0)}
-                          </Text>
-                        </View>
-                        {item.note ? (
-                          <Text style={styles.itemNote}>↳ {item.note}</Text>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.divider} />
-
-                  <View style={styles.totalsSection}>
-                    <View style={styles.totalRow}>
-                      <Text style={styles.totalLabel}>Subtotal</Text>
-                      <Text style={styles.totalValue}>PKR {billSubtotal.toFixed(0)}</Text>
-                    </View>
-                    {billTaxPercent > 0 && (
-                      <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Tax ({billTaxPercent.toFixed(1)}%)</Text>
-                        <Text style={styles.totalValue}>PKR {billTaxAmt.toFixed(0)}</Text>
-                      </View>
-                    )}
-                    {billAddPct > 0 && (
-                      <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Service Charges ({billAddPct.toFixed(1)}%)</Text>
-                        <Text style={styles.totalValue}>PKR {billAddAmt.toFixed(0)}</Text>
-                      </View>
-                    )}
-                    <View style={[styles.totalRow, styles.grandTotalRow]}>
-                      <Text style={styles.grandTotalLabel}>TOTAL PAYABLE</Text>
-                      <Text style={styles.grandTotalValue}>PKR {billTotal.toFixed(0)}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.pendingNote}>
-                    <Ionicons name="information-circle-outline" size={14} color="#D97706" />
-                    <Text style={styles.pendingNoteText}>
-                      Payment is collected at the counter by the cashier
-                    </Text>
-                  </View>
-                </ScrollView>
-
-                <View style={styles.billActionRow}>
-                  <TouchableOpacity style={styles.printBtn} onPress={handlePrint} disabled={printing} activeOpacity={0.75}>
-                    {printing
-                      ? <ActivityIndicator size="small" color="#FFFFFF" />
-                      : <Ionicons name="print-outline" size={18} color="#FFFFFF" />
-                    }
-                    <Text style={styles.printBtnText}>{printing ? 'Printing...' : 'Print Bill'}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.closeFullBtn} onPress={closeBill}>
-                    <Text style={styles.closeFullBtnText}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
           </View>
         </View>
       </Modal>
+
+      {/* Receipt View Modal */}
+      {receiptModalData && (
+        <ReceiptModal
+          data={receiptModalData}
+          onClose={() => setReceiptModalData(null)}
+          onPrint={handlePrintFromModal}
+        />
+      )}
 
       {/* Table Swap Modal */}
       <Modal visible={!!swapOrder} transparent animationType="slide" onRequestClose={() => setSwapOrder(null)}>
