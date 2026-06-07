@@ -10,6 +10,8 @@ import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { ReceiptModal, PaymentSelectModal } from '../../printing/ReceiptView';
 import { buildSaleReceipt } from '../../printing/receiptBuilder';
+import { KOTModal } from '../../printing/KOTView';
+import type { KOTData } from '../../printing/KOTView';
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) => (
@@ -47,6 +49,10 @@ const WalkInOrders = () => {
   const [paySelectSale, setPaySelectSale]   = useState<any | null>(null);
   const [receiptData,   setReceiptData]     = useState<any | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
+
+  // KOT view modal
+  const [kotViewData,    setKotViewData]    = useState<KOTData | null>(null);
+  const [kotViewLoading, setKotViewLoading] = useState(false);
 
   const onPaymentSelected = async (payMethod: 'cash' | 'card' | 'online') => {
     const sale = paySelectSale;
@@ -134,6 +140,43 @@ const WalkInOrders = () => {
       fetchActive();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
+  const handleViewKOT = async (sale: any) => {
+    setKotViewLoading(true);
+    try {
+      const [sRes, stRes] = await Promise.all([
+        api.get(`/sales/${sale.sale_id}`),
+        api.get('/settings'),
+      ]);
+      const fullSale = sRes.data;
+      const st = stRes.data;
+      const items: any[] = fullSale.items || [];
+
+      const orderTypeLabel =
+        fullSale.order_type === 'takeaway' ? 'Takeaway'
+        : fullSale.order_type === 'delivery' ? 'Delivery'
+        : 'Dine-In';
+
+      setKotViewData({
+        storeName:   st.store_name || 'AByte ERP',
+        tokenNo:     String(sale.token_no || sale.sale_id),
+        tableNo:     fullSale.table_name || orderTypeLabel,
+        orderType:   orderTypeLabel,
+        cashierName: fullSale.cashier_name || 'Staff',
+        date:        new Date(fullSale.sale_date).toLocaleString(),
+        items: items.map((item: any) => ({
+          name:     item.product_name + (item.variant_name ? ` (${item.variant_name})` : ''),
+          quantity: item.quantity,
+          category: item.category_name || 'General',
+          note:     item.note,
+        })),
+      });
+    } catch {
+      /* silent */
+    } finally {
+      setKotViewLoading(false);
     }
   };
 
@@ -377,11 +420,19 @@ const WalkInOrders = () => {
                             </button>
                           )}
                         </div>
-                        {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
-                          <button onClick={() => handleReprintKOT(sale)}
-                            className="w-full flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
-                            <UtensilsCrossed size={14} /> Reprint KOT
-                          </button>
+                        {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleViewKOT(sale)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
+                              <Eye size={14} /> View KOT
+                            </button>
+                            {isAdmin && (
+                              <button onClick={() => handleReprintKOT(sale)}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
+                                <UtensilsCrossed size={14} /> Reprint KOT
+                              </button>
+                            )}
+                          </div>
                         )}
                         <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
                           className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-2.5 rounded-lg font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md flex items-center justify-center gap-2 text-sm">
@@ -460,6 +511,12 @@ const WalkInOrders = () => {
                                   className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Print Bill">
                                   <Printer size={15} />
                                 </button>
+                                {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                                  <button onClick={() => handleViewKOT(sale)}
+                                    className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="View KOT">
+                                    <Eye size={15} />
+                                  </button>
+                                )}
                                 {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                                   <button onClick={() => handleReprintKOT(sale)}
                                     className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="Reprint KOT (Admin)">
@@ -530,6 +587,19 @@ const WalkInOrders = () => {
       )}
       {receiptData && (
         <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />
+      )}
+
+      {/* ── KOT view modal ──────────────────────────────────── */}
+      {kotViewLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
+            <span className="text-gray-600 font-medium">Loading KOT...</span>
+          </div>
+        </div>
+      )}
+      {kotViewData && (
+        <KOTModal data={kotViewData} onClose={() => setKotViewData(null)} />
       )}
     </div>
   );

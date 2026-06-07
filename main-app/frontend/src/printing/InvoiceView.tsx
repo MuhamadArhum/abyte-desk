@@ -159,9 +159,10 @@ export function InvoiceView({ data }: { data: ReceiptData }) {
           <TotalRow label={`GST (${data.taxPercent ?? 0}%)`} value={data.taxAmount} cs={cs} />
         )}
         {!!data.chargesAmount && (
-          <TotalRow label="Charges" value={data.chargesAmount} cs={cs} />
+          <TotalRow label="Service Charges" value={data.chargesAmount} cs={cs} />
         )}
-
+        
+        
         <div className="border-t-2 border-gray-800 mt-1 pt-1">
           <div className="flex justify-between font-extrabold text-base">
             <span>TOTAL</span>
