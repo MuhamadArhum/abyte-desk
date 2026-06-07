@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
 import { printInvoice, rasterizeLogoForEscPos } from './agentPrinter';
+import { printReceiptAsBrowser } from './receiptPrinter';
 import type { ReceiptData } from './ReceiptView';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -240,12 +241,16 @@ export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
     setPrinting(true);
     setMsg('');
     try {
+      // Browser print — matches exactly what you see (works on mobile too)
+      printReceiptAsBrowser(data);
+
+      // Also send to thermal printer queue (if agent is running on cashier PC)
       const paperWidth = data.paperWidth ?? 80;
       const logoEscPosData = data.logoUrl
         ? await rasterizeLogoForEscPos(data.logoUrl, paperWidth).catch(() => null) ?? undefined
         : undefined;
 
-      const result = await printInvoice({
+      printInvoice({
         storeName:      data.storeName,
         storeAddress:   data.storeAddress,
         storePhone:     data.storePhone,
@@ -274,9 +279,9 @@ export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
         changeDue:      data.changeDue,
         paymentMethod:  data.paymentMethod,
         footer:         data.footer,
-      });
+      }).catch(() => {/* thermal silently fails if agent not running */});
 
-      setMsg(result.success ? '✓ Sent to printer' : `✗ ${result.error}`);
+      setMsg('✓ Printing...');
     } catch (e: any) {
       setMsg(`✗ ${e.message}`);
     } finally {

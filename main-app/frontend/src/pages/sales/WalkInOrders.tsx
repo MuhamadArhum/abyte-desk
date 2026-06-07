@@ -420,18 +420,16 @@ const WalkInOrders = () => {
                             </button>
                           )}
                         </div>
-                        {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                        {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                           <div className="flex gap-2">
                             <button onClick={() => handleViewKOT(sale)}
                               className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
                               <Eye size={14} /> View KOT
                             </button>
-                            {isAdmin && (
-                              <button onClick={() => handleReprintKOT(sale)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
-                                <UtensilsCrossed size={14} /> Reprint KOT
-                              </button>
-                            )}
+                            <button onClick={() => handleReprintKOT(sale)}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-all border border-orange-200 font-medium text-sm">
+                              <UtensilsCrossed size={14} /> Reprint KOT
+                            </button>
                           </div>
                         )}
                         <button onClick={() => navigate('/pos', { state: { pendingSale: sale } })}
@@ -511,7 +509,7 @@ const WalkInOrders = () => {
                                   className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Print Bill">
                                   <Printer size={15} />
                                 </button>
-                                {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                                {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                                   <button onClick={() => handleViewKOT(sale)}
                                     className="p-1.5 text-orange-500 hover:bg-orange-50 rounded-lg transition" title="View KOT">
                                     <Eye size={15} />

@@ -918,3 +918,163 @@ export async function printBillWithTax(
 
   await api.post('/settings/print-queue', { type: 'invoice', receiptData });
 }
+
+// ── Browser HTML Print ────────────────────────────────────────
+// Generates print-ready HTML matching InvoiceView.tsx design.
+// Works on mobile and desktop — no thermal printer needed.
+
+import type { ReceiptData } from './ReceiptView';
+
+function esc(s: string): string {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtAmt(n: number | undefined, cs: string): string {
+  if (n == null) return '';
+  return `${esc(cs)} ${Number(n).toFixed(2)}`;
+}
+
+export function printReceiptAsBrowser(data: ReceiptData): void {
+  const cs = data.currencySymbol || 'Rs.';
+
+  const DOC_LABELS: Record<string, string> = {
+    sale: 'SALES RECEIPT', quotation: 'QUOTATION', credit_sale: 'CREDIT SALE',
+    return: 'RETURN RECEIPT', delivery: 'DELIVERY ORDER',
+  };
+  const docLabel = DOC_LABELS[data.docType] || 'RECEIPT';
+
+  const metaRow = (label: string, value: string, bold = false) =>
+    `<div class="meta-row">
+      <span class="meta-label">${esc(label)}:</span>
+      <span class="${bold ? 'meta-val-bold' : 'meta-val'}">${esc(value)}</span>
+    </div>`;
+
+  const totalRow = (label: string, value: number | undefined, color = '') => {
+    if (value == null || value === 0) return '';
+    return `<div class="total-row ${color}">
+      <span>${esc(label)}</span>
+      <span>${fmtAmt(value, cs)}</span>
+    </div>`;
+  };
+
+  const metaRows = [
+    data.docNumber    ? metaRow(data.docType === 'quotation' ? 'Quote #' : data.docType === 'return' ? 'Return #' : 'Invoice', data.docNumber) : '',
+    data.status       ? metaRow('Status',   data.status.toUpperCase()) : '',
+    data.tokenNo      ? metaRow('Token',    data.tokenNo, true) : '',
+    data.date         ? metaRow('Date',     data.date) : '',
+    data.cashierName  ? metaRow('Cashier',  data.cashierName) : '',
+    data.customerName ? metaRow('Customer', data.customerName) : '',
+    data.tableNo      ? metaRow('Table',    data.tableNo) : '',
+    data.orderType    ? metaRow('Type',     data.orderType) : '',
+    data.riderName    ? metaRow('Rider',    data.riderName) : '',
+    data.dueDate      ? metaRow('Due Date', data.dueDate) : '',
+    data.reason       ? metaRow('Reason',   data.reason) : '',
+  ].join('');
+
+  const itemRows = data.items.map(item => `
+    <tr>
+      <td class="item-name">${esc(String(item.name))}${item.note ? `<br><span class="item-note">* ${esc(item.note)}</span>` : ''}</td>
+      <td class="item-qty">${esc(String(item.quantity))}</td>
+      <td class="item-price">${item.price != null ? fmtAmt(item.price, cs) : '—'}</td>
+    </tr>`).join('');
+
+  const changeDue = (data.changeDue ?? 0) > 0
+    ? `<div class="total-row">${'Change Due'}: ${fmtAmt(data.changeDue, cs)}</div>` : '';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${esc(docLabel)} - ${esc(data.docNumber || '')}</title>
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; color: #000; background: #fff; }
+    .center { text-align: center; }
+    .store-name { font-size: 15px; font-weight: 900; letter-spacing: 1px; }
+    .store-sub  { font-size: 10px; color: #555; margin-top: 1px; }
+    .divider    { border-top: 1px dashed #888; margin: 5px 0; }
+    .divider2   { border-top: 2px solid #000; margin: 4px 0; }
+    .badge      { display: inline-block; border: 1px solid #000; border-radius: 20px; padding: 1px 10px; font-size: 10px; font-weight: 900; letter-spacing: 2px; margin: 4px 0; }
+    .meta-row   { display: flex; justify-content: space-between; padding: 1px 0; font-size: 11px; }
+    .meta-label { color: #666; }
+    .meta-val   { color: #333; }
+    .meta-val-bold { font-weight: 900; font-size: 13px; }
+    table       { width: 100%; border-collapse: collapse; margin: 4px 0; }
+    th          { font-size: 10px; font-weight: 700; border-bottom: 1px dashed #888; padding: 2px 0; text-align: left; }
+    th.r, td.item-qty, td.item-price { text-align: right; }
+    td.item-qty { text-align: center; width: 28px; }
+    td.item-price { width: 60px; }
+    td          { font-size: 11px; padding: 2px 0; border-bottom: 1px dotted #ddd; vertical-align: top; }
+    .item-note  { font-size: 9px; color: #888; font-style: italic; }
+    .total-row  { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 0; }
+    .total-grand { font-size: 15px; font-weight: 900; padding: 3px 0; }
+    .total-paid  { border-top: 1px dashed #888; padding-top: 3px; margin-top: 2px; }
+    .total-red   { color: #c00; font-weight: 700; }
+    .total-green { color: #060; font-weight: 700; }
+    .footer     { text-align: center; font-size: 10px; color: #555; margin-top: 6px; white-space: pre-line; }
+    ${data.logoUrl ? '.logo { text-align: center; margin-bottom: 4px; } .logo img { max-height: 18mm; max-width: 50mm; object-fit: contain; }' : ''}
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  ${data.logoUrl ? `<div class="logo"><img src="${esc(data.logoUrl)}" alt="logo" onerror="this.style.display='none'"/></div>` : ''}
+
+  <div class="center">
+    <div class="store-name">${esc(data.storeName.toUpperCase())}</div>
+    ${data.storeAddress ? `<div class="store-sub">${esc(data.storeAddress)}</div>` : ''}
+    ${data.storePhone   ? `<div class="store-sub">Tel: ${esc(data.storePhone)}</div>` : ''}
+  </div>
+
+  <div class="divider"></div>
+  <div class="center"><span class="badge">${esc(docLabel)}</span></div>
+
+  <div style="margin: 4px 0;">${metaRows}</div>
+
+  <div class="divider"></div>
+  <table>
+    <thead><tr>
+      <th>Item</th>
+      <th style="text-align:center;width:28px;">Qty</th>
+      <th class="r" style="width:60px;">Price</th>
+    </tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <div class="divider"></div>
+
+  <div style="margin: 4px 0;">
+    ${totalRow('Subtotal', data.subtotal)}
+    ${data.discount ? totalRow('Discount', -(data.discount!)) : ''}
+    ${data.taxAmount ? totalRow(`Tax (${data.taxPercent ?? 0}%)`, data.taxAmount) : ''}
+    ${data.chargesAmount ? totalRow('Charges', data.chargesAmount) : ''}
+    <div class="divider2"></div>
+    <div class="total-row total-grand"><span>TOTAL</span><span>${fmtAmt(data.totalAmount, cs)}</span></div>
+    <div class="divider2"></div>
+    ${data.paymentMethod ? `<div class="total-paid">
+      <div class="total-row">
+        <span>Paid (${esc(data.paymentMethod.toUpperCase())})</span>
+        <span>${fmtAmt(data.amountPaid, cs)}</span>
+      </div>
+      ${changeDue}
+    </div>` : ''}
+    ${data.balanceDue != null ? `<div class="total-row total-red"><span>Balance Due</span><span>${fmtAmt(data.balanceDue, cs)}</span></div>` : ''}
+    ${data.refundAmount != null ? `<div class="total-row total-green"><span>Refund (${esc(data.refundMethod || 'Cash')})</span><span>${fmtAmt(data.refundAmount, cs)}</span></div>` : ''}
+  </div>
+
+  ${data.footer ? `<div class="divider"></div><div class="footer">${esc(data.footer)}</div>` : ''}
+
+  <script>window.onload = function(){ window.print(); };</script>
+</body>
+</html>`;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument!;
+  doc.open(); doc.write(html); doc.close();
+  iframe.contentWindow!.focus();
+  setTimeout(() => {
+    iframe.contentWindow!.print();
+    setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 8000);
+  }, 300);
+}

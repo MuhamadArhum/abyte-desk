@@ -372,6 +372,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       ? await rasterizeLogoForEscPos(logoUrl, paperWidth).catch(() => null)
       : null;
 
+    const ORDER_TYPE_LABELS: Record<string, string> = {
+      dine_in: 'Dine-In', takeaway: 'Takeaway', delivery: 'Delivery', on_spot: 'Walk-In',
+    };
+
     const invoiceData = {
       storeName:      settings?.store_name || 'AByte ERP',
       storeAddress:   settings?.address    || '',
@@ -380,6 +384,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       saleId:         sale.sale_id,
       invoiceNo:      sale.invoice_no,
       tokenNo:        sale.token_no,
+      tableNo:        sale.table_name      || undefined,
       date:           sale.sale_date ? new Date(sale.sale_date).toLocaleString() : new Date().toLocaleString(),
       cashierName:    user?.name || 'Staff',
       customerName:   selectedCustomer?.customer_name || '',
@@ -388,6 +393,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         name:     item.product_name || item.name,
         quantity: item.quantity,
         price:    parseNum(item.unit_price ?? item.price),
+        note:     item.note || undefined,
       })),
       subtotal:      totalAmount - taxAmount - chargesAmount + discountAmt,
       discount:      discountAmt,

@@ -173,6 +173,7 @@ function buildInvoiceESCPOS(d, printerCfg) {
   push(txt(dashes));
 
   // Totals
+  if (Number(d.subtotal)      > 0) push(txt(split('Subtotal:',                      `${cs}${Number(d.subtotal).toFixed(2)}`)));
   if (Number(d.discount)      > 0) push(txt(split('Discount:',                      `-${cs}${Number(d.discount).toFixed(2)}`)));
   if (Number(d.taxAmount)     > 0) push(txt(split(`Tax (${d.taxPercent || 0}%):`,   `${cs}${Number(d.taxAmount).toFixed(2)}`)));
   if (Number(d.chargesAmount) > 0) push(txt(split('Charges:',                       `${cs}${Number(d.chargesAmount).toFixed(2)}`)));
