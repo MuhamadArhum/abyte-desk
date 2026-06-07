@@ -404,6 +404,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       amountPaid,
       changeDue:     Math.max(0, amountPaid - totalAmount),
       paymentMethod: sale.payment_method,
+      status:        'PAID',
       footer:        settings?.receipt_footer || 'Thank you for shopping!',
     };
 

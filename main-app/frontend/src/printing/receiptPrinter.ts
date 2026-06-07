@@ -913,6 +913,7 @@ export async function printBillWithTax(
     amountPaid:    newTotal,
     changeDue:     0,
     paymentMethod: taxType,
+    status:        'PAID',
     footer:        `★ ${billLabel} ★\n${settings?.receipt_footer || 'Thank you for shopping!'}`,
   };
 

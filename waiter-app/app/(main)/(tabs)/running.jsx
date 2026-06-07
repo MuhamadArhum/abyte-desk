@@ -241,6 +241,7 @@ export default function RunningScreen() {
       totalAmount:   total,
       amountPaid:    total,
       paymentMethod: payMethod,
+      status:        'UNPAID',
     };
   };
 
@@ -274,6 +275,7 @@ export default function RunningScreen() {
           totalAmount:    data.totalAmount,
           amountPaid:     data.amountPaid || data.totalAmount,
           changeDue:      0,
+          status:         data.status || 'UNPAID',
         },
       });
       haptic();

@@ -148,6 +148,8 @@ function buildInvoiceESCPOS(d, printerCfg) {
   else             push(txt(split('Receipt #:', String(d.saleId || ''))));
   push(CMD.BOLD_OFF);
 
+  if (d.status) push(txt(split('Status:', d.status.toUpperCase())));
+
   if (d.tokenNo) {
     push(CMD.ALIGN_CENTER, CMD.BOLD_ON, CMD.DOUBLE_HEIGHT);
     push(txt('Token: ' + d.tokenNo));

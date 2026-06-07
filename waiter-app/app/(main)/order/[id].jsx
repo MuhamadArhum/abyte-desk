@@ -311,6 +311,7 @@ export default function OrderScreen() {
           totalAmount:    data.totalAmount,
           amountPaid:     data.amountPaid || data.totalAmount,
           changeDue:      0,
+          status:         data.status || 'UNPAID',
         },
       });
       haptic();
