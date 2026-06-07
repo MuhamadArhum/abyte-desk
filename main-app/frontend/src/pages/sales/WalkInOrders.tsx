@@ -2,39 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingBag, Clock, DollarSign, User, Calendar, CreditCard,
   Package, RefreshCw, Edit2, X, Hash, Printer, Archive, LayoutGrid, List,
-  UtensilsCrossed, Coffee, Truck, Filter, Eye, Loader2,
+  UtensilsCrossed, Coffee, Truck, Filter, Eye,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
-import { printToThermalPrinter } from '../../utils/receiptPrinter';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
-import { ReceiptModal } from '../../components/ReceiptView';
+import { ReceiptModal, PaymentSelectModal } from '../../components/ReceiptView';
 import { buildSaleReceipt } from '../../utils/receiptBuilder';
-
-// ─── Bill Preview Modal (active orders) — now uses unified ReceiptView ───────
-const ActiveBillPreviewModal = ({ saleId, onClose }: { saleId: number; onClose: () => void }) => {
-  const [receiptData, setReceiptData] = useState<any>(null);
-  const [loading, setLoading]         = useState(true);
-
-  useEffect(() => {
-    Promise.all([api.get(`/sales/${saleId}`), api.get('/settings')])
-      .then(([s, st]) => setReceiptData(buildSaleReceipt(s.data, st.data, s.data.cashier_name || 'Staff', s.data.customer_name)))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [saleId]);
-
-  if (loading) return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-3" />
-        <p className="text-gray-500">Loading receipt...</p>
-      </div>
-    </div>
-  );
-
-  return receiptData ? <ReceiptModal data={receiptData} onClose={onClose} /> : null;
-};
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) => (
@@ -68,25 +43,26 @@ const WalkInOrders = () => {
   const [activeTotalPages, setActiveTotalPages] = useState(0);
   const [activeSummary, setActiveSummary] = useState<{ order_count: number; total_amount: number } | null>(null);
 
-  // Modal
-  const [previewSaleId, setPreviewSaleId] = useState<number | null>(null);
+  // Payment select → receipt modal flow
+  const [paySelectSale, setPaySelectSale]   = useState<any | null>(null);
+  const [receiptData,   setReceiptData]     = useState<any | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
 
-  // Direct print state
-  const [printingId, setPrintingId] = useState<number | null>(null);
-
-  const handleDirectPrint = async (sale: any) => {
-    if (printingId !== null) return;
-    setPrintingId(sale.sale_id);
+  const onPaymentSelected = async (payMethod: 'cash' | 'card' | 'online') => {
+    const sale = paySelectSale;
+    setPaySelectSale(null);
+    setReceiptLoading(true);
     try {
-      const [saleRes, settingsRes] = await Promise.all([
+      const [sRes, stRes] = await Promise.all([
         api.get(`/sales/${sale.sale_id}`),
         api.get('/settings'),
       ]);
-      await printToThermalPrinter(saleRes.data, settingsRes.data, saleRes.data.cashier_name || 'Staff', saleRes.data.customer_name);
+      const rd = buildSaleReceipt(sRes.data, stRes.data, sRes.data.cashier_name, sRes.data.customer_name);
+      setReceiptData({ ...rd, paymentMethod: payMethod });
     } catch (e) {
-      console.error('Print failed:', e);
+      console.error('Receipt load failed:', e);
     } finally {
-      setPrintingId(null);
+      setReceiptLoading(false);
     }
   };
 
@@ -358,13 +334,13 @@ const WalkInOrders = () => {
                             className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all border border-blue-200 font-medium text-sm">
                             <Edit2 size={14} /> Edit
                           </button>
-                          <button onClick={() => setPreviewSaleId(sale.sale_id)}
+                          <button onClick={() => setPaySelectSale(sale)}
                             className="p-2 bg-gray-50 text-gray-500 rounded-lg hover:bg-gray-100 transition-all border border-gray-200">
                             <Eye size={14} />
                           </button>
-                          <button onClick={() => handleDirectPrint(sale)} disabled={printingId === sale.sale_id}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all border border-emerald-200 font-medium text-sm disabled:opacity-60">
-                            {printingId === sale.sale_id ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} Print
+                          <button onClick={() => setPaySelectSale(sale)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-all border border-emerald-200 font-medium text-sm">
+                            <Printer size={14} /> Print
                           </button>
                           {isAdmin && (
                             <button onClick={() => handleDeleteActive(sale)}
@@ -448,13 +424,13 @@ const WalkInOrders = () => {
                                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
                                   <Edit2 size={15} />
                                 </button>
-                                <button onClick={() => setPreviewSaleId(sale.sale_id)}
+                                <button onClick={() => setPaySelectSale(sale)}
                                   className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="View Bill">
                                   <Eye size={15} />
                                 </button>
-                                <button onClick={() => handleDirectPrint(sale)} disabled={printingId === sale.sale_id}
-                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition disabled:opacity-60" title="Print to Thermal">
-                                  {printingId === sale.sale_id ? <Loader2 size={15} className="animate-spin" /> : <Printer size={15} />}
+                                <button onClick={() => setPaySelectSale(sale)}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Print Bill">
+                                  <Printer size={15} />
                                 </button>
                                 {isAdmin && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                                   <button onClick={() => handleReprintKOT(sale)}
@@ -509,9 +485,23 @@ const WalkInOrders = () => {
           )}
       </div>
 
-      {/* ── Modals (active tab) ─────────────────────────────── */}
-      {previewSaleId !== null && (
-        <ActiveBillPreviewModal saleId={previewSaleId} onClose={() => setPreviewSaleId(null)} />
+      {/* ── Payment select → Receipt modal ──────────────────── */}
+      {paySelectSale && (
+        <PaymentSelectModal
+          onSelect={onPaymentSelected}
+          onClose={() => setPaySelectSale(null)}
+        />
+      )}
+      {receiptLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 flex items-center gap-3 shadow-2xl">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
+            <span className="text-gray-600 font-medium">Loading receipt...</span>
+          </div>
+        </div>
+      )}
+      {receiptData && (
+        <ReceiptModal data={receiptData} onClose={() => setReceiptData(null)} />
       )}
     </div>
   );
