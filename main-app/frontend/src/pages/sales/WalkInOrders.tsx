@@ -57,8 +57,36 @@ const WalkInOrders = () => {
         api.get(`/sales/${sale.sale_id}`),
         api.get('/settings'),
       ]);
-      const rd = buildSaleReceipt(sRes.data, stRes.data, sRes.data.cashier_name, sRes.data.customer_name);
-      setReceiptData({ ...rd, paymentMethod: payMethod });
+      const saleData = sRes.data;
+      const st = stRes.data;
+
+      // Pick tax rate from settings based on selected payment method
+      const taxPct =
+        payMethod === 'card'   ? parseFloat(st.tax_on_card   ?? st.tax_rate ?? 0)
+        : payMethod === 'online' ? parseFloat(st.tax_on_online ?? st.tax_rate ?? 0)
+        : parseFloat(st.tax_on_cash ?? st.tax_rate ?? 0);
+
+      // Derive item subtotal from stored sale, then recompute tax & total
+      const storedTotal    = parseFloat(saleData.total_amount       || 0);
+      const storedTax      = parseFloat(saleData.tax_amount         || 0);
+      const storedCharges  = parseFloat(saleData.additional_charges_amount || 0);
+      const storedDiscount = parseFloat(saleData.discount           || 0);
+      const itemsSubtotal  = storedTotal - storedTax - storedCharges + storedDiscount;
+
+      const newTaxAmount   = parseFloat((itemsSubtotal * taxPct / 100).toFixed(2));
+      const newTotal       = parseFloat((itemsSubtotal + newTaxAmount + storedCharges - storedDiscount).toFixed(2));
+
+      const overriddenSale = {
+        ...saleData,
+        tax_percent:              taxPct,
+        tax_amount:               newTaxAmount,
+        additional_charges_amount: storedCharges,
+        total_amount:             newTotal,
+        payment_method:           payMethod,
+      };
+
+      const rd = buildSaleReceipt(overriddenSale, st, saleData.cashier_name, saleData.customer_name);
+      setReceiptData(rd);
     } catch (e) {
       console.error('Receipt load failed:', e);
     } finally {
