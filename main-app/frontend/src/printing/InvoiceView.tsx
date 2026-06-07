@@ -106,6 +106,8 @@ export function InvoiceView({ data }: { data: ReceiptData }) {
             value={data.docNumber}
           />
         )}
+
+        {data.status      && <MetaRow label="Status"   value={data.status.toUpperCase()} />}
         {data.tokenNo     && <MetaRow label="Token"    value={data.tokenNo}    bold />}
         {data.date        && <MetaRow label="Date"     value={data.date} />}
         {data.cashierName && <MetaRow label="Cashier"  value={data.cashierName} />}
@@ -114,7 +116,6 @@ export function InvoiceView({ data }: { data: ReceiptData }) {
         {data.orderType   && <MetaRow label="Type"     value={data.orderType} />}
         {data.riderName   && <MetaRow label="Rider"    value={data.riderName} />}
         {data.dueDate     && <MetaRow label="Due Date" value={data.dueDate} />}
-        {data.status      && <MetaRow label="Status"   value={data.status.toUpperCase()} />}
         {data.reason      && <MetaRow label="Reason"   value={data.reason} />}
       </div>
 
@@ -155,7 +156,7 @@ export function InvoiceView({ data }: { data: ReceiptData }) {
           <TotalRow label="Discount" value={-data.discount} cs={cs} />
         )}
         {!!data.taxAmount && (
-          <TotalRow label={`Tax (${data.taxPercent ?? 0}%)`} value={data.taxAmount} cs={cs} />
+          <TotalRow label={`GST (${data.taxPercent ?? 0}%)`} value={data.taxAmount} cs={cs} />
         )}
         {!!data.chargesAmount && (
           <TotalRow label="Charges" value={data.chargesAmount} cs={cs} />
