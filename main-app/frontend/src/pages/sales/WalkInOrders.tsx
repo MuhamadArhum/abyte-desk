@@ -8,8 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
-import { ReceiptModal, PaymentSelectModal } from '../../components/ReceiptView';
-import { buildSaleReceipt } from '../../utils/receiptBuilder';
+import { ReceiptModal, PaymentSelectModal } from '../../printing/ReceiptView';
+import { buildSaleReceipt } from '../../printing/receiptBuilder';
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────
 const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: string | number; color: string }) => (

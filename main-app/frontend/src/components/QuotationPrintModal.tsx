@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { ReceiptModal } from './ReceiptView';
-import { buildQuotationReceipt } from '../utils/receiptBuilder';
+import { ReceiptModal } from '../printing/ReceiptView';
+import { buildQuotationReceipt } from '../printing/receiptBuilder';
 
 interface QuotationPrintModalProps {
   quotationId: number;

@@ -3,8 +3,8 @@ import { useSettings } from '../../context/SettingsContext';
 import { RotateCcw, Search, Loader2, Check, Printer, FileText } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
-import { ReceiptModal } from '../../components/ReceiptView';
-import { buildReturnReceipt } from '../../utils/receiptBuilder';
+import { ReceiptModal } from '../../printing/ReceiptView';
+import { buildReturnReceipt } from '../../printing/receiptBuilder';
 
 interface SaleItem {
   product_id: number;

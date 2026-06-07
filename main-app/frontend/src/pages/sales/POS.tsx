@@ -11,7 +11,7 @@ import DailyReportModal from '../../components/DailyReportModal';
 import RegisterCloseModal from '../../components/RegisterCloseModal';
 import ProductVariantModal from '../../components/ProductVariantModal';
 import api from '../../utils/api';
-import { printKOT } from '../../utils/agentPrinter';
+import { printKOT } from '../../printing/agentPrinter';
 
 // ── TableSearchInput ─────────────────────────────────────────
 const TableSearchInput = ({

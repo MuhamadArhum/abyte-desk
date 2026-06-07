@@ -1,6 +1,6 @@
 // Converts raw API data of any bill type into a unified ReceiptData object
 
-import type { ReceiptData } from '../components/ReceiptView';
+import type { ReceiptData } from './ReceiptView';
 
 interface StoreSettings {
   store_name?: string;

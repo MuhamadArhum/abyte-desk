@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { ReceiptModal } from './ReceiptView';
-import { buildSaleReceipt } from '../utils/receiptBuilder';
+import { buildSaleReceipt } from './receiptBuilder';
 
 interface InvoicePrintModalProps {
   invoiceId: number;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
-import { printInvoice, rasterizeLogoForEscPos } from '../utils/agentPrinter';
+import { printInvoice, rasterizeLogoForEscPos } from './agentPrinter';
 import type { ReceiptData } from './ReceiptView';
 
 // ── Helpers ───────────────────────────────────────────────────

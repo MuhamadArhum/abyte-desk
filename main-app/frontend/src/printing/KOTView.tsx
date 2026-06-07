@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Printer, Loader2 } from 'lucide-react';
-import { printKOT } from '../utils/agentPrinter';
+import { printKOT } from './agentPrinter';
 
 // ── Types ──────────────────────────────────────────────────────
 

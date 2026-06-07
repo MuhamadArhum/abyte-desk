@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
-import { ReceiptModal } from './ReceiptView';
-import { buildSaleReceipt } from '../utils/receiptBuilder';
+import { ReceiptModal } from '../printing/ReceiptView';
+import { buildSaleReceipt } from '../printing/receiptBuilder';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 

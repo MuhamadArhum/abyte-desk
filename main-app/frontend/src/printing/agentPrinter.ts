@@ -1,7 +1,7 @@
 // AByte Printer Agent bridge
 // Jobs go via the print queue — cashier browser picks them up and forwards to localhost:3001
 
-import api from './api';
+import api from '../utils/api';
 
 export interface AgentHealth {
   status: string;

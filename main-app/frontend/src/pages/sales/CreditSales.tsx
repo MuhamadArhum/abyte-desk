@@ -4,8 +4,8 @@ import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, P
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
-import { ReceiptModal } from '../../components/ReceiptView';
-import { buildCreditSaleReceipt } from '../../utils/receiptBuilder';
+import { ReceiptModal } from '../../printing/ReceiptView';
+import { buildCreditSaleReceipt } from '../../printing/receiptBuilder';
 
 interface CreditSale {
   credit_sale_id: number;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Clock, CheckCircle, Printer, Search, Archive, RotateCcw, FileText, DollarSign, User, Calendar, CreditCard, Package } from 'lucide-react';
 import api from '../utils/api';
-import { printToThermalPrinter } from '../utils/receiptPrinter';
+import { printToThermalPrinter } from '../printing/receiptPrinter';
 import Pagination from './Pagination';
 
 interface OrdersModalProps {

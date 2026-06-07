@@ -4,10 +4,10 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
-import { printBillWithTax } from '../utils/receiptPrinter';
-import { printKOT, printInvoice, rasterizeLogoForEscPos } from '../utils/agentPrinter';
-import { ReceiptModal } from './ReceiptView';
-import { buildSaleReceipt } from '../utils/receiptBuilder';
+import { printBillWithTax } from '../printing/receiptPrinter';
+import { printKOT, printInvoice, rasterizeLogoForEscPos } from '../printing/agentPrinter';
+import { ReceiptModal } from '../printing/ReceiptView';
+import { buildSaleReceipt } from '../printing/receiptBuilder';
 
 interface CheckoutModalProps {
   isOpen: boolean;

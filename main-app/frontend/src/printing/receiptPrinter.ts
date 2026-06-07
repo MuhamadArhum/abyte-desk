@@ -1,4 +1,4 @@
-import api from './api';
+import api from '../utils/api';
 
 interface ReceiptSale {
   sale_id: number;
