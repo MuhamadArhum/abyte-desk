@@ -12,6 +12,7 @@ import api from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
 import useToastStore from '../../../store/toastStore';
 import useConfirmStore from '../../../store/confirmStore';
+import useOfflineQueue from '../../../store/offlineQueue';
 import { C, shadow } from '../../../constants/theme';
 import { ReceiptModal } from '../../../components/ReceiptView';
 
@@ -61,6 +62,7 @@ export default function OrderScreen() {
   } = useCartStore();
   const { showToast } = useToastStore();
   const { show: showConfirm } = useConfirmStore();
+  const { addToQueue } = useOfflineQueue();
 
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
@@ -233,8 +235,35 @@ export default function OrderScreen() {
         router.back();
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to send order. Try again.';
-      showToast(msg, 'error');
+      // Network error (no response) — save to offline queue
+      if (!err.response && !isEditMode) {
+        const payload = {
+          items: items.map((i) => ({
+            product_id: i.product_id,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            variant_id: i.variant_id || null,
+            note: i.note || null,
+          })),
+          table_id: parseInt(tableId) || null,
+          order_type: orderType,
+          status: 'pending',
+          payment_method: orderType === 'delivery' ? 'online' : 'cash',
+          tax_percent: parseFloat(taxPercent.toFixed(2)),
+          additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
+          discount: 0,
+          note: note.trim() || null,
+          customer_name: NEEDS_CUSTOMER_INFO.includes(orderType) && customerName.trim() ? customerName.trim() : null,
+          customer_phone: NEEDS_CUSTOMER_INFO.includes(orderType) && customerPhone.trim() ? customerPhone.trim() : null,
+        };
+        await addToQueue({ payload, tableName, orderType });
+        showToast(`No internet. Order saved — will sync when online.`, 'warning');
+        clearCart();
+        router.back();
+      } else {
+        const msg = err.response?.data?.message || 'Failed to send order. Try again.';
+        showToast(msg, 'error');
+      }
     } finally {
       setSending(false);
     }

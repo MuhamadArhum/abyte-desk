@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import useAuthStore from '../store/authStore';
+import useOfflineQueue from '../store/offlineQueue';
+import api from '../services/api';
 import Toast from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 import RefreshLoader from '../components/RefreshLoader';
@@ -12,9 +15,23 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { loadAuth } = useAuthStore();
+  const { loadQueue, syncQueue } = useOfflineQueue();
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     loadAuth().finally(() => SplashScreen.hideAsync());
+    loadQueue();
+  }, []);
+
+  // When app comes to foreground, try to sync offline orders
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        syncQueue(api);
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
   }, []);
 
   return (
