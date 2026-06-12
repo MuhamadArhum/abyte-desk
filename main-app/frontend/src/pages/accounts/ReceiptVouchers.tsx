@@ -100,6 +100,9 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
     api.get('/accounting/receipt-vouchers/next-number')
       .then(r => setVoucherNumber(r.data.voucher_number))
       .catch(() => {});
+    api.get('/settings')
+      .then(r => { if (r.data.crv_default_account_id) setMainAccountId(String(r.data.crv_default_account_id)); })
+      .catch(() => {});
   }, []);
 
   const resetEntry = () => {

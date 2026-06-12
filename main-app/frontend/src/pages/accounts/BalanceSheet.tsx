@@ -278,56 +278,48 @@ const BalanceSheet = () => {
   const isBalanced = data ? Math.abs(data.total_assets - data.total_liabilities_equity) < 0.01 : true;
 
   return (
-    <div className="p-6 min-h-full bg-gray-50">
+    <div className="p-4 sm:p-6 space-y-4 min-h-full bg-gray-50/50">
       {/* ── Page Header ── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow">
-            <FileBarChart className="text-white" size={20} />
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500" />
+        <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+              <FileBarChart className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Balance Sheet</h1>
+              <p className="text-xs sm:text-sm text-gray-500">Financial position as of a specific date</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Balance Sheet</h1>
-            <p className="text-sm text-gray-500">Financial position as of a specific date</p>
-          </div>
+          {data && (
+            <div className="flex items-center gap-2">
+              <button onClick={handlePrint} className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                <Printer size={14} /> Print
+              </button>
+              <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                <Download size={14} /> Export CSV
+              </button>
+            </div>
+          )}
         </div>
-
-        {data && (
-          <div className="flex items-center gap-2">
-            <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white transition shadow-sm">
-              <Printer size={15} /> Print
-            </button>
-            <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white transition shadow-sm">
-              <Download size={15} /> Export CSV
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Filter Bar ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-3.5">
+        <div className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">As of Date</label>
-            <input
-              type="date"
-              value={asOfDate}
-              onChange={e => setAsOfDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">As of Date</label>
+            <input type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
-          <button
-            onClick={fetchBalanceSheet}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50 shadow-sm"
-          >
-            <Calendar size={16} />
-            {loading ? 'Loading...' : 'Generate'}
+          <button onClick={fetchBalanceSheet} disabled={loading}
+            className="flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 shadow-sm">
+            <Calendar size={14} /> {loading ? 'Loading...' : 'Generate'}
           </button>
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition"
-          >
-            <RefreshCw size={15} /> Reset
+          <button onClick={handleReset}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+            <RefreshCw size={13} /> Reset
           </button>
         </div>
       </div>

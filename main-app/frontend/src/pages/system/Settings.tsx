@@ -79,6 +79,8 @@ const Settings = () => {
     printer_type: 'none', printer_ip: '', printer_port: 9100, printer_name: '', printer_paper_width: 80,
     view_completed_orders_password: '', refund_password: '', reports_password: '',
     jv_delete_password: '',
+    cpv_default_account_id: '',
+    crv_default_account_id: '',
     pos_mode: 'simple',
     pos_tax_config: null,
   });
@@ -119,6 +121,9 @@ const Settings = () => {
   const [showRefundPw, setShowRefundPw] = useState(false);
   const [showReportsPw, setShowReportsPw] = useState(false);
   const [showJvDeletePw, setShowJvDeletePw] = useState(false);
+
+  // Accounting accounts (for CPV/CRV defaults)
+  const [accountsList, setAccountsList] = useState<any[]>([]);
 
   // Roles
   interface Role { role_id: number; role_name: string; }
@@ -232,6 +237,9 @@ const Settings = () => {
       fetchRoles();
       fetchBranches();
     }
+    api.get('/accounting/accounts', { params: { tree: 1 } })
+      .then(r => setAccountsList((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
+      .catch(() => {});
   }, [currentUser]);
 
   useEffect(() => {
@@ -1520,7 +1528,8 @@ const Settings = () => {
                     Set passwords to protect sensitive accounting actions. Leave empty to disable protection.
                   </p>
 
-                  <form onSubmit={handleSaveSettings} className="max-w-lg space-y-4">
+                  <form onSubmit={handleSaveSettings} className="max-w-lg space-y-5">
+                    {/* JV Delete Password */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Journal Voucher Delete Password
@@ -1544,10 +1553,58 @@ const Settings = () => {
                       <p className="text-xs text-gray-500 mt-1">Require password before deleting any Journal Voucher (draft or posted)</p>
                     </div>
 
+                    {/* CPV / CRV Default Accounts */}
+                    <div className="border-t border-gray-100 pt-5">
+                      <h3 className="text-sm font-bold text-gray-700 mb-1">Voucher Default Accounts</h3>
+                      <p className="text-xs text-gray-500 mb-4">Select the default Cash/Bank account that pre-fills when creating CPV or CRV. Staff won't need to select it every time.</p>
+
+                      <div className="space-y-4">
+                        {/* CPV Default Account */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            CPV Default Account <span className="text-xs font-normal text-gray-400">(Cash Payment Voucher)</span>
+                          </label>
+                          <select
+                            value={settings.cpv_default_account_id || ''}
+                            onChange={e => setSettings({ ...settings, cpv_default_account_id: e.target.value })}
+                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+                          >
+                            <option value="">— None (manual select) —</option>
+                            {accountsList.map(a => (
+                              <option key={a.account_id} value={a.account_id}>
+                                {a.account_code} — {a.account_name}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">Usually your main Cash or Bank account (Asset type)</p>
+                        </div>
+
+                        {/* CRV Default Account */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                            CRV Default Account <span className="text-xs font-normal text-gray-400">(Cash Receipt Voucher)</span>
+                          </label>
+                          <select
+                            value={settings.crv_default_account_id || ''}
+                            onChange={e => setSettings({ ...settings, crv_default_account_id: e.target.value })}
+                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+                          >
+                            <option value="">— None (manual select) —</option>
+                            {accountsList.map(a => (
+                              <option key={a.account_id} value={a.account_id}>
+                                {a.account_code} — {a.account_name}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">Usually your main Cash or Bank account (Asset type)</p>
+                        </div>
+                      </div>
+                    </div>
+
                     <button type="submit" disabled={saving}
                       className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 font-semibold shadow-lg transition-all">
                       {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                      Save Accounts Security Settings
+                      Save Accounts Settings
                     </button>
                   </form>
                 </div>

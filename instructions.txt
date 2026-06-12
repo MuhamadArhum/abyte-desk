@@ -34,3 +34,13 @@ Super Admin Pannel Changes:
 2: For example Agr user kahy k mujy Just Sales waly Feature chaye ya agr kahy k mujy just deliveries chaye bs or usky sath Inventory wala Complete module chaye to humny just usko usi k mutabiq hi Db bhi Setup krni hai or Usko Woho Features enable kr k deny hain 
 
 
+
+
+
+
+
+Accounts Module Changes:
+1: JV Form ka UI Change kro Bilkul Acha Ni lag Raha 
+2: humny CPV and CRV ka by default account set krna hota hai Settings main 
+3: Accounts MOdule main Jo Reports hain WO Proper Ni hain Unko Mazeed Polish Kro or Advance Kro 
+

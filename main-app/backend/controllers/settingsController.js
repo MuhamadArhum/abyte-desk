@@ -190,6 +190,19 @@ exports.updateSettings = async (req, res) => {
       logger.warn('printer_agent_url/agent_token column error:', paErr.message);
     }
 
+    // Update CPV/CRV default accounts
+    try {
+      const { cpv_default_account_id, crv_default_account_id } = req.body;
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS cpv_default_account_id INT NULL`);
+      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS crv_default_account_id INT NULL`);
+      await query(
+        `UPDATE store_settings SET cpv_default_account_id=?, crv_default_account_id=? WHERE setting_id=1`,
+        [cpv_default_account_id || null, crv_default_account_id || null]
+      );
+    } catch (vErr) {
+      logger.warn('CPV/CRV default account column error:', vErr.message);
+    }
+
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {

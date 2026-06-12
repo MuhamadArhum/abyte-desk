@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
+import { FileText, Plus, Send, Trash2, ChevronDown, Search, Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, XCircle, ArrowLeft, Hash, Calendar, AlignLeft } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
@@ -7,9 +7,9 @@ import { localToday, localMonthStart } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const AccountSelector = ({
-  value, onChange, accounts, onAfterSelect
+  value, onChange, accounts, onAfterSelect, placeholder = 'Select Account...'
 }: {
-  value: string; onChange: (id: string) => void; accounts: any[]; onAfterSelect?: () => void;
+  value: string; onChange: (id: string) => void; accounts: any[]; onAfterSelect?: () => void; placeholder?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -33,22 +33,40 @@ const AccountSelector = ({
     setTimeout(() => onAfterSelect?.(), 0);
   };
 
+  const typeColor: Record<string, string> = {
+    asset: 'bg-blue-100 text-blue-700',
+    liability: 'bg-rose-100 text-rose-700',
+    equity: 'bg-purple-100 text-purple-700',
+    revenue: 'bg-emerald-100 text-emerald-700',
+    expense: 'bg-amber-100 text-amber-700',
+  };
+
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left transition">
-        <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
-          {selected ? `${selected.account_code} — ${selected.account_name}` : 'Select Account...'}
-        </span>
-        <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left transition group">
+        <div className="flex items-center gap-2 min-w-0">
+          {selected ? (
+            <>
+              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${typeColor[selected.account_type] || 'bg-gray-100 text-gray-600'}`}>
+                {selected.account_type?.slice(0,3)}
+              </span>
+              <span className="text-gray-400 font-mono text-xs shrink-0">{selected.account_code}</span>
+              <span className="text-gray-800 font-medium truncate">{selected.account_name}</span>
+            </>
+          ) : (
+            <span className="text-gray-400">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1 group-hover:text-indigo-500 transition" />
       </button>
       {selected && (
-        <p className="text-xs text-gray-400 mt-0.5 px-1">
+        <p className="text-[11px] text-gray-400 mt-0.5 px-1">
           Balance: <span className="font-semibold text-gray-600">{Number(selected.current_balance || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
         </p>
       )}
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-72 sm:w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
+        <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400" />
@@ -63,17 +81,18 @@ const AccountSelector = ({
                 placeholder="Search by name or code..." />
             </div>
           </div>
-          <ul className="max-h-52 overflow-y-auto py-1">
+          <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 && <li className="px-3 py-3 text-sm text-gray-400 text-center">No accounts found</li>}
             {filtered.map((a, idx) => (
               <li key={a.account_id}>
                 <button type="button" onClick={() => selectAccount(String(a.account_id))}
-                  className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition ${idx === hi ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'}`}>
-                  <div className="min-w-0">
-                    <span className="text-xs text-gray-400 font-mono">{a.account_code}</span>
-                    <span className="ml-2 text-sm text-gray-800 truncate">{a.account_name}</span>
-                  </div>
-                  <span className="text-xs text-gray-500 shrink-0 font-mono">{Number(a.current_balance || 0).toLocaleString()}</span>
+                  className={`w-full text-left px-3 py-2 flex items-center gap-2 transition ${idx === hi ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50'}`}>
+                  <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${typeColor[a.account_type] || 'bg-gray-100 text-gray-600'}`}>
+                    {a.account_type?.slice(0,3)}
+                  </span>
+                  <span className="text-xs text-gray-400 font-mono shrink-0">{a.account_code}</span>
+                  <span className="text-sm text-gray-800 truncate flex-1">{a.account_name}</span>
+                  <span className="text-xs text-gray-400 shrink-0 font-mono">{Number(a.current_balance || 0).toLocaleString()}</span>
                 </button>
               </li>
             ))}
@@ -87,7 +106,7 @@ const AccountSelector = ({
 type JvLine = { dr_cr: 'Dr' | 'Cr'; account_id: string; narration: string; debit: string; credit: string };
 const emptyLine = (): JvLine => ({ dr_cr: 'Dr', account_id: '', narration: '', debit: '', credit: '' });
 
-// ── Full-page JV Entry Form ───────────────────────────────────────────────────
+// ── JV Entry Form ─────────────────────────────────────────────────────────────
 const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) => {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
@@ -111,7 +130,7 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
       const others = prev.filter((_, idx) => idx !== i);
       const otherDr = others.reduce((s, l) => s + Number(l.debit || 0), 0);
       const otherCr = others.reduce((s, l) => s + Number(l.credit || 0), 0);
-      const remaining = parseFloat(Math.abs(otherDr - otherCr).toFixed(0));
+      const remaining = parseFloat(Math.abs(otherDr - otherCr).toFixed(2));
       return prev.map((l, idx) => {
         if (idx !== i) return l;
         const existingAmt = l.debit || l.credit || '';
@@ -132,7 +151,8 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
     credit: acc.credit + Number(l.credit || 0)
   }), { debit: 0, credit: 0 });
 
-  const isBalanced = lines.length >= 2 && Math.abs(totals.debit - totals.credit) < 0.01 && totals.debit > 0;
+  const diff = Math.abs(totals.debit - totals.credit);
+  const isBalanced = lines.length >= 2 && diff < 0.01 && totals.debit > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +166,7 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
           debit: Number(l.debit || 0), credit: Number(l.credit || 0)
         }))
       });
-      toast.success('Journal entry created');
+      toast.success('Journal entry created successfully');
       onSuccess();
       onBack();
     } catch (err: any) {
@@ -156,153 +176,199 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
     }
   };
 
-  return (
-    <div className="h-full flex flex-col bg-gray-50">
+  const filledLines = lines.filter(l => l.account_id && (Number(l.debit) > 0 || Number(l.credit) > 0));
 
-      {/* Top Bar */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shrink-0">
+  return (
+    <div className="h-full flex flex-col bg-gray-50/60">
+
+      {/* ── Top Bar ── */}
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3.5 shrink-0 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button onClick={onBack}
               className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition">
               <ArrowLeft size={17} className="text-gray-600" />
             </button>
-            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
-              <FileText size={17} className="text-emerald-700" />
+            <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <FileText size={17} className="text-indigo-700" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-gray-900">New Journal Voucher</h2>
-              <p className="text-xs text-gray-500 hidden sm:block">Double-entry bookkeeping</p>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">New Journal Voucher</h2>
+              <p className="text-xs text-gray-400 hidden sm:block">Double-entry bookkeeping</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <label className="text-sm font-medium text-gray-500 hidden sm:block">Date</label>
-            <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" required />
+
+          {/* Balance Status Badge */}
+          <div className="flex items-center gap-3">
+            {isBalanced ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
+                <CheckCircle2 size={13} /> Balanced
+              </span>
+            ) : totals.debit > 0 ? (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-bold border border-red-200">
+                <XCircle size={13} /> Diff: {diff.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
 
-      {/* Narration Row */}
-      <div className="px-4 sm:px-6 py-3 bg-white border-b border-gray-100 shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <label className="text-sm font-semibold text-gray-600 shrink-0">Narration</label>
-          <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
-            placeholder="General narration for this journal entry..." />
+      {/* ── Voucher Header Card ── */}
+      <div className="px-4 sm:px-6 pt-4 shrink-0">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Date */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <Calendar size={12} /> Voucher Date
+              </label>
+              <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition" required />
+            </div>
+            {/* Narration */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                <AlignLeft size={12} /> Narration / Description
+              </label>
+              <input type="text" value={description} onChange={e => setDescription(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition"
+                placeholder="General narration for this journal entry..." />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Lines Table */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      {/* ── Lines Table ── */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
         <form id="jv-form" onSubmit={handleSubmit}>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="bg-gray-800 text-white">
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide w-10">#</th>
-                    <th className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wide w-20">Dr/Cr</th>
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Account</th>
-                    <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wide">Narration</th>
-                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Debit</th>
-                    <th className="px-3 py-3 text-right font-semibold text-xs uppercase tracking-wide w-32">Credit</th>
-                    <th className="px-3 py-3 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line, i) => (
-                    <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'}`}>
-                      <td className="px-3 py-2.5 text-gray-400 font-mono text-xs">{String(i + 1).padStart(2, '0')}</td>
 
-                      <td className="px-2 py-2.5 text-center">
-                        <div className="flex rounded-full overflow-hidden bg-gray-100 p-0.5 gap-0.5 w-[68px] mx-auto">
-                          <button type="button" onClick={() => handleDrCr(i, 'Dr')}
-                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Dr' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-500 hover:text-emerald-600'}`}>
-                            Dr
-                          </button>
-                          <button type="button" onClick={() => handleDrCr(i, 'Cr')}
-                            className={`flex-1 py-1 text-xs font-bold rounded-full transition ${line.dr_cr === 'Cr' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                            Cr
-                          </button>
-                        </div>
-                      </td>
+            {/* Table Header */}
+            <div className="grid items-center bg-gray-50 border-b border-gray-200 px-3 py-2.5 text-xs font-bold text-gray-500 uppercase tracking-wider"
+              style={{ gridTemplateColumns: '32px 72px 1fr 1fr 120px 120px 36px' }}>
+              <span className="text-center">#</span>
+              <span className="text-center">Type</span>
+              <span className="pl-2">Account</span>
+              <span className="pl-2">Narration</span>
+              <span className="text-right pr-2">Debit</span>
+              <span className="text-right pr-2">Credit</span>
+              <span />
+            </div>
 
-                      <td className="px-2 py-2 min-w-[200px]">
-                        <AccountSelector
-                          value={line.account_id}
-                          onChange={id => updateLine(i, { account_id: id })}
-                          onAfterSelect={() => narrationRefs.current[i]?.focus()}
-                          accounts={accounts}
-                        />
-                      </td>
+            {/* Lines */}
+            {lines.map((line, i) => (
+              <div key={i}
+                className={`grid items-start gap-0 border-b border-gray-100 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                style={{ gridTemplateColumns: '32px 72px 1fr 1fr 120px 120px 36px' }}>
 
-                      <td className="px-2 py-2 min-w-[140px]">
-                        <input ref={el => { narrationRefs.current[i] = el; }}
-                          type="text" value={line.narration}
-                          onChange={e => updateLine(i, { narration: e.target.value })}
-                          className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 bg-white outline-none"
-                          placeholder="Line narration..." />
-                      </td>
+                {/* Row # */}
+                <div className="flex items-center justify-center pt-3 pb-2">
+                  <span className="text-[11px] font-mono text-gray-300">{String(i + 1).padStart(2, '0')}</span>
+                </div>
 
-                      <td className="px-2 py-2">
-                        <input type="number" step="0.01" min="0"
-                          value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
-                          onChange={e => handleAmountChange(i, e.target.value)}
-                          disabled={line.dr_cr === 'Cr'}
-                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${line.dr_cr === 'Dr' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 focus:ring-2 focus:ring-emerald-500' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                          placeholder="0.00" />
-                      </td>
+                {/* Dr/Cr Toggle */}
+                <div className="flex items-center justify-center pt-2.5 pb-2 px-1">
+                  <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                    <button type="button" onClick={() => handleDrCr(i, 'Dr')}
+                      className={`px-2.5 py-1.5 text-xs font-bold transition leading-none ${line.dr_cr === 'Dr'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-gray-500 hover:text-indigo-600 hover:bg-gray-50'}`}>
+                      Dr
+                    </button>
+                    <button type="button" onClick={() => handleDrCr(i, 'Cr')}
+                      className={`px-2.5 py-1.5 text-xs font-bold transition leading-none ${line.dr_cr === 'Cr'
+                        ? 'bg-rose-500 text-white shadow-sm'
+                        : 'text-gray-500 hover:text-rose-500 hover:bg-gray-50'}`}>
+                      Cr
+                    </button>
+                  </div>
+                </div>
 
-                      <td className="px-2 py-2">
-                        <input type="number" step="0.01" min="0"
-                          value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
-                          onChange={e => handleAmountChange(i, e.target.value)}
-                          disabled={line.dr_cr === 'Dr'}
-                          className={`w-full px-2 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${line.dr_cr === 'Cr' ? 'border-gray-300 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-gray-400' : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                          placeholder="0.00" />
-                      </td>
+                {/* Account */}
+                <div className="py-2 pr-2">
+                  <AccountSelector
+                    value={line.account_id}
+                    onChange={id => updateLine(i, { account_id: id })}
+                    onAfterSelect={() => narrationRefs.current[i]?.focus()}
+                    accounts={accounts}
+                  />
+                </div>
 
-                      <td className="px-2 py-2 text-center">
-                        <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
-                          disabled={lines.length <= 2}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                {/* Narration */}
+                <div className="py-2 pr-2">
+                  <input ref={el => { narrationRefs.current[i] = el; }}
+                    type="text" value={line.narration}
+                    onChange={e => updateLine(i, { narration: e.target.value })}
+                    className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white outline-none transition"
+                    placeholder="Line narration..." />
+                </div>
 
-                  <tr className={`font-bold text-sm ${isBalanced ? 'bg-emerald-600' : 'bg-gray-800'} text-white`}>
-                    <td colSpan={4} className="px-4 py-3 text-right text-xs uppercase tracking-wide">Total</td>
-                    <td className="px-3 py-3 text-right font-mono">{totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-3 py-3 text-right font-mono">{totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-2 py-3 text-center">{isBalanced ? '✓' : '✗'}</td>
-                  </tr>
-                </tbody>
-              </table>
+                {/* Debit */}
+                <div className="py-2 pr-2">
+                  <input type="number" step="0.01" min="0"
+                    value={line.dr_cr === 'Dr' ? (line.debit || '') : ''}
+                    onChange={e => handleAmountChange(i, e.target.value)}
+                    disabled={line.dr_cr === 'Cr'}
+                    className={`w-full px-2.5 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${
+                      line.dr_cr === 'Dr'
+                        ? 'border-indigo-200 bg-indigo-50 text-indigo-700 focus:ring-2 focus:ring-indigo-400'
+                        : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                    placeholder="0.00" />
+                </div>
+
+                {/* Credit */}
+                <div className="py-2 pr-2">
+                  <input type="number" step="0.01" min="0"
+                    value={line.dr_cr === 'Cr' ? (line.credit || '') : ''}
+                    onChange={e => handleAmountChange(i, e.target.value)}
+                    disabled={line.dr_cr === 'Dr'}
+                    className={`w-full px-2.5 py-2 border rounded-lg text-sm text-right font-semibold outline-none transition ${
+                      line.dr_cr === 'Cr'
+                        ? 'border-rose-200 bg-rose-50 text-rose-600 focus:ring-2 focus:ring-rose-400'
+                        : 'border-gray-100 bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                    placeholder="0.00" />
+                </div>
+
+                {/* Delete */}
+                <div className="flex items-center justify-center pt-2.5">
+                  <button type="button" onClick={() => setLines(prev => prev.filter((_, idx) => idx !== i))}
+                    disabled={lines.length <= 2}
+                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-20 disabled:cursor-not-allowed">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Totals Bar */}
+            <div className={`grid items-center px-3 py-3 ${isBalanced ? 'bg-emerald-600' : totals.debit > 0 ? 'bg-rose-600' : 'bg-gray-700'} text-white`}
+              style={{ gridTemplateColumns: '32px 72px 1fr 1fr 120px 120px 36px' }}>
+              <div />
+              <div />
+              <div className="pl-2 text-xs font-bold uppercase tracking-wide col-span-2">
+                {isBalanced ? '✓ Balanced' : totals.debit > 0 ? `Difference: ${diff.toLocaleString('en-PK', { minimumFractionDigits: 2 })}` : 'Total'}
+              </div>
+              <div className="text-right pr-2 font-mono font-bold text-sm">
+                {totals.debit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </div>
+              <div className="text-right pr-2 font-mono font-bold text-sm">
+                {totals.credit.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+              </div>
+              <div />
             </div>
           </div>
         </form>
       </div>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <div className="px-4 sm:px-6 py-4 bg-white border-t border-gray-200 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-3">
             <button type="button" onClick={() => setLines(prev => [...prev, emptyLine()])}
-              className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg text-sm font-medium transition">
+              className="flex items-center gap-1.5 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-2 rounded-lg text-sm font-medium transition">
               <Plus size={14} /> Add Line
             </button>
-            {isBalanced ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
-                <CheckCircle2 size={13} /> Balanced
-              </span>
-            ) : totals.debit > 0 ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-xs font-semibold">
-                <XCircle size={13} /> Diff: {Math.abs(totals.debit - totals.credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-              </span>
-            ) : null}
+            <span className="text-xs text-gray-400">{filledLines.length} of {lines.length} lines filled</span>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onBack}
@@ -310,8 +376,11 @@ const JournalEntryForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess
               Cancel
             </button>
             <button type="submit" form="jv-form" disabled={loading || !isBalanced}
-              className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-              {loading ? 'Saving...' : 'Save JV'}
+              className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+              {loading
+                ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                : <Send size={14} />}
+              {loading ? 'Saving...' : 'Save Journal Voucher'}
             </button>
           </div>
         </div>
@@ -340,7 +409,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
     setDeleting(true);
     try {
       await api.delete(`/accounting/journal-entries/${entry.entry_id}`);
-      toast.success(`${entry.entry_number} deleted successfully`);
+      toast.success(`${entry.entry_number} deleted`);
       onDeleted(); onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete');
@@ -439,12 +508,15 @@ const JournalEntries = () => {
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
-      draft: 'bg-amber-100 text-amber-700',
-      posted: 'bg-emerald-100 text-emerald-700',
-      reversed: 'bg-red-100 text-red-700'
+      draft: 'bg-amber-100 text-amber-700 border border-amber-200',
+      posted: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+      reversed: 'bg-red-100 text-red-700 border border-red-200'
     };
     return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${map[status] ?? 'bg-gray-100 text-gray-600'}`}>{status}</span>;
   };
+
+  const totalDebit  = entries.reduce((s, e) => s + Number(e.total_debit || 0), 0);
+  const totalCredit = entries.reduce((s, e) => s + Number(e.total_credit || 0), 0);
 
   if (view === 'new') return <JournalEntryForm onBack={() => setView('list')} onSuccess={fetchEntries} />;
 
@@ -453,51 +525,71 @@ const JournalEntries = () => {
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="h-1 bg-emerald-600" />
+        <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
         <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-              <FileText size={20} className="text-emerald-700" />
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <FileText size={20} className="text-indigo-700" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Journal Voucher</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Journal Vouchers</h1>
               <p className="text-xs sm:text-sm text-gray-500">Double-entry accounting transactions</p>
             </div>
           </div>
           <button onClick={() => setView('new')}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition shadow-sm text-sm font-semibold">
-            <Plus size={15} /> New Entry
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition shadow-sm text-sm font-semibold">
+            <Plus size={15} /> New JV
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:block">Filters</span>
+          <Hash size={14} className="text-gray-400 hidden sm:block" />
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
             <option value="all">All Status</option>
             <option value="draft">Draft</option>
             <option value="posted">Posted</option>
           </select>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500">From</span>
+            <span className="text-xs text-gray-400 font-medium">From</span>
             <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-500">To</span>
+            <span className="text-xs text-gray-400 font-medium">To</span>
             <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="px-2 sm:px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
           <button onClick={handleLoad} disabled={loading}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm">
             <Search size={14} /> {loading ? 'Loading...' : 'Load'}
           </button>
-          {hasLoaded && <span className="ml-auto text-xs text-gray-400">{pagination.total} entries</span>}
+          {hasLoaded && (
+            <span className="ml-auto text-xs text-gray-400">{pagination.total} entries</span>
+          )}
         </div>
       </div>
+
+      {/* Summary Cards */}
+      {hasLoaded && entries.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Entries</p>
+            <p className="text-xl font-bold text-gray-800">{pagination.total}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-indigo-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide mb-1">Total Debit</p>
+            <p className="text-lg font-bold text-indigo-700 font-mono">{totalDebit.toLocaleString('en-PK', { minimumFractionDigits: 0 })}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-rose-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-rose-400 font-medium uppercase tracking-wide mb-1">Total Credit</p>
+            <p className="text-lg font-bold text-rose-600 font-mono">{totalCredit.toLocaleString('en-PK', { minimumFractionDigits: 0 })}</p>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -506,18 +598,18 @@ const JournalEntries = () => {
             <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <FileText size={24} className="opacity-30" />
             </div>
-            <p className="font-semibold text-gray-500 text-sm">Set date range and click <strong className="text-emerald-600">Load</strong></p>
+            <p className="font-semibold text-gray-500 text-sm">Set date range and click <strong className="text-indigo-600">Load</strong></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-gray-800 text-white text-xs uppercase tracking-wider">
+                <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500">
                   <th className="text-left px-4 py-3 font-semibold">Entry #</th>
                   <th className="text-left px-4 py-3 font-semibold">Date</th>
                   <th className="text-left px-4 py-3 font-semibold">Description</th>
-                  <th className="text-right px-4 py-3 font-semibold">Debit</th>
-                  <th className="text-right px-4 py-3 font-semibold">Credit</th>
+                  <th className="text-right px-4 py-3 font-semibold text-indigo-600">Debit</th>
+                  <th className="text-right px-4 py-3 font-semibold text-rose-500">Credit</th>
                   <th className="text-center px-4 py-3 font-semibold">Status</th>
                   <th className="text-center px-4 py-3 font-semibold">Actions</th>
                 </tr>
@@ -525,31 +617,35 @@ const JournalEntries = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={7} className="p-8 text-center">
-                    <div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent mx-auto" />
+                    <div className="animate-spin h-6 w-6 rounded-full border-2 border-indigo-500 border-t-transparent mx-auto" />
                   </td></tr>
                 ) : entries.length > 0 ? (
                   entries.map((entry: any, i: number) => (
-                    <tr key={entry.entry_id} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-700 text-sm">{entry.entry_number}</td>
+                    <tr key={entry.entry_id} className={`border-b border-gray-50 hover:bg-indigo-50/20 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                      <td className="px-4 py-3 font-mono font-bold text-indigo-700 text-sm">{entry.entry_number}</td>
                       <td className="px-4 py-3 text-gray-500 text-sm whitespace-nowrap">
                         {new Date(entry.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-sm max-w-[200px] truncate">{entry.description || '—'}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-sm text-gray-800 font-mono">
+                      <td className="px-4 py-3 text-right font-semibold text-sm text-indigo-700 font-mono">
                         {Number(entry.total_debit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-sm text-gray-800 font-mono">
+                      <td className="px-4 py-3 text-right font-semibold text-sm text-rose-600 font-mono">
                         {Number(entry.total_credit).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-center">{statusBadge(entry.status)}</td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {entry.status === 'draft' && (
-                            <button onClick={() => handlePost(entry)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Post Entry">
+                            <button onClick={() => handlePost(entry)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                              title="Post Entry">
                               <Send size={14} />
                             </button>
                           )}
-                          <button onClick={() => setDeleteEntry(entry)} className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                          <button onClick={() => setDeleteEntry(entry)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                            title="Delete">
                             <Trash2 size={14} />
                           </button>
                         </div>

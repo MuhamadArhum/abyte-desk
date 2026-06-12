@@ -100,6 +100,9 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
     api.get('/accounting/payment-vouchers/next-number')
       .then(r => setVoucherNumber(r.data.voucher_number))
       .catch(() => {});
+    api.get('/settings')
+      .then(r => { if (r.data.cpv_default_account_id) setMainAccountId(String(r.data.cpv_default_account_id)); })
+      .catch(() => {});
   }, []);
 
   const resetEntry = () => {

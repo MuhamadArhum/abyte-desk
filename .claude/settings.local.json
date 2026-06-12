@@ -162,7 +162,8 @@
       "Bash(taskkill /f /im ABytePrinterAgent.exe)",
       "Bash(xargs basename *)",
       "Bash(Invoice)",
-      "Bash(Receipt\")"
+      "Bash(Receipt\")",
+      "Bash(sed 's/^\\\\.//')"
     ]
   }
 }

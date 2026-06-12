@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Scale, Calendar, Download, RefreshCw, Printer } from 'lucide-react';
+import { Scale, Calendar, Download, RefreshCw, Printer, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
@@ -14,239 +14,222 @@ interface TrialBalanceRow {
   credit: number;
 }
 
-const exportToCSV = (data: any[], filename: string, columns: { key: string; label: string }[]) => {
-  const header = columns.map(c => c.label).join(',');
-  const rows = data.map(row =>
-    columns.map(c => {
-      const val = row[c.key];
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
-    }).join(',')
-  );
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `${filename}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+const fmt = (n: number) => new Intl.NumberFormat('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+const typeColor: Record<string, string> = {
+  asset:     'bg-blue-100 text-blue-700',
+  liability: 'bg-rose-100 text-rose-700',
+  equity:    'bg-purple-100 text-purple-700',
+  revenue:   'bg-emerald-100 text-emerald-700',
+  expense:   'bg-amber-100 text-amber-700',
 };
 
 const TrialBalance = () => {
   const toast = useToast();
   const [data, setData] = useState<TrialBalanceRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [asOfDate, setAsOfDate] = useState(localToday);
 
   const fetchTrialBalance = async () => {
-    if (!asOfDate) {
-      toast.error('Select an as-of date');
-      return;
-    }
+    if (!asOfDate) { toast.error('Select an as-of date'); return; }
     setLoading(true);
+    setHasLoaded(true);
     try {
-      const res = await api.get('/accounting/reports/trial-balance', {
-        params: { as_of_date: asOfDate }
-      });
+      const res = await api.get('/accounting/reports/trial-balance', { params: { as_of_date: asOfDate } });
       setData(res.data.trial_balance || []);
-      if ((res.data.trial_balance || []).length === 0) {
-        toast.info('No data found for selected date');
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to load trial balance');
+      if ((res.data.trial_balance || []).length === 0) toast.info('No data found for selected date');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load trial balance');
       setData([]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const handleReset = () => {
-    setAsOfDate(localToday());
-    setData([]);
-  };
+  const totals = data.reduce((acc, row) => ({
+    debit: acc.debit + Number(row.debit),
+    credit: acc.credit + Number(row.credit),
+  }), { debit: 0, credit: 0 });
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const totals = data.reduce(
-    (acc, row) => ({
-      debit: acc.debit + Number(row.debit),
-      credit: acc.credit + Number(row.credit),
-    }),
-    { debit: 0, credit: 0 }
-  );
-
-  const isBalanced = Math.abs(totals.debit - totals.credit) < 0.01;
+  const isBalanced = data.length > 0 && Math.abs(totals.debit - totals.credit) < 0.01;
+  const diff = Math.abs(totals.debit - totals.credit);
 
   const handlePrint = () => {
-    if (data.length === 0) return;
-    const rows = data.map(r => [r.account_code, r.account_name, r.debit > 0 ? formatCurrency(r.debit) : '-', r.credit > 0 ? formatCurrency(r.credit) : '-']);
+    if (!data.length) return;
+    const rows = data.map(r => [r.account_code, r.account_name, r.debit > 0 ? fmt(r.debit) : '—', r.credit > 0 ? fmt(r.credit) : '—']);
     const content = buildTable(['Code', 'Account Name', 'Debit', 'Credit'], rows, {
       alignRight: [2, 3],
-      summaryRow: ['', 'TOTAL', formatCurrency(totals.debit), formatCurrency(totals.credit)],
+      summaryRow: ['', 'TOTAL', fmt(totals.debit), fmt(totals.credit)],
     });
-    printReport({ title: 'Trial Balance', subtitle: isBalanced ? 'Balanced' : 'OUT OF BALANCE', dateRange: `As of ${asOfDate}`, content });
+    printReport({ title: 'Trial Balance', subtitle: isBalanced ? 'Balanced ✓' : 'OUT OF BALANCE ⚠', dateRange: `As of ${asOfDate}`, content });
   };
 
+  const exportCSV = () => {
+    const header = 'Code,Account Name,Type,Debit,Credit';
+    const rows = data.map(r => [r.account_code, `"${r.account_name}"`, r.account_type, r.debit || '', r.credit || ''].join(','));
+    rows.push(`,,TOTAL,${totals.debit.toFixed(2)},${totals.credit.toFixed(2)}`);
+    const csv = [header, ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `trial-balance-${asOfDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Group by type for summary
+  const typeTotals = data.reduce((acc, row) => {
+    const t = row.account_type || 'other';
+    if (!acc[t]) acc[t] = { debit: 0, credit: 0 };
+    acc[t].debit += Number(row.debit);
+    acc[t].credit += Number(row.credit);
+    return acc;
+  }, {} as Record<string, { debit: number; credit: number }>);
+
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 space-y-4">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Scale className="text-emerald-600" size={20} />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-gray-900">Trial Balance</h1>
-            <p className="text-gray-600 text-sm mt-1">Verify debits and credits balance</p>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <Scale size={20} className="text-emerald-700" />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Trial Balance</h1>
+              <p className="text-xs sm:text-sm text-gray-500">Verify debits and credits as of a date</p>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">As of Date</label>
-            <input
-              type="date"
-              value={asOfDate}
-              onChange={(e) => setAsOfDate(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
-          </div>
-
-          <button
-            onClick={fetchTrialBalance}
-            disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
-          >
-            <Calendar size={18} />
-            {loading ? 'Loading...' : 'Generate'}
-          </button>
-
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-          >
-            <RefreshCw size={16} />
-            Reset
-          </button>
-
           {data.length > 0 && (
-            <>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
-            >
-              <Printer size={16} />
-              Print
-            </button>
-            <button
-              onClick={() => exportToCSV(data, `trial-balance-${asOfDate}`, [
-                { key: 'account_code', label: 'Code' },
-                { key: 'account_name', label: 'Account Name' },
-                { key: 'debit', label: 'Debit' },
-                { key: 'credit', label: 'Credit' },
-              ])}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition ml-auto"
-            >
-              <Download size={16} />
-              Export CSV
-            </button>
-            </>
+            <div className="flex gap-2">
+              <button onClick={handlePrint}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                <Printer size={14} /> Print
+              </button>
+              <button onClick={exportCSV}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition font-medium">
+                <Download size={14} /> Export CSV
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Balance Status */}
-      {data.length > 0 && (
-        <div className={`mb-6 p-4 rounded-xl border-2 ${isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-          <div className="flex items-center gap-3">
-            <Scale className={isBalanced ? 'text-emerald-600' : 'text-red-600'} size={24} />
-            <div>
-              <p className={`font-semibold ${isBalanced ? 'text-emerald-900' : 'text-red-900'}`}>
-                {isBalanced ? 'Trial Balance is Balanced' : 'Trial Balance is Out of Balance'}
-              </p>
-              {!isBalanced && (
-                <p className="text-sm text-red-700 mt-1">
-                  Difference: {formatCurrency(Math.abs(totals.debit - totals.credit))}
-                </p>
-              )}
-            </div>
+      {/* Filters */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-3.5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">As of Date</label>
+            <input type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
+          <button onClick={fetchTrialBalance} disabled={loading}
+            className="flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm">
+            <Calendar size={14} /> {loading ? 'Loading...' : 'Generate'}
+          </button>
+          <button onClick={() => { setAsOfDate(localToday()); setData([]); setHasLoaded(false); }}
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+            <RefreshCw size={13} /> Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex items-center justify-center py-14">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      {/* Empty */}
+      {!loading && !hasLoaded && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-14">
+          <Scale size={44} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-gray-500 font-semibold">Select a date and click Generate</p>
+        </div>
+      )}
+
+      {!loading && hasLoaded && data.length === 0 && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-14">
+          <Scale size={44} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-gray-500 font-semibold">No data found for {asOfDate}</p>
+        </div>
+      )}
+
+      {!loading && data.length > 0 && (
+        <>
+          {/* Balance Status */}
+          <div className={`flex flex-wrap items-center gap-4 px-5 py-3.5 rounded-xl border-2 ${isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <div className="flex items-center gap-2">
+              {isBalanced
+                ? <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+                : <AlertTriangle size={20} className="text-red-600 shrink-0" />}
+              <span className={`font-bold text-sm ${isBalanced ? 'text-emerald-800' : 'text-red-800'}`}>
+                {isBalanced ? 'Trial Balance is Balanced' : `Out of Balance — Difference: ${fmt(diff)}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 ml-auto text-sm">
+              <span className="text-gray-500">Total Dr: <strong className="text-gray-800 font-mono">{fmt(totals.debit)}</strong></span>
+              <span className="text-gray-500">Total Cr: <strong className="text-gray-800 font-mono">{fmt(totals.credit)}</strong></span>
+              <span className="text-gray-400 text-xs">{data.length} accounts</span>
+            </div>
           </div>
-        ) : data.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Scale size={48} className="mx-auto mb-4 opacity-30" />
-            <p>No data to display</p>
-            <p className="text-sm mt-2">Select a date and click Generate to view trial balance</p>
+
+          {/* Type Summary Chips */}
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(typeTotals).map(([type, t]) => (
+              <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${typeColor[type] || 'bg-gray-100 text-gray-600'}`}>
+                <span className="capitalize">{type}</span>
+                <span className="opacity-60">|</span>
+                <span className="font-mono">{fmt(t.debit || t.credit)}</span>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-emerald-50 border-b border-emerald-100">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                    Code
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                    Account Name
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                    Debit
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-emerald-700 uppercase tracking-wider">
-                    Credit
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {data.map((row) => (
-                  <tr key={row.account_code} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {row.account_code}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {row.account_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                      {row.debit > 0 ? formatCurrency(row.debit) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                      {row.credit > 0 ? formatCurrency(row.credit) : '-'}
-                    </td>
+
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[500px]">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-400">
+                    <th className="text-left px-4 py-3 font-semibold w-28">Code</th>
+                    <th className="text-left px-4 py-3 font-semibold">Account Name</th>
+                    <th className="text-center px-3 py-3 font-semibold w-24">Type</th>
+                    <th className="text-right px-4 py-3 font-semibold w-36 text-indigo-500">Debit</th>
+                    <th className="text-right px-4 py-3 font-semibold w-36 text-rose-400">Credit</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-emerald-100 border-t-2 border-emerald-200">
-                <tr>
-                  <td colSpan={2} className="px-6 py-4 text-sm font-bold text-emerald-900">
-                    TOTAL
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-emerald-900">
-                    {formatCurrency(totals.debit)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-emerald-900">
-                    {formatCurrency(totals.credit)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {data.map((row, i) => (
+                    <tr key={row.account_code} className={`border-b border-gray-50 hover:bg-gray-50/60 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/20'}`}>
+                      <td className="px-4 py-2.5 font-mono text-xs text-gray-400">{row.account_code}</td>
+                      <td className="px-4 py-2.5 text-gray-800 font-medium">{row.account_name}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${typeColor[row.account_type] || 'bg-gray-100 text-gray-500'}`}>
+                          {row.account_type?.slice(0, 3)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-indigo-700">
+                        {row.debit > 0 ? fmt(row.debit) : <span className="text-gray-200">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-rose-500">
+                        {row.credit > 0 ? fmt(row.credit) : <span className="text-gray-200">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className={`${isBalanced ? 'bg-emerald-600' : 'bg-red-600'} text-white`}>
+                    <td colSpan={3} className="px-4 py-3 font-bold text-sm uppercase tracking-wide">Total</td>
+                    <td className="px-4 py-3 text-right font-bold font-mono text-base">{fmt(totals.debit)}</td>
+                    <td className="px-4 py-3 text-right font-bold font-mono text-base">{fmt(totals.credit)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
