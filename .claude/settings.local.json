@@ -163,7 +163,8 @@
       "Bash(xargs basename *)",
       "Bash(Invoice)",
       "Bash(Receipt\")",
-      "Bash(sed 's/^\\\\.//')"
+      "Bash(sed 's/^\\\\.//')",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }
