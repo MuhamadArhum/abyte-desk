@@ -11,7 +11,7 @@ const fmt = (n: number) => new Intl.NumberFormat('en-US', { minimumFractionDigit
 const Analytics = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo] = useState(localToday());
 
   useEffect(() => { fetchData(); }, [dateFrom, dateTo]);

@@ -51,7 +51,7 @@ const StockAdjustments = () => {
   // Filters
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState(localMonthStart);
+  const [dateFrom, setDateFrom] = useState(localToday);
   const [dateTo, setDateTo] = useState(localToday);
   const [types, setTypes] = useState<string[]>([]);
 

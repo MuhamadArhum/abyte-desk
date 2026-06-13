@@ -95,7 +95,7 @@ const PurchaseVoucher = () => {
   const [showForm, setShowForm]   = useState(false);
   const [editingPV, setEditingPV] = useState<any>(null);
   const [viewVoucher, setViewVoucher] = useState<any>(null);
-  const [dateFrom, setDateFrom]   = useState(localMonthStart());
+  const [dateFrom, setDateFrom]   = useState(localToday());
   const [dateTo, setDateTo]       = useState(localToday());
   const [page, setPage]           = useState(1);
   const [totalPages, setTotalPages] = useState(1);

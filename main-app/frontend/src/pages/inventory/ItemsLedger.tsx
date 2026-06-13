@@ -11,7 +11,7 @@ const ItemsLedger = () => {
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
   const [ledger, setLedger]     = useState<any[]>([]);
   const [productInfo, setProductInfo] = useState<any>(null);

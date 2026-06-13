@@ -8,7 +8,7 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 const SupplierWisePurchase = () => {
   const [data, setData]       = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
   const { showToast } = useToast();
 

@@ -12,7 +12,7 @@ const Reports = () => {
   const [bs, setBs] = useState<any>(null);
   const [vouchers, setVouchers] = useState<{ cpv: any; crv: any } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo] = useState(localToday());
 
   useEffect(() => { fetchAll(); }, []);

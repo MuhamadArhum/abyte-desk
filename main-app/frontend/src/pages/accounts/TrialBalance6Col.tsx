@@ -213,7 +213,7 @@ const TrialBalance6Col = () => {
   const [data, setData]       = useState<Row6Col[]>([]);
   const [totals, setTotals]   = useState<Totals6Col | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState(localMonthStart());
+  const [fromDate, setFromDate] = useState(localToday());
   const [toDate, setToDate]     = useState(localToday());
   const [accounts, setAccounts] = useState<any[]>([]);
   const [parentId, setParentId]     = useState('');

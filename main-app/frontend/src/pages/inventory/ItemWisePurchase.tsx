@@ -9,7 +9,7 @@ const ItemWisePurchase = () => {
   const [data, setData]       = useState<any[]>([]);
   const [totals, setTotals]   = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [supplierFilter, setSupplierFilter] = useState('');

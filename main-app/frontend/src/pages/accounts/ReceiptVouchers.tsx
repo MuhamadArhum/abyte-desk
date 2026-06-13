@@ -414,7 +414,7 @@ const ReceiptVouchers = () => {
   const [loading, setLoading]       = useState(false);
   const [hasLoaded, setHasLoaded]   = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
-  const [filters, setFilters]       = useState({ from_date: localMonthStart(), to_date: localToday() });
+  const [filters, setFilters]       = useState({ from_date: localToday(), to_date: localToday() });
 
   const fetchVouchers = async () => {
     setLoading(true); setHasLoaded(true);

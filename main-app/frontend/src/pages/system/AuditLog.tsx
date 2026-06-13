@@ -165,7 +165,7 @@ const AuditLog = () => {
   const [loading, setLoading] = useState(true);
   const [actions, setActions] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] = useState('');
-  const [dateStart, setDateStart] = useState(localMonthStart());
+  const [dateStart, setDateStart] = useState(localToday());
   const [dateEnd, setDateEnd] = useState(localToday());
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);

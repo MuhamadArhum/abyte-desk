@@ -12,7 +12,7 @@ const EmployeeLedger = () => {
   const toast = useToast();
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [fromDate, setFromDate] = useState(localMonthStart());
+  const [fromDate, setFromDate] = useState(localToday());
   const [toDate, setToDate] = useState(localToday());
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);

@@ -19,7 +19,7 @@ const RawSale = () => {
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewSale, setViewSale] = useState<any>(null);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
   const [sectionFilter, setSectionFilter] = useState('');
   const [page, setPage] = useState(1);

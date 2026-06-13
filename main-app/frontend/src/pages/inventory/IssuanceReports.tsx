@@ -11,7 +11,7 @@ const IssuanceReports = () => {
   const [summary, setSummary]   = useState<any>(null);
   const [topIssued, setTopIssued] = useState<any[]>([]);
   const [loading, setLoading]   = useState(false);
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
   const [sections, setSections] = useState<Section[]>([]);
   const [sectionFilter, setSectionFilter] = useState('');

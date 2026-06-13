@@ -41,7 +41,7 @@ const KpiCard = ({ icon: Icon, label, value, sub, color = 'emerald' }: any) => {
 
 const SalesAnalytics = () => {
   const { currencySymbol } = useSettings();
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo] = useState(localToday());
   const [loading, setLoading] = useState(true);
 

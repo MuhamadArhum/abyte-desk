@@ -53,7 +53,7 @@ const ProfitLoss = () => {
   const toast = useToast();
   const [data, setData] = useState<PLData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState(localMonthStart());
+  const [fromDate, setFromDate] = useState(localToday());
   const [toDate, setToDate] = useState(localToday());
 
   const fetchPL = async () => {

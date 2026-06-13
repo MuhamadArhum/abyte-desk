@@ -19,7 +19,7 @@ const StockIssue = () => {
   const [viewIssue, setViewIssue] = useState<any>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingNumber, setEditingNumber] = useState('');
-  const [dateFrom, setDateFrom] = useState(localMonthStart());
+  const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]   = useState(localToday());
   const [sectionFilter, setSectionFilter] = useState('');
   const [page, setPage] = useState(1);

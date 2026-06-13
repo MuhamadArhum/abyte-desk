@@ -62,7 +62,7 @@ const StaffReports = () => {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
 
   // Salary report state
-  const [salaryFromDate, setSalaryFromDate] = useState(localMonthStart());
+  const [salaryFromDate, setSalaryFromDate] = useState(localToday());
   const [salaryToDate, setSalaryToDate] = useState(localToday());
   const [salaryData, setSalaryData] = useState<SalaryReportRow[]>([]);
   const [salaryLoading, setSalaryLoading] = useState(false);

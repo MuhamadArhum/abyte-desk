@@ -455,7 +455,7 @@ const JournalEntries = () => {
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
   const [toDelete, setToDelete] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [fromDate, setFromDate] = useState(localMonthStart);
+  const [fromDate, setFromDate] = useState(localToday);
   const [toDate, setToDate] = useState(localToday);
 
   useEffect(() => { if (hasLoaded) load(); }, [pagination.page]);
