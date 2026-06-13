@@ -127,7 +127,7 @@ const ProfitLoss = () => {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 sm:px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-3">
           <DateRangeFilter standalone={false} dateFrom={fromDate} dateTo={toDate} onFromChange={setFromDate} onToChange={setToDate} onApply={fetchPL} applyLabel={loading ? 'Loading...' : 'Generate'} />
-          <button onClick={() => { setFromDate(localMonthStart()); setToDate(localToday()); setData(null); }}
+          <button onClick={() => { setFromDate(localToday()); setToDate(localToday()); setData(null); }}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
             <RefreshCw size={13} /> Reset
           </button>

@@ -428,7 +428,7 @@ const TrialBalance6Col = () => {
             {loading ? 'Generating…' : 'Generate'}
           </button>
           <button onClick={() => {
-            setFromDate(localMonthStart()); setToDate(localToday());
+            setFromDate(localToday()); setToDate(localToday());
             setData([]); setTotals(null); setParentId(''); setParentName('');
           }}
             className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">

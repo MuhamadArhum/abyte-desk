@@ -52,7 +52,7 @@ const Attendance = () => {
 
   const [filters, setFilters] = useState({
     staff_id: '',
-    start_date: localMonthStart(),
+    start_date: localToday(),
     end_date: localToday(),
     status: 'all'
   });

@@ -89,7 +89,7 @@ const GeneralLedger = () => {
   // Read URL params — set by Trial Balance 6 Col when opening in new tab
   const urlParams  = new URLSearchParams(window.location.search);
   const paramAccId = urlParams.get('account_id') || '';
-  const paramFrom  = urlParams.get('from_date')  || localMonthStart();
+  const paramFrom  = urlParams.get('from_date')  || localToday();
   const paramTo    = urlParams.get('to_date')    || localToday();
 
   const [selectedAccount, setSelectedAccount] = useState(paramAccId);
@@ -229,7 +229,7 @@ const GeneralLedger = () => {
             className="px-6 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
             View Ledger
           </button>
-          <button onClick={() => { setSelectedAccount(''); setLedgerData([]); setAccountInfo(null); setFromDate(localMonthStart()); setToDate(localToday()); }}
+          <button onClick={() => { setSelectedAccount(''); setLedgerData([]); setAccountInfo(null); setFromDate(localToday()); setToDate(localToday()); }}
             className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
             <RefreshCw size={14} /> Reset
           </button>

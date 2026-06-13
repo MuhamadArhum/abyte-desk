@@ -534,7 +534,7 @@ const JournalEntries = () => {
           className="flex items-center gap-1.5 px-5 py-2 bg-slate-800 text-white rounded-lg text-sm font-black hover:bg-slate-900 transition disabled:opacity-60 shadow-sm">
           <Search size={13} /> {loading ? 'Loading…' : 'Search'}
         </button>
-        <button onClick={() => { setStatusFilter('all'); setFromDate(localMonthStart); setToDate(localToday); setEntries([]); setHasLoaded(false); }}
+        <button onClick={() => { setStatusFilter('all'); setFromDate(localToday); setToDate(localToday); setEntries([]); setHasLoaded(false); }}
           className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-500 hover:bg-slate-50 transition">
           <RefreshCw size={13} /> Reset
         </button>

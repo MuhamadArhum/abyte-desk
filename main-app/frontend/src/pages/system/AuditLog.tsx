@@ -271,7 +271,7 @@ const AuditLog = () => {
           onToChange={(d) => { setDateEnd(d); setPage(1); }}
         />
         <button
-          onClick={() => { setSelectedAction(''); setDateStart(localMonthStart()); setDateEnd(localToday()); setPage(1); }}
+          onClick={() => { setSelectedAction(''); setDateStart(localToday()); setDateEnd(localToday()); setPage(1); }}
           className="px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
         >
           Reset
