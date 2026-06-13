@@ -1606,7 +1606,7 @@ exports.getDepartments = async (req, res) => {
     let sql = 'SELECT * FROM departments WHERE 1=1';
     const params = [];
     if (is_active !== undefined) { sql += ' AND is_active = ?'; params.push(is_active); }
-    sql += ' ORDER BY name ASC';
+    sql += ' ORDER BY department_name ASC';
     const depts = await query(sql, params);
     res.json({ data: depts });
   } catch (err) {
