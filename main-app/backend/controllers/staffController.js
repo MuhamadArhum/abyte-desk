@@ -1603,7 +1603,7 @@ exports.reviewLeaveRequest = async (req, res) => {
 exports.getDepartments = async (req, res) => {
   try {
     const { is_active } = req.query;
-    let sql = 'SELECT * FROM departments WHERE 1=1';
+    let sql = 'SELECT *, department_name as name FROM departments WHERE 1=1';
     const params = [];
     if (is_active !== undefined) { sql += ' AND is_active = ?'; params.push(is_active); }
     sql += ' ORDER BY department_name ASC';
@@ -1620,7 +1620,7 @@ exports.createDepartment = async (req, res) => {
     const { name, description, head_of_dept } = req.body;
     if (!name) return res.status(400).json({ message: 'Department name required' });
     const result = await query(
-      'INSERT INTO departments (name, description, head_of_dept) VALUES (?, ?, ?)',
+      'INSERT INTO departments (department_name, description, head_of_dept) VALUES (?, ?, ?)',
       [name, description || null, head_of_dept || null]
     );
     await logAction(req.user.user_id, req.user.name, 'DEPT_CREATED', 'departments', result.insertId, { name }, req.ip);
@@ -1638,7 +1638,7 @@ exports.updateDepartment = async (req, res) => {
     const { name, description, head_of_dept, is_active } = req.body;
     if (!name) return res.status(400).json({ message: 'Department name required' });
     await query(
-      'UPDATE departments SET name=?, description=?, head_of_dept=?, is_active=? WHERE department_id=?',
+      'UPDATE departments SET department_name=?, description=?, head_of_dept=?, is_active=? WHERE department_id=?',
       [name, description || null, head_of_dept || null, is_active ?? 1, id]
     );
     await logAction(req.user.user_id, req.user.name, 'DEPT_UPDATED', 'departments', id, { name }, req.ip);
@@ -1653,7 +1653,7 @@ exports.updateDepartment = async (req, res) => {
 exports.deleteDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const [dept] = await query('SELECT name FROM departments WHERE department_id = ?', [id]);
+    const [dept] = await query('SELECT department_name as name FROM departments WHERE department_id = ?', [id]);
     if (!dept) return res.status(404).json({ message: 'Department not found' });
     const [{ count }] = await query('SELECT COUNT(*) as count FROM staff WHERE department = ? AND is_active = 1', [dept.name]);
     if (Number(count) > 0) return res.status(400).json({ message: `Cannot delete — ${count} active staff in this department` });
