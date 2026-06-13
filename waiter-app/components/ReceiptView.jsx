@@ -13,7 +13,6 @@ const DOC_LABELS = {
   quotation:   'QUOTATION',
   credit_sale: 'CREDIT SALE',
   return:      'RETURN RECEIPT',
-  delivery:    'DELIVERY ORDER',
   kot:         'KITCHEN ORDER',
 };
 
@@ -22,7 +21,6 @@ const DOC_COLORS = {
   quotation:   { bg: C.blueBg,     border: C.blueBd,     text: C.blue     },
   credit_sale: { bg: C.amberBg,    border: C.amberBd,    text: C.amber    },
   return:      { bg: C.redBg,      border: C.redBd,      text: C.red      },
-  delivery:    { bg: C.purpleBg,   border: C.purpleBd,   text: C.purple   },
   kot:         { bg: '#FFF7ED',    border: '#FED7AA',    text: '#EA580C'  },
 };
 

@@ -29,10 +29,9 @@ const ORDER_TYPE_LABEL = {
   dine_in: 'Dine In',
   takeaway: 'Takeaway',
   on_spot: 'Walk-in',
-  delivery: 'Delivery',
 };
 
-const NEEDS_CUSTOMER_INFO = ['takeaway', 'delivery'];
+const NEEDS_CUSTOMER_INFO = ['takeaway'];
 
 export default function OrderScreen() {
   const { id: tableId, name, saleId, orderType: orderTypeParam } = useLocalSearchParams();
@@ -77,7 +76,7 @@ export default function OrderScreen() {
       const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
       if (!cat.tax_enabled) return 0;
     }
-    return orderType === 'delivery' ? onlineRate : cashRate;
+    return cashRate;
   }, [settings, orderType]);
 
   const additionalPercent = React.useMemo(() => {
@@ -220,7 +219,7 @@ export default function OrderScreen() {
           table_id: parseInt(tableId) || null,
           order_type: orderType,
           status: 'pending',
-          payment_method: orderType === 'delivery' ? 'online' : 'cash',
+          payment_method: 'cash',
           tax_percent: parseFloat(taxPercent.toFixed(2)),
           additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
           discount: 0,
@@ -248,7 +247,7 @@ export default function OrderScreen() {
           table_id: parseInt(tableId) || null,
           order_type: orderType,
           status: 'pending',
-          payment_method: orderType === 'delivery' ? 'online' : 'cash',
+          payment_method: 'cash',
           tax_percent: parseFloat(taxPercent.toFixed(2)),
           additional_charges_percent: parseFloat(additionalPercent.toFixed(2)),
           discount: 0,

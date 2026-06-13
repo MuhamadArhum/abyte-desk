@@ -18,14 +18,13 @@ const round2 = (n) => Math.round(n * 100) / 100;
 const haptic = () => Vibration.vibrate(8);
 
 const ORDER_TYPE_LABEL = {
-  dine_in: 'Dine In', takeaway: 'Takeaway', on_spot: 'Walk-in', delivery: 'Delivery',
+  dine_in: 'Dine In', takeaway: 'Takeaway', on_spot: 'Walk-in',
 };
 
 const ORDER_TYPE_COLOR = {
   dine_in:  { color: C.primary, bg: C.primaryLt, border: C.primaryBd },
   takeaway: { color: C.amber,   bg: C.amberBg,   border: C.amberBd   },
   on_spot:  { color: C.blue,    bg: C.blueBg,    border: C.blueBd    },
-  delivery: { color: C.purple,  bg: C.purpleBg,  border: C.purpleBd  },
 };
 
 const PAYMENT_METHODS = [

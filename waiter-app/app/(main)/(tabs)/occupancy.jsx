@@ -45,29 +45,41 @@ function SkeletonBox({ style }) {
   return <Animated.View style={[{ backgroundColor: '#E2E8F0', borderRadius: 10 }, style, { opacity: op }]} />;
 }
 
-function OccupancySkeleton() {
+function OccupancySkeleton({ viewMode = 'card' }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* summary bar skeleton */}
       <View style={sk.summaryBar}>
         <SkeletonBox style={{ width: 120, height: 14, borderRadius: 7 }} />
         <SkeletonBox style={{ width: 80, height: 14, borderRadius: 7 }} />
       </View>
-      {/* floor chips skeleton */}
       <View style={sk.chipRow}>
         {[0,1,2].map((i) => <SkeletonBox key={i} style={{ width: 70, height: 32, borderRadius: 20 }} />)}
       </View>
-      {/* grid skeleton */}
-      <View style={sk.grid}>
-        {[0,1,2,3,4,5].map((i) => (
-          <View key={i} style={sk.card}>
-            <SkeletonBox style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 10 }} />
-            <SkeletonBox style={{ width: 80, height: 14, marginBottom: 6 }} />
-            <SkeletonBox style={{ width: 55, height: 11, marginBottom: 10 }} />
-            <SkeletonBox style={{ width: 90, height: 28, borderRadius: 14 }} />
-          </View>
-        ))}
-      </View>
+      {viewMode === 'card' ? (
+        <View style={sk.grid}>
+          {[0,1,2,3,4,5].map((i) => (
+            <View key={i} style={sk.card}>
+              <SkeletonBox style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 10 }} />
+              <SkeletonBox style={{ width: 80, height: 14, marginBottom: 6 }} />
+              <SkeletonBox style={{ width: 55, height: 11, marginBottom: 10 }} />
+              <SkeletonBox style={{ width: 90, height: 28, borderRadius: 14 }} />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={sk.listWrap}>
+          {[0,1,2,3,4,5].map((i) => (
+            <View key={i} style={sk.listRow}>
+              <SkeletonBox style={{ width: 44, height: 44, borderRadius: 13 }} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <SkeletonBox style={{ width: '50%', height: 14 }} />
+                <SkeletonBox style={{ width: '30%', height: 11 }} />
+              </View>
+              <SkeletonBox style={{ width: 70, height: 26, borderRadius: 20 }} />
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -85,6 +97,12 @@ const sk = StyleSheet.create({
     borderRadius: 20, padding: 16, alignItems: 'center',
     borderWidth: 1.5, borderColor: C.border, ...shadow.md,
   },
+  listWrap: { padding: 14, gap: 10 },
+  listRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.card, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: C.border,
+  },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -94,6 +112,7 @@ export default function OccupancyScreen() {
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFloor, setActiveFloor] = useState('All');
+  const [viewMode, setViewMode]   = useState('card'); // 'card' | 'list'
   const [tick, setTick]           = useState(0); // force elapsed re-render every minute
   const { setTable }              = useCartStore();
 
@@ -161,7 +180,7 @@ export default function OccupancyScreen() {
     router.push(`/(main)/order/${table.table_id}?saleId=${sale.sale_id}&name=${encodeURIComponent(table.table_name)}`);
   };
 
-  if (loading) return <OccupancySkeleton />;
+  if (loading) return <OccupancySkeleton viewMode={viewMode} />;
 
   return (
     <View style={styles.root}>
@@ -182,6 +201,21 @@ export default function OccupancyScreen() {
           <View style={styles.autoRefreshBadge}>
             <Ionicons name="sync-outline" size={11} color={C.primary} />
             <Text style={styles.autoRefreshText}>Auto 30s</Text>
+          </View>
+          {/* View toggle */}
+          <View style={styles.toggleWrap}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, viewMode === 'card' && styles.toggleBtnActive]}
+              onPress={() => setViewMode('card')} activeOpacity={0.75}
+            >
+              <Ionicons name="grid-outline" size={15} color={viewMode === 'card' ? '#fff' : C.t3} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+              onPress={() => setViewMode('list')} activeOpacity={0.75}
+            >
+              <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? '#fff' : C.t3} />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity
             style={styles.refreshBtn}
@@ -213,7 +247,7 @@ export default function OccupancyScreen() {
         </View>
       )}
 
-      {/* ── Tables grid ── */}
+      {/* ── Tables ── */}
       {visibleTables.length === 0 ? (
         <View style={styles.emptyWrap}>
           <View style={styles.emptyCircle}>
@@ -222,115 +256,136 @@ export default function OccupancyScreen() {
           <Text style={styles.emptyTitle}>No Tables Found</Text>
           <Text style={styles.emptySub}>Add tables from the admin panel</Text>
         </View>
-      ) : (
+      ) : viewMode === 'card' ? (
+
+        // ── Card View ──
         <FlatList
+          key="card-view"
           data={visibleTables}
           keyExtractor={(item) => String(item.table_id)}
           numColumns={2}
           contentContainerStyle={styles.grid}
           columnWrapperStyle={styles.gridRow}
-          refreshControl={
-            <RefreshControl refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); load(); }}
-              colors={[C.primary]} />
-          }
-          extraData={tick} // re-render when elapsed changes
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[C.primary]} />}
+          extraData={tick}
           renderItem={({ item: table }) => {
-            const sale      = orderMap[table.table_id];
-            const occupied  = !!sale || Number(table.has_pending_order) > 0;
-
+            const sale     = orderMap[table.table_id];
+            const occupied = !!sale || Number(table.has_pending_order) > 0;
             if (!occupied) {
-              // ── FREE TABLE ──
               return (
-                <TouchableOpacity
-                  style={[styles.card, styles.cardFree]}
-                  onPress={() => handleFreePress(table)}
-                  activeOpacity={0.8}
-                >
-                  {/* Status dot */}
+                <TouchableOpacity style={[styles.card, styles.cardFree]} onPress={() => handleFreePress(table)} activeOpacity={0.8}>
                   <View style={[styles.statusDot, { backgroundColor: '#4ADE80', borderColor: C.card }]} />
-
                   <View style={styles.cardIconWrap}>
                     <Ionicons name="restaurant" size={26} color={C.primary} />
                   </View>
-
                   <Text style={styles.tableName}>{table.table_name}</Text>
-
                   {table.floor && table.floor !== 'Main' && (
                     <View style={styles.floorTag}>
                       <Ionicons name="location-outline" size={10} color={C.t3} />
                       <Text style={styles.floorTagText}>{table.floor}</Text>
                     </View>
                   )}
-
                   {table.capacity ? (
                     <View style={styles.capRow}>
                       <Ionicons name="people-outline" size={11} color={C.t3} />
                       <Text style={styles.capText}>{table.capacity} seats</Text>
                     </View>
                   ) : null}
-
                   <View style={styles.freeBadge}>
                     <Text style={styles.freeBadgeText}>Tap to assign</Text>
                   </View>
                 </TouchableOpacity>
               );
             }
-
-            // ── OCCUPIED TABLE ──
-            const mins    = sale ? getElapsedMins(sale.sale_date) : 0;
+            const mins = sale ? getElapsedMins(sale.sale_date) : 0;
             const urgency = getUrgencyColor(mins);
             const elapsed = sale ? getElapsed(sale.sale_date) : '—';
             const amount  = sale ? parseFloat(sale.total_amount || 0).toFixed(0) : '—';
             const token   = sale?.token_no || (sale ? `#${sale.sale_id}` : '—');
-
             return (
-              <TouchableOpacity
-                style={[styles.card, { borderColor: urgency.border, backgroundColor: urgency.bg }]}
-                onPress={() => sale && handleOccupiedPress(table, sale)}
-                activeOpacity={0.85}
-              >
-                {/* Status dot */}
+              <TouchableOpacity style={[styles.card, { borderColor: urgency.border, backgroundColor: urgency.bg }]} onPress={() => sale && handleOccupiedPress(table, sale)} activeOpacity={0.85}>
                 <View style={[styles.statusDot, { backgroundColor: urgency.dot, borderColor: urgency.bg }]} />
-
-                {/* Table icon + token */}
                 <View style={[styles.cardIconWrapOccupied, { backgroundColor: urgency.color + '18' }]}>
                   <Ionicons name="restaurant" size={22} color={urgency.color} />
                 </View>
-
                 <Text style={[styles.tableName, { color: urgency.color }]}>{table.table_name}</Text>
-
-                {/* Token */}
-                {sale && (
-                  <View style={[styles.tokenChip, { backgroundColor: urgency.color + '15', borderColor: urgency.border }]}>
-                    <Text style={[styles.tokenText, { color: urgency.color }]}>{token}</Text>
-                  </View>
-                )}
-
-                {/* Amount */}
-                {sale && (
-                  <Text style={[styles.occupiedAmt, { color: urgency.color }]}>PKR {amount}</Text>
-                )}
-
-                {/* Elapsed time */}
+                {sale && <View style={[styles.tokenChip, { backgroundColor: urgency.color + '15', borderColor: urgency.border }]}><Text style={[styles.tokenText, { color: urgency.color }]}>{token}</Text></View>}
+                {sale && <Text style={[styles.occupiedAmt, { color: urgency.color }]}>PKR {amount}</Text>}
                 <View style={[styles.elapsedBadge, { backgroundColor: urgency.color + '18', borderColor: urgency.border }]}>
                   <Ionicons name="time-outline" size={11} color={urgency.color} />
                   <Text style={[styles.elapsedText, { color: urgency.color }]}>{elapsed}</Text>
                 </View>
-
-                {/* Actions */}
                 {sale && (
                   <View style={styles.occupiedActions}>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: C.blueBg, borderColor: C.blueBd }]}
-                      onPress={() => handleOccupiedPress(table, sale)}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: C.blueBg, borderColor: C.blueBd }]} onPress={() => handleOccupiedPress(table, sale)} activeOpacity={0.8}>
                       <Ionicons name="create-outline" size={13} color={C.blue} />
                       <Text style={[styles.actionBtnText, { color: C.blue }]}>Edit</Text>
                     </TouchableOpacity>
                   </View>
                 )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+
+      ) : (
+
+        // ── List View ──
+        <FlatList
+          key="list-view"
+          data={visibleTables}
+          keyExtractor={(item) => String(item.table_id)}
+          contentContainerStyle={styles.listGrid}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[C.primary]} />}
+          extraData={tick}
+          renderItem={({ item: table }) => {
+            const sale     = orderMap[table.table_id];
+            const occupied = !!sale || Number(table.has_pending_order) > 0;
+            const mins     = sale ? getElapsedMins(sale.sale_date) : 0;
+            const urgency  = occupied ? getUrgencyColor(mins) : null;
+            const elapsed  = sale ? getElapsed(sale.sale_date) : null;
+            const amount   = sale ? parseFloat(sale.total_amount || 0).toFixed(0) : null;
+
+            return (
+              <TouchableOpacity
+                style={[styles.listItem, occupied && { borderColor: urgency.border, backgroundColor: urgency.bg }]}
+                onPress={() => occupied && sale ? handleOccupiedPress(table, sale) : handleFreePress(table)}
+                activeOpacity={0.8}
+              >
+                {/* Status indicator */}
+                <View style={[styles.listStatusBar, { backgroundColor: occupied ? urgency.dot : '#4ADE80' }]} />
+
+                {/* Icon */}
+                <View style={[styles.listIcon, { backgroundColor: occupied ? urgency.color + '18' : C.primaryLt }]}>
+                  <Ionicons name="restaurant" size={20} color={occupied ? urgency.color : C.primary} />
+                </View>
+
+                {/* Info */}
+                <View style={styles.listInfo}>
+                  <Text style={[styles.listName, occupied && { color: urgency.color }]}>{table.table_name}</Text>
+                  <View style={styles.listMeta}>
+                    {table.floor ? <><Ionicons name="layers-outline" size={11} color={C.t3} /><Text style={styles.listMetaText}>{table.floor}</Text></> : null}
+                    {table.capacity ? <><View style={styles.metaDot} /><Ionicons name="people-outline" size={11} color={C.t3} /><Text style={styles.listMetaText}>{table.capacity} seats</Text></> : null}
+                    {occupied && elapsed ? <><View style={styles.metaDot} /><Ionicons name="time-outline" size={11} color={urgency.color} /><Text style={[styles.listMetaText, { color: urgency.color, fontWeight: '700' }]}>{elapsed}</Text></> : null}
+                  </View>
+                </View>
+
+                {/* Right: status + amount */}
+                <View style={styles.listRight}>
+                  {occupied ? (
+                    <>
+                      {amount && <Text style={[styles.listAmt, { color: urgency.color }]}>PKR {amount}</Text>}
+                      <View style={[styles.listBadge, { backgroundColor: urgency.color + '18', borderColor: urgency.border }]}>
+                        <Text style={[styles.listBadgeText, { color: urgency.color }]}>Occupied</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.listBadge}>
+                      <Text style={styles.listBadgeText}>Free</Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={16} color={occupied ? urgency.color : C.t3} />
+                </View>
               </TouchableOpacity>
             );
           }}
@@ -358,7 +413,18 @@ const styles = StyleSheet.create({
   },
   summaryDot: { width: 7, height: 7, borderRadius: 4 },
   summaryChipText: { fontSize: 12, fontWeight: '700', color: C.primary },
-  summaryRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toggleWrap: {
+    flexDirection: 'row',
+    backgroundColor: C.surface,
+    borderRadius: 10, borderWidth: 1, borderColor: C.border,
+    overflow: 'hidden',
+  },
+  toggleBtn: {
+    width: 34, height: 34,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  toggleBtnActive: { backgroundColor: C.primary },
   autoRefreshBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: C.primaryLt, paddingHorizontal: 8, paddingVertical: 4,
@@ -468,4 +534,31 @@ const styles = StyleSheet.create({
     borderRadius: 10, borderWidth: 1,
   },
   actionBtnText: { fontSize: 12, fontWeight: '700' },
+
+  // ── List View
+  listGrid: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 30 },
+  listItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.card, borderRadius: 16,
+    borderWidth: 1, borderColor: C.border,
+    marginBottom: 8, overflow: 'hidden', ...shadow.sm,
+  },
+  listStatusBar: { width: 4, alignSelf: 'stretch' },
+  listIcon: {
+    width: 44, height: 44, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 4,
+  },
+  listInfo: { flex: 1, paddingVertical: 12 },
+  listName: { fontSize: 15, fontWeight: '800', color: C.t1, marginBottom: 3 },
+  listMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  listMetaText: { fontSize: 11, color: C.t3 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: C.t3 },
+  listRight: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingRight: 12 },
+  listAmt: { fontSize: 13, fontWeight: '800' },
+  listBadge: {
+    backgroundColor: C.primaryLt, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 20, borderWidth: 1, borderColor: C.primaryBd,
+  },
+  listBadgeText: { fontSize: 10, fontWeight: '700', color: C.primary },
 });

@@ -7,7 +7,6 @@ import useAuthStore from '../../../store/authStore';
 import { C, shadow } from '../../../constants/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_W = (width - 52) / 2;
 
 const ORDER_TYPES = [
   {
@@ -24,11 +23,6 @@ const ORDER_TYPES = [
     value: 'on_spot',  label: 'Walk-in',  icon: 'walk',
     color: C.blue,    bg: C.blueBg,    border: C.blueBd,
     desc: 'Immediate service',
-  },
-  {
-    value: 'delivery', label: 'Delivery', icon: 'bicycle',
-    color: C.purple,  bg: C.purpleBg,  border: C.purpleBd,
-    desc: 'Home delivery',
   },
 ];
 
@@ -97,14 +91,20 @@ export default function HomeScreen() {
             onPress={() => handleSelect(type)}
             activeOpacity={0.8}
           >
+            {/* Left: Icon */}
             <View style={[styles.cardIcon, { backgroundColor: type.color }]}>
-              <Ionicons name={type.icon} size={30} color="#FFFFFF" />
+              <Ionicons name={type.icon} size={26} color="#fff" />
             </View>
-            <Text style={[styles.cardLabel, { color: type.color }]}>{type.label}</Text>
-            <Text style={styles.cardDesc}>{type.desc}</Text>
-            <View style={[styles.cardChip, { backgroundColor: type.bg }]}>
-              <Text style={[styles.cardChipText, { color: type.color }]}>Tap to select</Text>
-              <Ionicons name="arrow-forward" size={11} color={type.color} />
+
+            {/* Middle: Text */}
+            <View style={styles.cardBody}>
+              <Text style={[styles.cardLabel, { color: type.color }]}>{type.label}</Text>
+              <Text style={styles.cardDesc}>{type.desc}</Text>
+            </View>
+
+            {/* Right: Arrow chip */}
+            <View style={[styles.cardArrow, { backgroundColor: type.bg }]}>
+              <Ionicons name="arrow-forward" size={16} color={type.color} />
             </View>
           </TouchableOpacity>
         ))}
@@ -167,26 +167,26 @@ const styles = StyleSheet.create({
   sectionBadgeText: { fontSize: 11, fontWeight: '700', color: C.primary },
 
   grid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 16, gap: 14,
+    paddingHorizontal: 16, gap: 12,
   },
   card: {
-    width: CARD_W,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: C.card,
-    borderRadius: 20, borderWidth: 1.5,
-    padding: 18, alignItems: 'center',
+    borderRadius: 18, borderWidth: 1.5,
+    paddingVertical: 16, paddingHorizontal: 16,
     ...shadow.md,
   },
   cardIcon: {
-    width: 64, height: 64, borderRadius: 20,
+    width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
+    flexShrink: 0,
   },
-  cardLabel: { fontSize: 16, fontWeight: '800', marginBottom: 4, letterSpacing: -0.2 },
-  cardDesc: { fontSize: 11.5, color: C.t3, textAlign: 'center', marginBottom: 12, lineHeight: 16 },
-  cardChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+  cardBody: { flex: 1 },
+  cardLabel: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2, marginBottom: 3 },
+  cardDesc: { fontSize: 12, color: C.t3, lineHeight: 16 },
+  cardArrow: {
+    width: 36, height: 36, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  cardChipText: { fontSize: 11, fontWeight: '700' },
 });

@@ -16,12 +16,11 @@ const PM = {
   online: { color: C.purple,   bg: C.purpleBg,    border: C.purpleBd,   icon: 'phone-portrait-outline', label: 'Online' },
 };
 
-const OT_LABEL = { dine_in: 'Dine In', takeaway: 'Takeaway', on_spot: 'Walk-in', delivery: 'Delivery' };
+const OT_LABEL = { dine_in: 'Dine In', takeaway: 'Takeaway', on_spot: 'Walk-in' };
 const OT_COLOR = {
   dine_in:  { color: C.primary, bg: C.primaryLt, border: C.primaryBd },
   takeaway: { color: C.amber,   bg: C.amberBg,   border: C.amberBd   },
   on_spot:  { color: C.blue,    bg: C.blueBg,    border: C.blueBd    },
-  delivery: { color: C.purple,  bg: C.purpleBg,  border: C.purpleBd  },
 };
 
 const DATE_FILTERS = [
