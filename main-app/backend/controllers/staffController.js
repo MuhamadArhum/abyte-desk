@@ -35,6 +35,28 @@ async function ensureTablesAndColumns() {
       UNIQUE KEY unique_adj (staff_id, month, year),
       FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
     )`);
+    await query(`CREATE TABLE IF NOT EXISTS salary_components (
+      component_id INT PRIMARY KEY AUTO_INCREMENT,
+      name VARCHAR(100) NOT NULL,
+      type ENUM('allowance','deduction') NOT NULL,
+      calculation ENUM('fixed','percentage') NOT NULL DEFAULT 'fixed',
+      default_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+      is_taxable TINYINT(1) DEFAULT 0,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_comp_name (name)
+    )`);
+    await query(`CREATE TABLE IF NOT EXISTS staff_salary_components (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      staff_id INT NOT NULL,
+      component_id INT NOT NULL,
+      custom_value DECIMAL(10,2) DEFAULT NULL,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_staff_comp (staff_id, component_id),
+      FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
+      FOREIGN KEY (component_id) REFERENCES salary_components(component_id) ON DELETE CASCADE
+    )`);
   } catch (e) { /* already exists */ }
 }
 
