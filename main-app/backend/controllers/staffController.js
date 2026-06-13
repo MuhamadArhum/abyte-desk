@@ -1672,7 +1672,7 @@ exports.getDesignations = async (req, res) => {
   try {
     await ensureTablesAndColumns();
     const { department_id, is_active } = req.query;
-    let sql = `SELECT d.*, dept.name as department_name
+    let sql = `SELECT d.*, dept.department_name
                FROM designations d
                LEFT JOIN departments dept ON d.department_id = dept.department_id
                WHERE 1=1`;
