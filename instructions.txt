@@ -18,9 +18,6 @@ git clone https://MuhamadArhum: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@github.c
 
 
 
-Mobile App Changes:
-1; Login page Change Krna hai Ui Ko Polish Krna hai 
-
 
 
 
