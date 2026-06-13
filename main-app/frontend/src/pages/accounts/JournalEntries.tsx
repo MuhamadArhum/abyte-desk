@@ -7,7 +7,7 @@ import {
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 // ─── Type badges ──────────────────────────────────────────────────────────────

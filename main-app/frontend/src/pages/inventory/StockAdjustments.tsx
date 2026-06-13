@@ -3,7 +3,7 @@ import { ClipboardList, Plus, Search, X, AlertTriangle, TrendingUp, TrendingDown
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface Adjustment {

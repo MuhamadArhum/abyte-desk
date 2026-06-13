@@ -7,7 +7,7 @@ import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
 import MarkAttendanceModal from '../../components/MarkAttendanceModal';
 import EditAttendanceModal from '../../components/EditAttendanceModal';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import { SkeletonTable } from '../../components/Skeleton';
 
 const calculateHours = (check_in: string | null, check_out: string | null) => {

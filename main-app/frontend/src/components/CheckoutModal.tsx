@@ -372,10 +372,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       ? await rasterizeLogoForEscPos(logoUrl, paperWidth).catch(() => null)
       : null;
 
-    const ORDER_TYPE_LABELS: Record<string, string> = {
-      dine_in: 'Dine-In', takeaway: 'Takeaway', delivery: 'Delivery', on_spot: 'Walk-In',
-    };
-
     const invoiceData = {
       storeName:      settings?.store_name || 'AByte ERP',
       storeAddress:   settings?.address    || '',

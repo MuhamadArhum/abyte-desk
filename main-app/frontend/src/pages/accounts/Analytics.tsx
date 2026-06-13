@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, DollarSign, FileText, CreditCard, Receipt } f
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);

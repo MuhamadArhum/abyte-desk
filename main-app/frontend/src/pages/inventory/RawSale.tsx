@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Eye, X, ShoppingBag, Search, Trash2, Printer } from 'lucide-react';
 import api from '../../utils/api';
 import { printRawSaleInvoice } from '../../utils/printUtils';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';

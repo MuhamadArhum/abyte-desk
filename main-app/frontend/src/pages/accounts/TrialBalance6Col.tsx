@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Scale, Download, RefreshCw, Printer, LayoutGrid, Search, ChevronDown, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 // ── Searchable parent account picker ─────────────────────────────────────────

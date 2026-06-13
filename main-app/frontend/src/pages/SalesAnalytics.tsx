@@ -9,7 +9,7 @@ import {
 import DateRangeFilter from '../components/DateRangeFilter';
 import api from '../utils/api';
 import { useSettings } from '../context/SettingsContext';
-import { localToday, localMonthStart } from '../utils/dateUtils';
+import { localToday } from '../utils/dateUtils';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);

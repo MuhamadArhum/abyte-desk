@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Download, RefreshCw, Printer, BarChart3, DollarSign, Percent, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Download, RefreshCw, Printer, BarChart3, DollarSign, Percent } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { printReport, buildTable } from '../../utils/reportPrinter';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface PLSection {

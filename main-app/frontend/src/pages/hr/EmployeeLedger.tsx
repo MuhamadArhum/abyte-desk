@@ -4,7 +4,7 @@ import { BookOpen, Search, Download, DollarSign, CreditCard, ArrowUpCircle, Arro
 import DateRangeFilter from '../../components/DateRangeFilter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { localToday, localMonthStart } from '../../utils/dateUtils';
+import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const EmployeeLedger = () => {

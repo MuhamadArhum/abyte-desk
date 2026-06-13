@@ -5,7 +5,7 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 import { printReport, buildTable } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
-import { localToday, localMonthStart, localMonthStr } from '../../utils/dateUtils';
+import { localToday, localMonthStr } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 interface AttendanceReportRow {
