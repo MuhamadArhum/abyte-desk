@@ -673,14 +673,14 @@ exports.getTrialBalance6Col = async (req, res) => {
       const obDr = Number(a.ob_debit || 0);
       const obCr = Number(a.ob_credit || 0);
 
-      // Net opening balance (signed: positive = Dr side, negative = Cr side)
-      const openingNet = obBase + (debitIncrease ? (obDr - obCr) : (obCr - obDr));
+      // Unified signed balance: positive = Dr, negative = Cr
+      // Asset/expense base is Dr-normal (+obBase); liability/equity/revenue base is Cr-normal (-obBase)
+      const openingSigned = (debitIncrease ? obBase : -obBase) + (obDr - obCr);
 
       const periodDr = Number(a.period_debit || 0);
       const periodCr = Number(a.period_credit || 0);
 
-      // Net closing balance
-      const closingNet = openingNet + (debitIncrease ? (periodDr - periodCr) : (periodCr - periodDr));
+      const closingSigned = openingSigned + (periodDr - periodCr);
 
       return {
         account_id:        Number(a.account_id),
@@ -689,12 +689,12 @@ exports.getTrialBalance6Col = async (req, res) => {
         account_code:      a.account_code,
         account_name:      a.account_name,
         account_type:      a.account_type,
-        opening_dr:        openingNet > 0 ? openingNet : 0,
-        opening_cr:        openingNet < 0 ? Math.abs(openingNet) : 0,
+        opening_dr:        openingSigned > 0 ? openingSigned : 0,
+        opening_cr:        openingSigned < 0 ? -openingSigned : 0,
         period_dr:         periodDr,
         period_cr:         periodCr,
-        closing_dr:        closingNet > 0 ? closingNet : 0,
-        closing_cr:        closingNet < 0 ? Math.abs(closingNet) : 0,
+        closing_dr:        closingSigned > 0 ? closingSigned : 0,
+        closing_cr:        closingSigned < 0 ? -closingSigned : 0,
       };
     });
 
