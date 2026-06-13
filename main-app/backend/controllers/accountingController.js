@@ -712,7 +712,28 @@ exports.getTrialBalance6Col = async (req, res) => {
       closing_cr:  acc.closing_cr  + r.closing_cr,
     }), { opening_dr: 0, opening_cr: 0, period_dr: 0, period_cr: 0, closing_dr: 0, closing_cr: 0 });
 
-    res.json({ from_date, to_date, data: rows, totals });
+    // Sort rows in depth-first tree order so parents appear directly before their children
+    const byParent = new Map();
+    const roots = [];
+    for (const row of rows) {
+      if (row.parent_account_id === null) {
+        roots.push(row);
+      } else {
+        if (!byParent.has(row.parent_account_id)) byParent.set(row.parent_account_id, []);
+        byParent.get(row.parent_account_id).push(row);
+      }
+    }
+    const sortedRows = [];
+    const visit = (node) => {
+      sortedRows.push(node);
+      const children = (byParent.get(node.account_id) || [])
+        .sort((a, b) => a.account_code.localeCompare(b.account_code));
+      children.forEach(visit);
+    };
+    roots.sort((a, b) => a.account_code.localeCompare(b.account_code));
+    roots.forEach(visit);
+
+    res.json({ from_date, to_date, data: sortedRows, totals });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
