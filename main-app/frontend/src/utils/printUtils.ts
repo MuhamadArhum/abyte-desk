@@ -115,15 +115,15 @@ export const printGRN = (voucher: any) => {
           ${address ? `<div style="font-size:12px;color:#444;margin-top:4px;">${address}</div>` : ''}
           ${phone   ? `<div style="font-size:12px;color:#444;">Tel: ${phone}</div>` : ''}
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:left;">
           <div style="font-size:15px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;color:#333;margin-bottom:8px;">Goods Received Note (GRN)</div>
           <table style="margin-left:auto;font-size:12px;border:none;margin-bottom:0;">
             <tbody>
-              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">GRN # :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.pv_number}</td></tr>
-              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Date &amp; Time :</td><td style="font-weight:bold;border:none;padding:2px 0;">${printDateTime}</td></tr>
-              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Supplier :</td><td style="font-weight:bold;border:none;padding:2px 0;">${supplierDisplay}</td></tr>
-              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">PO Reference :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.po_number || '—'}</td></tr>
-              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Received By :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.created_by_name || '—'}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:left;">GRN # :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.pv_number}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:left;">Date &amp; Time :</td><td style="font-weight:bold;border:none;padding:2px 0;">${printDateTime}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:left;">Supplier :</td><td style="font-weight:bold;border:none;padding:2px 0;">${supplierDisplay}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:left;">PO Reference :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.po_number || '—'}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:left;">Created By :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.created_by_name || '—'}</td></tr>
             </tbody>
           </table>
         </div>
