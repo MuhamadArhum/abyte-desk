@@ -270,10 +270,19 @@ const PurchaseVoucher = () => {
 
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const purchaseAccName = (pv: any) => pv.purchase_account_name
-    ? `${pv.purchase_account_code} — ${pv.purchase_account_name}` : '—';
-  const supplierAccName = (pv: any) => pv.payable_account_name
-    ? `${pv.payable_account_code} — ${pv.payable_account_name}` : '—';
+  const purchaseAccName = (pv: any) => pv.purchase_account_name || '—';
+  const supplierAccName = (pv: any) => pv.payable_account_name || '—';
+  const fmtDate = (d: string) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    const dd = String(dt.getDate()).padStart(2, '0');
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const yyyy = dt.getFullYear();
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const min = String(dt.getMinutes()).padStart(2, '0');
+    const ss = String(dt.getSeconds()).padStart(2, '0');
+    return `${dd}-${mm}-${yyyy} ${hh}:${min}:${ss}`;
+  };
 
   return (
     <div className="p-6">
@@ -601,7 +610,7 @@ const PurchaseVoucher = () => {
                   </td>
                   <td className="px-4 py-3 text-gray-800 text-xs">{purchaseAccName(v)}</td>
                   <td className="px-4 py-3 text-gray-800 text-xs">{supplierAccName(v)}</td>
-                  <td className="px-4 py-3 text-gray-600">{v.voucher_date}</td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(v.voucher_date)}</td>
                   <td className="px-4 py-3 text-right">{v.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(v.total_amount)}</td>
                   <td className="px-4 py-3">
