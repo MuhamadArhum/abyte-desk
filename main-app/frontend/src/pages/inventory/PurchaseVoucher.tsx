@@ -608,9 +608,9 @@ const PurchaseVoucher = () => {
                       ? <span className="text-blue-600 font-medium text-xs bg-blue-50 px-2 py-0.5 rounded">{v.po_number}</span>
                       : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-800 text-xs">{purchaseAccName(v)}</td>
-                  <td className="px-4 py-3 text-gray-800 text-xs">{supplierAccName(v)}</td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(v.voucher_date)}</td>
+                  <td className="px-4 py-3 text-gray-800 text-xs font-semibold">{purchaseAccName(v)}</td>
+                  <td className="px-4 py-3 text-gray-800 text-xs font-semibold">{supplierAccName(v)}</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs font-semibold whitespace-nowrap">{fmtDate(v.voucher_date)}</td>
                   <td className="px-4 py-3 text-right">{v.item_count}</td>
                   <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(v.total_amount)}</td>
                   <td className="px-4 py-3">
