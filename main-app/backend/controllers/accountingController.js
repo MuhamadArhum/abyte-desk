@@ -745,32 +745,47 @@ exports.getProfitLoss = async (req, res) => {
     const { from_date, to_date } = req.query;
     if (!from_date || !to_date) return res.status(400).json({ message: 'Date range required' });
 
+    // Aggregate from journal entries + CPV (expense debits) + CRV (revenue credits)
+    // All amounts use credit-debit convention:
+    //   revenue: credit > debit → positive
+    //   expense: debit > credit → negative (frontend uses Math.abs)
     const accounts = await query(`
       SELECT a.account_id, a.account_code, a.account_name, a.account_type, g.group_name,
-             COALESCE(SUM(jel.credit - jel.debit), 0) as amount
+             COALESCE(SUM(txn.net_amount), 0) AS amount
       FROM accounts a
       JOIN account_groups g ON a.group_id = g.group_id
-      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
-      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted' AND je.entry_date BETWEEN ? AND ?
+      JOIN (
+        SELECT jel.account_id, (jel.credit - jel.debit) AS net_amount
+        FROM journal_entry_lines jel
+        JOIN journal_entries je ON jel.entry_id = je.entry_id
+        WHERE je.status = 'posted' AND je.entry_date BETWEEN ? AND ?
+
+        UNION ALL
+
+        SELECT rv.account_id, rv.amount AS net_amount
+        FROM receipt_vouchers rv
+        WHERE rv.journal_entry_id IS NULL AND rv.voucher_date BETWEEN ? AND ?
+
+        UNION ALL
+
+        SELECT pv.account_id, -pv.amount AS net_amount
+        FROM payment_vouchers pv
+        WHERE pv.journal_entry_id IS NULL AND pv.voucher_date BETWEEN ? AND ?
+      ) txn ON a.account_id = txn.account_id
       WHERE a.account_type IN ('revenue', 'expense') AND a.is_active = 1
       GROUP BY a.account_id
-      HAVING amount != 0
+      HAVING ABS(SUM(txn.net_amount)) > 0.001
       ORDER BY a.account_type, a.account_code
-    `, [from_date, to_date]);
+    `, [from_date, to_date, from_date, to_date, from_date, to_date]);
 
-    const revenue = accounts.filter(a => a.account_type === 'revenue').map(a => ({ ...a, amount: Number(a.amount) }));
+    const revenue  = accounts.filter(a => a.account_type === 'revenue').map(a => ({ ...a, amount: Number(a.amount) }));
     const expenses = accounts.filter(a => a.account_type === 'expense').map(a => ({ ...a, amount: Math.abs(Number(a.amount)) }));
 
-    const totalRevenue = revenue.reduce((sum, r) => sum + r.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const netProfit = totalRevenue - totalExpenses;
+    const total_revenue  = revenue.reduce((s, r) => s + r.amount, 0);
+    const total_expenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const net_profit     = total_revenue - total_expenses;
 
-    res.json({
-      period: { from_date, to_date },
-      revenue: { accounts: revenue, total: totalRevenue },
-      expenses: { accounts: expenses, total: totalExpenses },
-      net_profit: netProfit
-    });
+    res.json({ revenue, expenses, total_revenue, total_expenses, net_profit, period: { from_date, to_date } });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });

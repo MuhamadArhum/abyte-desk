@@ -9,39 +9,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-1:https://erp.abytesol.com/category-wise-purchase iska filter and search bar ko thik kro baqi module ki trha kro phly walo ki trha
-2: https://erp.abytesol.com/reorder-alert iss main Print ka Button and Excel main convert krna ka option do 
-3: https://erp.abytesol.com/opening-closing-stock iska bhi filter wala section thik kro 
-4: https://erp.abytesol.com/purchase-vs-issuance iska bhi filter wala section thik kro 
-5: https://erp.abytesol.com/fast-moving-items iska bhi filter wala section thik kro 
-
-
-
-
-
-
-
-
-
-
-
-  2. Slow Moving / Dead Stock
-  Jo items X din se koi movement nahi — na purchase, na issue, na sale. Wastage control ke liye.
-
-  3. Fast Moving Items
-  Sabse zyada purchase/issue hone wale items — procurement planning ke liye.
-
-  4. Purchase vs Issuance Comparison
-  Har item ke liye: kitna purchase hua vs kitna issue/use hua — over/under purchasing pakadne ke liye.
-
-  5. Opening vs Closing Stock
-  Kisi bhi date range ke liye: opening stock + purchases - sales/issues = closing stock. Per item breakdown.
-
-  6. Stock Expiry / Reorder Alert
-  Items jinka stock reorder level se neeche hai — list with "days of stock remaining" estimate.
-
-  7. Category Wise Purchase
-  Purchases grouped by category (Chicken, Vegetables, Dairy, etc.) — date range ke saath.
-
-  8. Vendor Wise Item Rate History
-  Ek item ka price time ke saath kaise change hua — rate comparison across PVs.

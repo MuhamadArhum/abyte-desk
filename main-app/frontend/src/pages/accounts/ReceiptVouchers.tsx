@@ -2,14 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ArrowDownLeft, Plus, Trash2, Download, Search,
   ChevronDown, ArrowLeft, Pencil, Check, X,
-  Building2, Calendar, Hash, FileText
+  Building2, Calendar, FileText
 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 import { localToday } from '../../utils/dateUtils';
 
-// ─────────────────────────── Account Selector ────────────────────────────────
 const AccountSelector = ({
   value, onChange, accounts, onAfterSelect, placeholder = 'Select account…',
 }: {
@@ -49,20 +48,20 @@ const AccountSelector = ({
         onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm text-left transition-all
           ${selected
-            ? 'border-emerald-300 bg-white text-slate-800 font-semibold'
-            : 'border-dashed border-emerald-200 bg-emerald-50/50 text-slate-400 hover:border-emerald-300'}`}
+            ? 'border-gray-200 bg-white text-gray-800 font-semibold'
+            : 'border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-gray-400'}`}
       >
         <span className="truncate flex-1">
           {selected ? `${selected.account_code} — ${selected.account_name}` : placeholder}
         </span>
-        <ChevronDown size={13} className="text-slate-300 shrink-0 ml-1" />
+        <ChevronDown size={13} className="text-gray-300 shrink-0 ml-1" />
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1.5 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl ring-1 ring-slate-900/5">
-          <div className="p-2.5 border-b border-slate-100">
-            <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-1.5">
-              <Search size={12} className="text-slate-400 shrink-0" />
+        <div className="absolute z-50 left-0 top-full mt-1.5 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl">
+          <div className="p-2.5 border-b border-gray-100">
+            <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+              <Search size={12} className="text-gray-400 shrink-0" />
               <input
                 autoFocus
                 type="text"
@@ -74,21 +73,21 @@ const AccountSelector = ({
                   else if (e.key === 'Enter') { e.preventDefault(); if (filtered[hi]) pick(String(filtered[hi].account_id)); }
                   else if (e.key === 'Escape') setOpen(false);
                 }}
-                className="text-sm bg-transparent outline-none w-full placeholder-slate-400 text-slate-700"
+                className="text-sm bg-transparent outline-none w-full placeholder-gray-400 text-gray-700"
                 placeholder="Search name or code…"
               />
             </div>
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0
-              ? <li className="px-4 py-3 text-sm text-slate-400 text-center">No accounts found</li>
+              ? <li className="px-4 py-3 text-sm text-gray-400 text-center">No accounts found</li>
               : filtered.map((a, idx) => (
                 <li key={a.account_id}>
                   <button
                     type="button"
                     onClick={() => pick(String(a.account_id))}
                     className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition
-                      ${idx === hi ? 'bg-emerald-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                      ${idx === hi ? 'bg-gray-800 text-white' : 'hover:bg-gray-50 text-gray-700'}`}
                   >
                     <span className="font-mono text-xs opacity-60 shrink-0">{a.account_code}</span>
                     <span className="truncate flex-1 font-medium">{a.account_name}</span>
@@ -106,7 +105,6 @@ const AccountSelector = ({
   );
 };
 
-// ─────────────────────────── CRV Form ────────────────────────────────────────
 type Line = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; narration: string; amount: number };
 type Entry = { account_id: string; narration: string; amount: string };
 
@@ -179,226 +177,196 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   const mainAcct = accounts.find(a => String(a.account_id) === mainAccountId);
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="p-6">
 
-      {/* ── Top Bar ── */}
-      <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center gap-3 shrink-0">
-        <button onClick={() => { onRefresh(); onBack(); }} className="p-2 rounded-lg hover:bg-slate-100 transition text-slate-500">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="w-px h-6 bg-slate-200" />
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-            <ArrowDownLeft size={15} className="text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-800 text-sm leading-none">Cash Receipt Voucher</p>
-            <p className="text-xs text-slate-400 mt-0.5">Incoming payments</p>
-          </div>
-        </div>
-        {voucherNum && (
-          <span className="ml-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold font-mono border border-emerald-200">
-            {voucherNum}
-          </span>
-        )}
-      </div>
-
-      {/* ── Voucher Header Card ── */}
-      <div className="px-5 pt-4 shrink-0">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          {/* Header Banner */}
-          <div className="bg-emerald-600 px-5 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText size={16} className="text-emerald-100" />
-              <div>
-                <p className="text-white font-bold text-sm tracking-wide">CASH RECEIPT VOUCHER</p>
-                {voucherNum && <p className="text-emerald-100 text-xs font-mono">{voucherNum}</p>}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-emerald-500/40 rounded-lg px-3 py-1.5">
-              <Calendar size={13} className="text-emerald-100" />
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="bg-transparent text-white text-sm font-mono border-none outline-none cursor-pointer"
-              />
-            </div>
-          </div>
-
-          {/* Receiving Account */}
-          <div className="px-5 py-4 border-b border-slate-100">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 shrink-0">
-                <Building2 size={15} className="text-emerald-500" />
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Receiving Account</span>
-              </div>
-              <div className="flex-1 min-w-[220px] max-w-xs">
-                <AccountSelector
-                  value={mainAccountId}
-                  onChange={setMainAccountId}
-                  accounts={accounts}
-                  placeholder="Select Cash / Bank account…"
-                />
-              </div>
-              {mainAcct && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <span className="text-xs text-emerald-700 font-semibold">{mainAcct.account_name}</span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    Bal: {Number(mainAcct.current_balance || 0).toLocaleString('en-PK', { minimumFractionDigits: 0 })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Entry Form */}
-          <div className={`px-5 py-4 ${editingId !== null ? 'bg-emerald-50/60' : 'bg-white'}`}>
-            {editingId !== null && (
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Editing Entry</span>
-                <button onClick={resetEntry} className="text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition">
-                  <X size={12} /> Cancel
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_160px_auto] gap-3 items-end">
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5 block">
-                  Income Account
-                </label>
-                <AccountSelector
-                  value={entry.account_id}
-                  onChange={id => setEntry(v => ({ ...v, account_id: id }))}
-                  onAfterSelect={() => narrationRef.current?.focus()}
-                  accounts={accounts}
-                  placeholder="Select account…"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5 block">
-                  Received From / Description
-                </label>
-                <input
-                  ref={narrationRef}
-                  type="text"
-                  value={entry.narration}
-                  onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
-                  placeholder="e.g. Customer name, invoice #…"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300 bg-white text-slate-700"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5 block">
-                  Amount (Rs.)
-                </label>
-                <input
-                  ref={amountRef}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={entry.amount}
-                  onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-bold font-mono text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-300"
-                />
-              </div>
-              <button
-                onClick={saveEntry}
-                disabled={saving}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition disabled:opacity-50 whitespace-nowrap shadow-sm"
-              >
-                {saving
-                  ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : editingId !== null ? <Check size={14} /> : <Plus size={14} />}
-                {editingId !== null ? 'Update' : 'Add'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Lines Table ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-4">
-        {savedLines.length === 0 ? (
-          <div className="text-center py-14 text-slate-400">
-            <div className="w-14 h-14 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <ArrowDownLeft size={22} className="text-emerald-300" />
-            </div>
-            <p className="font-semibold text-slate-500 text-sm">No entries yet</p>
-            <p className="text-xs text-slate-400 mt-1">Fill the form above and click Add</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            {/* Table Header */}
-            <div className="bg-slate-800 grid px-4 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-300"
-              style={{ gridTemplateColumns: '1fr 1.2fr 120px 60px' }}>
-              <span>Account</span>
-              <span>Description</span>
-              <span className="text-right">Amount</span>
-              <span />
-            </div>
-
-            {savedLines.map((line, i) => (
-              <div
-                key={line.voucher_id}
-                className={`grid px-4 py-3 border-b border-slate-100 items-center gap-2 transition
-                  ${editingId === line.voucher_id ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300' : i % 2 === 0 ? 'bg-white hover:bg-slate-50/60' : 'bg-slate-50/30 hover:bg-slate-50/60'}`}
-                style={{ gridTemplateColumns: '1fr 1.2fr 120px 60px' }}
-              >
-                <span className="font-semibold text-slate-700 text-sm truncate">{line.account_name}</span>
-                <span className="text-slate-500 text-sm truncate">{line.narration || <span className="text-slate-300">—</span>}</span>
-                <span className="text-right font-bold font-mono text-emerald-700 text-sm">
-                  {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                </span>
-                <div className="flex items-center justify-end gap-1">
-                  <button onClick={() => {
-                    setEditingId(line.voucher_id);
-                    setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
-                  }} className="p-1.5 text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
-                    <Pencil size={13} />
-                  </button>
-                  <button onClick={() => deleteLine(line.voucher_id)}
-                    className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* Total Footer */}
-            <div className="bg-emerald-600 px-4 py-3 flex items-center justify-between">
-              <span className="text-white font-bold text-xs uppercase tracking-wide">
-                {savedLines.length} {savedLines.length === 1 ? 'Entry' : 'Entries'}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-100 text-xs font-semibold uppercase tracking-wide">Total</span>
-                <span className="text-white font-black font-mono text-lg">
-                  {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="bg-white border-t border-slate-200 px-5 py-3.5 shrink-0 flex items-center justify-between">
-        <div>
-          {savedLines.length > 0 && (
-            <p className="text-sm text-slate-500">
-              <span className="font-bold text-emerald-600">{savedLines.length}</span> entr{savedLines.length === 1 ? 'y' : 'ies'} saved
-              <span className="ml-2 text-slate-300">|</span>
-              <span className="ml-2 font-mono font-semibold text-slate-700">Rs. {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
-            </p>
+      {/* Header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { onRefresh(); onBack(); }}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition text-sm font-medium">
+            <ArrowLeft size={16} /> Back to List
+          </button>
+          {voucherNum && (
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold font-mono border border-emerald-200">
+              {voucherNum}
+            </span>
           )}
         </div>
-        <button
-          onClick={() => { onRefresh(); onBack(); }}
-          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-sm"
-        >
+        {savedLines.length > 0 && (
+          <p className="text-sm text-gray-500">
+            <span className="font-bold text-emerald-600">{savedLines.length}</span> entr{savedLines.length === 1 ? 'y' : 'ies'}
+            <span className="mx-2 text-gray-300">|</span>
+            <span className="font-mono font-semibold text-gray-700">Rs. {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
+          </p>
+        )}
+      </div>
+
+      {/* Voucher Card */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+
+        {/* Title Bar */}
+        <div className="bg-gray-800 px-5 py-4 flex items-center justify-between text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center">
+              <ArrowDownLeft size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-white/60 text-[10px] font-semibold uppercase tracking-widest">Accounts Module</p>
+              <h2 className="text-white font-bold text-base tracking-wide">CASH RECEIPT VOUCHER</h2>
+            </div>
+            {voucherNum && <span className="font-mono text-gray-400 text-xs ml-1">{voucherNum}</span>}
+          </div>
+          <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5 border border-white/20">
+            <Calendar size={13} className="text-white/60" />
+            <input
+              type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="bg-transparent text-white text-sm font-mono border-none outline-none cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Receiving Account */}
+        <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/40">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <Building2 size={14} className="text-emerald-500" />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Receiving Account</span>
+            </div>
+            <div className="flex-1 min-w-[220px] max-w-xs">
+              <AccountSelector value={mainAccountId} onChange={setMainAccountId} accounts={accounts}
+                placeholder="Select Cash / Bank account…" />
+            </div>
+            {mainAcct && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <span className="text-xs text-emerald-700 font-semibold">{mainAcct.account_name}</span>
+                <span className="text-xs text-gray-400 font-mono">
+                  Bal: {Number(mainAcct.current_balance || 0).toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Entry Form */}
+        <div className={`px-5 py-4 ${editingId !== null ? 'bg-emerald-50/60' : 'bg-white'}`}>
+          {editingId !== null && (
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wide">Editing Entry</span>
+              <button onClick={resetEntry} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition">
+                <X size={12} /> Cancel
+              </button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_160px_auto] gap-3 items-end">
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">
+                <FileText size={10} className="inline mr-1" />Income Account
+              </label>
+              <AccountSelector value={entry.account_id}
+                onChange={id => setEntry(v => ({ ...v, account_id: id }))}
+                onAfterSelect={() => narrationRef.current?.focus()}
+                accounts={accounts} placeholder="Select account…" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">
+                Received From / Description
+              </label>
+              <input
+                ref={narrationRef} type="text" value={entry.narration}
+                onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+                placeholder="e.g. Customer name, invoice #…"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gray-300 bg-white text-gray-700"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">
+                Amount (Rs.)
+              </label>
+              <input
+                ref={amountRef} type="number" step="0.01" min="0" value={entry.amount}
+                onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') saveEntry(); }}
+                placeholder="0.00"
+                className="w-full px-3 py-2 border border-emerald-200 bg-emerald-50 rounded-lg text-sm text-right font-bold font-mono text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-300"
+              />
+            </div>
+            <button onClick={saveEntry} disabled={saving}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap shadow-sm">
+              {saving
+                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : editingId !== null ? <Check size={14} /> : <Plus size={14} />}
+              {editingId !== null ? 'Update' : 'Add'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lines Table */}
+      {savedLines.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm text-center py-14 text-gray-400">
+          <div className="w-14 h-14 bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <ArrowDownLeft size={22} className="text-emerald-300" />
+          </div>
+          <p className="font-medium text-gray-500 text-sm">No entries yet</p>
+          <p className="text-xs text-gray-400 mt-1">Fill the form above and click Add</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-800 text-white">
+                <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Account</th>
+                <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Description</th>
+                <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wide">Amount</th>
+                <th className="w-20 px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {savedLines.map((line, i) => (
+                <tr key={line.voucher_id}
+                  className={`transition ${editingId === line.voucher_id ? 'bg-emerald-50 ring-1 ring-inset ring-emerald-300' : i % 2 === 0 ? 'bg-white hover:bg-gray-50/60' : 'bg-gray-50/30 hover:bg-gray-50/60'}`}>
+                  <td className="px-4 py-3 font-semibold text-gray-700 text-sm">{line.account_name}</td>
+                  <td className="px-4 py-3 text-gray-500 text-sm">{line.narration || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3 text-right font-bold font-mono text-emerald-700 text-sm">
+                    {line.amount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => {
+                        setEditingId(line.voucher_id);
+                        setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) });
+                      }} className="p-1.5 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => deleteLine(line.voucher_id)}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-emerald-600 text-white">
+                <td colSpan={2} className="px-4 py-3 font-semibold text-xs uppercase tracking-wide">
+                  {savedLines.length} {savedLines.length === 1 ? 'Entry' : 'Entries'}
+                </td>
+                <td className="px-4 py-3 text-right font-bold font-mono text-base">
+                  {total.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {/* Done Button */}
+      <div className="flex justify-end">
+        <button onClick={() => { onRefresh(); onBack(); }}
+          className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition shadow-sm">
           <Check size={15} /> Done
         </button>
       </div>
@@ -406,7 +374,6 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   );
 };
 
-// ─────────────────────────── List Page ───────────────────────────────────────
 const ReceiptVouchers = () => {
   const toast = useToast();
   const [view, setView] = useState<'list' | 'new'>('list');
@@ -459,118 +426,111 @@ const ReceiptVouchers = () => {
   if (view === 'new') return <CRVForm onBack={() => setView('list')} onRefresh={fetchVouchers} />;
 
   return (
-    <div className="p-4 sm:p-6 space-y-4">
+    <div className="p-6">
 
-      {/* Page Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
-            <ArrowDownLeft size={18} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Cash Receipt Vouchers</h1>
-            <p className="text-sm text-slate-400">Track all incoming payments</p>
-          </div>
+      {/* Header */}
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+            <ArrowDownLeft size={20} className="text-emerald-600" /> Cash Receipt Vouchers
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">Track all incoming payments</p>
         </div>
         <div className="flex gap-2">
           <button onClick={exportCSV} disabled={vouchers.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition font-medium disabled:opacity-40">
-            <Download size={14} /> <span className="hidden sm:inline">Export</span>
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-40">
+            <Download size={14} /> Export
           </button>
           <button onClick={() => setView('new')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm transition">
-            <Plus size={15} /> New CRV
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition shadow-sm">
+            <Plus size={14} /> New CRV
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
-        <Hash size={13} className="text-slate-300 hidden sm:block" />
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-400 font-medium">From</span>
+          <span className="text-xs text-gray-400 font-medium">From</span>
           <input type="date" value={filters.from_date}
             onChange={e => setFilters(f => ({ ...f, from_date: e.target.value }))}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300" />
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gray-300" />
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-400 font-medium">To</span>
+          <span className="text-xs text-gray-400 font-medium">To</span>
           <input type="date" value={filters.to_date}
             onChange={e => setFilters(f => ({ ...f, to_date: e.target.value }))}
-            className="px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-300" />
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-gray-300" />
         </div>
-        <button
-          onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchVouchers(); }}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-60"
-        >
+        <button onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchVouchers(); }} disabled={loading}
+          className="flex items-center gap-1.5 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-900 transition disabled:opacity-60 shadow-sm">
           <Search size={13} /> {loading ? 'Loading…' : 'Search'}
         </button>
-        {hasLoaded && <span className="ml-auto text-xs text-slate-400">{pagination.total} vouchers</span>}
+        {hasLoaded && <span className="ml-auto text-xs text-gray-400 font-medium">{pagination.total} vouchers</span>}
       </div>
 
       {/* Summary */}
       {hasLoaded && vouchers.length > 0 && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3 text-center">
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Vouchers</p>
-            <p className="text-2xl font-black text-slate-800 mt-1">{pagination.total}</p>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Vouchers</p>
+            <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total}</p>
           </div>
-          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm px-4 py-3 text-center">
-            <p className="text-xs text-emerald-500 font-semibold uppercase tracking-wide">Total Received</p>
-            <p className="text-xl font-black text-emerald-600 mt-1 font-mono">
-              {totalAmt.toLocaleString('en-PK', { minimumFractionDigits: 0 })}
+          <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wide">Total Received</p>
+            <p className="text-xl font-bold text-emerald-700 mt-1 font-mono">
+              {totalAmt.toLocaleString('en-PK', { minimumFractionDigits: 2 })}
             </p>
           </div>
         </div>
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {!hasLoaded ? (
-          <div className="text-center py-14 text-slate-400">
+          <div className="text-center py-16 text-gray-400">
             <ArrowDownLeft size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="font-semibold text-slate-500">Select date range and click <strong className="text-emerald-600">Search</strong></p>
+            <p className="font-medium text-gray-500">Select date range and click <strong className="text-gray-800">Search</strong></p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-14">
-            <div className="animate-spin h-6 w-6 rounded-full border-2 border-emerald-500 border-t-transparent" />
+            <div className="animate-spin h-6 w-6 rounded-full border-2 border-gray-300 border-t-gray-700" />
           </div>
         ) : vouchers.length === 0 ? (
-          <div className="text-center py-14 text-slate-400">
+          <div className="text-center py-16 text-gray-400">
             <ArrowDownLeft size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="font-semibold text-slate-500 text-sm">No vouchers found for this period</p>
+            <p className="font-medium text-gray-500 text-sm">No vouchers found for this period</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-400">
-                    <th className="text-left px-4 py-3 font-bold">Voucher #</th>
-                    <th className="text-left px-4 py-3 font-bold">Date</th>
-                    <th className="text-left px-4 py-3 font-bold">Account</th>
-                    <th className="text-left px-4 py-3 font-bold">Description</th>
-                    <th className="text-right px-4 py-3 font-bold text-emerald-500">Amount</th>
+                  <tr className="bg-gray-800 text-white">
+                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Voucher #</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Date</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Account</th>
+                    <th className="text-left px-4 py-3 font-semibold text-xs uppercase tracking-wide">Description</th>
+                    <th className="text-right px-4 py-3 font-semibold text-xs uppercase tracking-wide text-emerald-300">Amount</th>
                     <th className="w-12 px-4 py-3" />
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-50">
                   {vouchers.map((v, i) => (
                     <tr key={v.voucher_id}
-                      className={`border-b border-slate-100 hover:bg-slate-50/60 transition ${i % 2 === 0 ? '' : 'bg-slate-50/30'}`}>
+                      className={`hover:bg-gray-50 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
                       <td className="px-4 py-3 font-mono font-bold text-emerald-600 text-xs">{v.voucher_number}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
                         {new Date(v.voucher_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-4 py-3 text-slate-700 font-semibold">{v.account_name}</td>
-                      <td className="px-4 py-3 text-slate-500 max-w-[160px] truncate">{v.description || v.received_from || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-4 py-3 text-gray-700 font-semibold text-sm">{v.account_name}</td>
+                      <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate text-sm">{v.description || v.received_from || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3 text-right font-bold font-mono text-emerald-700">
                         {Number(v.amount).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button onClick={() => handleDelete(v.voucher_id)}
-                          className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
                           <Trash2 size={13} />
                         </button>
                       </td>
@@ -578,9 +538,9 @@ const ReceiptVouchers = () => {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-emerald-600 text-white">
-                    <td colSpan={4} className="px-4 py-3 font-bold text-xs uppercase tracking-wide">Total (this page)</td>
-                    <td className="px-4 py-3 text-right font-black font-mono">{totalAmt.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
+                  <tr className="bg-gray-100 border-t-2 border-gray-300 font-semibold">
+                    <td colSpan={4} className="px-4 py-3 text-right text-gray-700 text-xs uppercase tracking-wide">Total (this page)</td>
+                    <td className="px-4 py-3 text-right font-bold font-mono text-emerald-700">{totalAmt.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</td>
                     <td />
                   </tr>
                 </tfoot>
