@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   ArrowUpRight, Plus, Trash2, Download, Search,
-  ChevronDown, Pencil, Check, X, Building2, Calendar
+  ChevronDown, Pencil, Check, X, Building2, Calendar, ArrowLeft
 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -80,16 +80,16 @@ const AccountSelector = ({
 type SavedLine = { voucher_id: number; account_id: string; account_name: string; narration: string; amount: number };
 type EntryForm = { account_id: string; narration: string; amount: string };
 
-const CPVModal = ({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) => {
+const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
   const toast = useToast();
-  const [accounts, setAccounts]       = useState<any[]>([]);
-  const [date, setDate]               = useState(localToday());
-  const [voucherNum, setVoucherNum]   = useState('');
+  const [accounts, setAccounts]           = useState<any[]>([]);
+  const [date, setDate]                   = useState(localToday());
+  const [voucherNum, setVoucherNum]       = useState('');
   const [mainAccountId, setMainAccountId] = useState('');
-  const [lines, setLines]             = useState<SavedLine[]>([]);
-  const [entry, setEntry]             = useState<EntryForm>({ account_id: '', narration: '', amount: '' });
-  const [saving, setSaving]           = useState(false);
-  const [editingId, setEditingId]     = useState<number | null>(null);
+  const [lines, setLines]                 = useState<SavedLine[]>([]);
+  const [entry, setEntry]                 = useState<EntryForm>({ account_id: '', narration: '', amount: '' });
+  const [saving, setSaving]               = useState(false);
+  const [editingId, setEditingId]         = useState<number | null>(null);
 
   const narrationRef = useRef<HTMLInputElement>(null);
   const amountRef    = useRef<HTMLInputElement>(null);
@@ -141,33 +141,43 @@ const CPVModal = ({ onClose, onRefresh }: { onClose: () => void; onRefresh: () =
   const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2 });
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div className="p-6">
+      {/* Back header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { onRefresh(); onBack(); }}
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
+            <ArrowLeft size={16} /> Back to List
+          </button>
+          {voucherNum && (
+            <span className="px-2.5 py-1 bg-orange-50 border border-orange-200 text-orange-600 rounded-full text-xs font-mono font-semibold">
+              {voucherNum}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Calendar size={13} className="text-gray-400" />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        </div>
+      </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div>
-            <h2 className="font-semibold text-gray-800 text-lg flex items-center gap-2">
-              <ArrowUpRight size={18} className="text-orange-500" /> Cash Payment Voucher
-            </h2>
-            {voucherNum && <p className="text-xs text-gray-400 font-mono mt-0.5">{voucherNum}</p>}
+      {/* Main form card */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+
+        {/* Card title bar */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center">
+            <ArrowUpRight size={18} className="text-orange-500" />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <Calendar size={13} className="text-gray-400" />
-              <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
-            </div>
-            <button onClick={() => { onRefresh(); onClose(); }} className="p-1.5 hover:bg-gray-100 rounded-lg transition">
-              <X size={18} className="text-gray-400" />
-            </button>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Cash Payment Voucher</h2>
+            <p className="text-xs text-gray-500">Record outgoing payment entries</p>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-
-          {/* Paying Account */}
+        {/* Paying account section */}
+        <div className="px-6 py-4 border-b border-gray-100">
           <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5 shrink-0">
@@ -185,119 +195,108 @@ const CPVModal = ({ onClose, onRefresh }: { onClose: () => void; onRefresh: () =
               )}
             </div>
           </div>
+        </div>
 
-          {/* Entry Form */}
-          <div className={`border rounded-xl p-4 ${editingId !== null ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 bg-gray-50/30'}`}>
-            {editingId !== null && (
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Editing Entry</span>
-                <button onClick={resetEntry} className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition">
-                  <X size={11} /> Cancel Edit
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_140px_auto] gap-3 items-end">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expense Account</label>
-                <AccountSelector value={entry.account_id}
-                  onChange={id => setEntry(v => ({ ...v, account_id: id }))}
-                  onAfterSelect={() => narrationRef.current?.focus()}
-                  accounts={accounts} placeholder="Select account…" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Paid To / Description</label>
-                <input ref={narrationRef} type="text" value={entry.narration}
-                  onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
-                  placeholder="e.g. Supplier name, utility bill…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Rs.)</label>
-                <input ref={amountRef} type="number" step="0.01" min="0" value={entry.amount}
-                  onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
-                  onKeyDown={e => { if (e.key === 'Enter') addEntry(); }}
-                  placeholder="0.00"
-                  className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm text-right font-semibold text-orange-700 outline-none focus:ring-2 focus:ring-orange-400 bg-orange-50" />
-              </div>
-              <button onClick={addEntry} disabled={saving}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap">
-                {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : editingId !== null ? <Check size={14} /> : <Plus size={14} />}
-                {editingId !== null ? 'Update' : 'Add'}
+        {/* Entry form section */}
+        <div className={`px-6 py-4 border-b border-gray-100 ${editingId !== null ? 'bg-amber-50/30' : ''}`}>
+          {editingId !== null && (
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Editing Entry</span>
+              <button onClick={resetEntry} className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition">
+                <X size={11} /> Cancel Edit
               </button>
             </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_140px_auto] gap-3 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expense Account</label>
+              <AccountSelector value={entry.account_id}
+                onChange={id => setEntry(v => ({ ...v, account_id: id }))}
+                onAfterSelect={() => narrationRef.current?.focus()}
+                accounts={accounts} placeholder="Select account…" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Paid To / Description</label>
+              <input ref={narrationRef} type="text" value={entry.narration}
+                onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+                placeholder="e.g. Supplier name, utility bill…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Rs.)</label>
+              <input ref={amountRef} type="number" step="0.01" min="0" value={entry.amount}
+                onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') addEntry(); }}
+                placeholder="0.00"
+                className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm text-right font-semibold text-orange-700 outline-none focus:ring-2 focus:ring-orange-400 bg-orange-50" />
+            </div>
+            <button onClick={addEntry} disabled={saving}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap">
+              {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : editingId !== null ? <Check size={14} /> : <Plus size={14} />}
+              {editingId !== null ? 'Update' : 'Add'}
+            </button>
           </div>
+        </div>
 
-          {/* Lines Table */}
-          {lines.length > 0 && (
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-4 py-2.5 w-16" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lines.map((line, i) => (
-                    <tr key={line.voucher_id}
-                      className={editingId === line.voucher_id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50'}>
-                      <td className="px-4 py-2.5 font-medium text-gray-800">{line.account_name}</td>
-                      <td className="px-4 py-2.5 text-gray-500">{line.narration || <span className="text-gray-300">—</span>}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-orange-700">{fmt(line.amount)}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => { setEditingId(line.voucher_id); setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) }); }}
-                            className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition"><Pencil size={13} /></button>
-                          <button onClick={() => deleteLine(line.voucher_id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={13} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 border-t border-gray-200">
-                    <td colSpan={2} className="px-4 py-2.5 text-sm font-medium text-gray-500">
-                      {lines.length} entr{lines.length === 1 ? 'y' : 'ies'}
+        {/* Lines table */}
+        {lines.length > 0 && (
+          <div className="px-6 py-4">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-2.5 w-16" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {lines.map((line, i) => (
+                  <tr key={line.voucher_id}
+                    className={editingId === line.voucher_id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50'}>
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{line.account_name}</td>
+                    <td className="px-4 py-2.5 text-gray-500">{line.narration || <span className="text-gray-300">—</span>}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-orange-700">{fmt(line.amount)}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => { setEditingId(line.voucher_id); setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) }); }}
+                          className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition"><Pencil size={13} /></button>
+                        <button onClick={() => deleteLine(line.voucher_id)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={13} /></button>
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-orange-700">{fmt(total)}</td>
-                    <td />
                   </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-
-          {lines.length === 0 && (
-            <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
-              <ArrowUpRight size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-medium text-gray-500">No entries yet — fill the form above and click Add</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-          {lines.length > 0 && (
-            <p className="text-sm text-gray-500">
-              Total: <span className="font-bold text-orange-600">Rs. {fmt(total)}</span>
-            </p>
-          )}
-          <div className="ml-auto flex gap-3">
-            <button onClick={() => { onRefresh(); onClose(); }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
-              Close
-            </button>
-            <button onClick={() => { onRefresh(); onClose(); }}
-              className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition">
-              Done
-            </button>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-50 border-t border-gray-200">
+                  <td colSpan={2} className="px-4 py-2.5 text-sm font-medium text-gray-500">
+                    {lines.length} entr{lines.length === 1 ? 'y' : 'ies'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-bold text-orange-700">{fmt(total)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        </div>
+        )}
+
+        {lines.length === 0 && (
+          <div className="px-6 py-8 text-center border-t border-gray-100 text-gray-400">
+            <ArrowUpRight size={32} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm font-medium text-gray-500">No entries yet — fill the form above and click Add</p>
+          </div>
+        )}
+      </div>
+
+      {/* Done button */}
+      <div className="flex justify-end">
+        <button onClick={() => { onRefresh(); onBack(); }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition">
+          <Check size={15} /> Done
+        </button>
       </div>
     </div>
   );
@@ -305,12 +304,12 @@ const CPVModal = ({ onClose, onRefresh }: { onClose: () => void; onRefresh: () =
 
 const PaymentVouchers = () => {
   const toast = useToast();
-  const [showForm, setShowForm]     = useState(false);
-  const [vouchers, setVouchers]     = useState<any[]>([]);
-  const [loading, setLoading]       = useState(false);
-  const [hasLoaded, setHasLoaded]   = useState(false);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
-  const [filters, setFilters]       = useState({ from_date: localToday(), to_date: localToday() });
+  const [view, setView]                 = useState<'list' | 'new'>('list');
+  const [vouchers, setVouchers]         = useState<any[]>([]);
+  const [loading, setLoading]           = useState(false);
+  const [hasLoaded, setHasLoaded]       = useState(false);
+  const [pagination, setPagination]     = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [filters, setFilters]           = useState({ from_date: localToday(), to_date: localToday() });
 
   const fetchVouchers = async () => {
     setLoading(true); setHasLoaded(true);
@@ -344,6 +343,8 @@ const PaymentVouchers = () => {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
+  if (view === 'new') return <CPVForm onBack={() => setView('list')} onRefresh={fetchVouchers} />;
+
   const totalAmt = vouchers.reduce((s, v) => s + Number(v.amount), 0);
   const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2 });
 
@@ -363,7 +364,7 @@ const PaymentVouchers = () => {
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-40">
             <Download size={14} /> Export CSV
           </button>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={() => setView('new')}
             className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition">
             <Plus size={16} /> New CPV
           </button>
@@ -470,8 +471,6 @@ const PaymentVouchers = () => {
           </>
         )}
       </div>
-
-      {showForm && <CPVModal onClose={() => setShowForm(false)} onRefresh={fetchVouchers} />}
     </div>
   );
 };

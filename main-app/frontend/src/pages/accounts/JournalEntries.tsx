@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Plus, Trash2, ChevronDown, Search,
   Lock, Eye, EyeOff, AlertTriangle, CheckCircle2,
-  FileText, TrendingUp, TrendingDown, Send, RefreshCw, X
+  FileText, TrendingUp, TrendingDown, Send, RefreshCw, X, ArrowLeft, Calendar
 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
@@ -47,18 +47,17 @@ const AccountSelector = ({
   return (
     <div ref={ref} className="relative w-full">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-left transition
-          ${sel ? 'bg-white border-gray-300' : 'bg-gray-50 border-dashed border-gray-300 hover:border-gray-400'}`}>
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-left transition">
         {sel ? (
-          <>
+          <span className="flex items-center gap-2 flex-1 min-w-0">
             {tag && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${tag.bg} ${tag.text}`}>{tag.label}</span>}
             <span className="font-mono text-xs text-gray-400 shrink-0">{sel.account_code}</span>
-            <span className="font-semibold text-gray-800 truncate flex-1">{sel.account_name}</span>
-          </>
+            <span className="font-semibold text-gray-800 truncate">{sel.account_name}</span>
+          </span>
         ) : (
           <span className="text-gray-400 flex-1">{placeholder}</span>
         )}
-        <ChevronDown size={13} className="text-gray-300 shrink-0" />
+        <ChevronDown size={13} className="text-gray-300 shrink-0 ml-1" />
       </button>
 
       {open && (
@@ -86,8 +85,8 @@ const AccountSelector = ({
                     <li key={a.account_id}>
                       <button type="button" onClick={() => pick(String(a.account_id))}
                         className={`w-full text-left px-3 py-2 flex items-center gap-2.5 text-sm transition
-                          ${i === hi ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50 text-gray-700'}`}>
-                        {t && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${i === hi ? 'bg-white/20 text-white' : `${t.bg} ${t.text}`}`}>{t.label}</span>}
+                          ${i === hi ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}`}>
+                        {t && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.bg} ${t.text}`}>{t.label}</span>}
                         <span className="font-mono text-xs opacity-60 shrink-0">{a.account_code}</span>
                         <span className="truncate flex-1 font-medium">{a.account_name}</span>
                         <span className="shrink-0 text-xs opacity-50 font-mono">{Number(a.current_balance || 0).toLocaleString()}</span>
@@ -105,7 +104,7 @@ const AccountSelector = ({
 type Line = { dr_cr: 'Dr' | 'Cr'; account_id: string; narration: string; amount: string };
 const blank = (): Line => ({ dr_cr: 'Dr', account_id: '', narration: '', amount: '' });
 
-const JVModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) => {
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
@@ -154,59 +153,62 @@ const JVModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () =>
         })),
       });
       toast.success('Journal voucher posted');
-      onSuccess(); onClose();
+      onSuccess(); onBack();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save');
     } finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
-
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <BookOpen size={18} className="text-indigo-600" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">New Journal Voucher</h2>
-              <p className="text-xs text-gray-500">Double-entry bookkeeping</p>
-            </div>
+    <div className="p-6">
+      {/* Back header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => { onSuccess(); onBack(); }}
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
+            <ArrowLeft size={16} /> Back to List
+          </button>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+            balanced ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : totDr > 0 ? 'bg-red-50 text-red-600 border-red-200'
+            : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
+            {balanced ? <CheckCircle2 size={11} /> : totDr > 0 ? <AlertTriangle size={11} /> : null}
+            {balanced ? 'Balanced' : totDr > 0 ? `Diff: ${fmt(diff)}` : 'No entries'}
           </div>
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-              balanced ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : totDr > 0 ? 'bg-red-50 text-red-600 border-red-200'
-              : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
-              {balanced ? <CheckCircle2 size={11} /> : totDr > 0 ? <AlertTriangle size={11} /> : null}
-              {balanced ? 'Balanced' : totDr > 0 ? `Diff: ${fmt(diff)}` : 'No entries'}
-            </div>
-            <input
-              type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
-            />
-            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
-              <X size={18} />
-            </button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Calendar size={13} className="text-gray-400" />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+      </div>
+
+      {/* Main form card */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+
+        {/* Card title bar */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+          <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <BookOpen size={18} className="text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">New Journal Voucher</h2>
+            <p className="text-xs text-gray-500">Double-entry bookkeeping</p>
           </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* Narration */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            <FileText size={12} className="inline mr-1" />Narration / Description
+          </label>
+          <input type="text" value={narration} onChange={e => setNarration(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            placeholder="Brief description of this journal entry…" />
+        </div>
 
-          {/* Narration */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <FileText size={12} className="inline mr-1" />Narration / Description
-            </label>
-            <input type="text" value={narration} onChange={e => setNarration(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
-              placeholder="Brief description of this journal entry…" />
-          </div>
-
-          {/* Totals Strip */}
+        {/* Totals Strip */}
+        <div className="px-6 py-4 border-b border-gray-100">
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 flex items-center gap-2">
               <TrendingUp size={16} className="text-sky-500" />
@@ -235,13 +237,15 @@ const JVModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () =>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Lines */}
+        {/* Lines */}
+        <div className="px-6 py-4 border-b border-gray-100">
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <div className="min-w-[640px]">
                 {/* Lines Header */}
-                <div className="grid bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-2.5 gap-2"
+                <div className="grid bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase px-4 py-2.5 gap-2"
                   style={{ gridTemplateColumns: '32px 90px 1fr 1fr 145px 36px' }}>
                   <span className="text-center text-gray-400">#</span>
                   <span className="text-center">Dr / Cr</span>
@@ -303,7 +307,7 @@ const JVModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () =>
                 })}
 
                 {/* Total Row */}
-                <div className={`grid gap-2 px-4 py-3 items-center min-w-[640px] ${
+                <div className={`grid gap-2 px-4 py-3 items-center ${
                   balanced ? 'bg-emerald-50 border-t border-emerald-200'
                   : totDr > 0 ? 'bg-red-50 border-t border-red-200'
                   : 'bg-gray-50 border-t border-gray-200'}`}
@@ -323,25 +327,19 @@ const JVModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () =>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        {/* Add Line + Post buttons */}
+        <div className="px-6 py-4 flex items-center justify-between">
           <button type="button" onClick={() => setLines(p => [...p, blank()])}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-white text-sm font-medium transition">
             <Plus size={14} /> Add Line
           </button>
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
-              Cancel
-            </button>
-            <button type="button" onClick={save} disabled={saving || !balanced}
-              className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-              {saving
-                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                : <Send size={14} />}
-              {saving ? 'Posting…' : 'Post Journal Voucher'}
-            </button>
-          </div>
+          <button type="button" onClick={save} disabled={saving || !balanced}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
+            {saving
+              ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <Send size={14} />}
+            {saving ? 'Posting…' : 'Post Journal Voucher'}
+          </button>
         </div>
       </div>
     </div>
@@ -441,7 +439,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
 
 const JournalEntries = () => {
   const toast = useToast();
-  const [showForm, setShowForm]         = useState(false);
+  const [view, setView]                 = useState<'list' | 'new'>('list');
   const [entries, setEntries]           = useState<any[]>([]);
   const [loading, setLoading]           = useState(false);
   const [hasLoaded, setHasLoaded]       = useState(false);
@@ -475,6 +473,8 @@ const JournalEntries = () => {
     } catch (e: any) { toast.error(e.response?.data?.message || 'Failed'); }
   };
 
+  if (view === 'new') return <JVForm onBack={() => setView('list')} onSuccess={load} />;
+
   const fmt = (n: number) => Number(n).toLocaleString('en-PK', { minimumFractionDigits: 2 });
   const totalDr = entries.reduce((s, e) => s + Number(e.total_debit || 0), 0);
   const totalCr = entries.reduce((s, e) => s + Number(e.total_credit || 0), 0);
@@ -490,8 +490,8 @@ const JournalEntries = () => {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Double-entry bookkeeping ledger</p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow-sm">
+        <button onClick={() => setView('new')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
           <Plus size={14} /> New Journal Voucher
         </button>
       </div>
@@ -515,7 +515,7 @@ const JournalEntries = () => {
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
         </div>
         <button onClick={() => { setPagination(p => ({ ...p, page: 1 })); load(); }} disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-60 shadow-sm">
+          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-60">
           <Search size={13} /> {loading ? 'Loading…' : 'Search'}
         </button>
         <button onClick={() => { setStatusFilter('all'); setFromDate(localToday); setToDate(localToday); setEntries([]); setHasLoaded(false); }}
@@ -548,23 +548,23 @@ const JournalEntries = () => {
         {!hasLoaded ? (
           <div className="text-center py-16">
             <BookOpen size={44} className="mx-auto mb-3 text-gray-200" />
-            <p className="font-medium text-gray-400">Select filters and click <span className="text-gray-700">Search</span></p>
+            <p className="font-medium text-gray-400">Select filters and click <span className="text-indigo-600">Search</span></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Voucher #</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Description</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-sky-600 uppercase tracking-wide">Debit</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-rose-500 uppercase tracking-wide">Credit</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Actions</th>
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Voucher #</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Debit</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Credit</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr><td colSpan={7} className="py-12 text-center">
                     <div className="animate-spin h-7 w-7 rounded-full border-2 border-gray-200 border-t-indigo-600 mx-auto" />
@@ -596,7 +596,7 @@ const JournalEntries = () => {
                           </button>
                         )}
                         <button onClick={() => setToDelete(e)}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -618,7 +618,6 @@ const JournalEntries = () => {
         )}
       </div>
 
-      {showForm && <JVModal onClose={() => setShowForm(false)} onSuccess={load} />}
       {toDelete && <JvDeleteModal entry={toDelete} onClose={() => setToDelete(null)} onDeleted={load} />}
     </div>
   );
