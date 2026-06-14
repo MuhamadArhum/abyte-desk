@@ -223,13 +223,14 @@ exports.supplierWise = async (req, res) => {
     // Group by payable account (CR side) — always present on every PV
     const purchases = await query(
       `SELECT
-         pv.payable_account_id  AS supplier_id,
-         pv.payable_account_name AS supplier_name,
+         pv.payable_account_id    AS supplier_id,
+         acc.account_name         AS supplier_name,
          COUNT(DISTINCT pv.pv_id) AS pv_count,
          SUM(pv.total_amount)     AS purchased
        FROM inv_purchase_vouchers pv
+       LEFT JOIN accounts acc ON pv.payable_account_id = acc.account_id
        ${pvW}
-       GROUP BY pv.payable_account_id, pv.payable_account_name
+       GROUP BY pv.payable_account_id, acc.account_name
        ORDER BY purchased DESC`, pvP);
 
     let prW = 'WHERE pr.payable_account_id IS NOT NULL';
