@@ -43,7 +43,6 @@ const PurchaseOrders      = lazy(() => import('./pages/inventory/PurchaseOrders'
 const StockTransfers      = lazy(() => import('./pages/inventory/StockTransfers'));
 const StockAdjustments    = lazy(() => import('./pages/inventory/StockAdjustments'));
 const StockAlerts         = lazy(() => import('./pages/inventory/StockAlerts'));
-const Suppliers           = lazy(() => import('./pages/inventory/Suppliers'));
 const InventoryReports    = lazy(() => import('./pages/inventory/InventoryReports'));
 const Bundles             = lazy(() => import('./pages/inventory/Bundles'));
 const ProductVariants     = lazy(() => import('./pages/inventory/ProductVariants'));
@@ -200,7 +199,6 @@ function App() {
                                   <Route path="/stock-transfers"       element={<G k="inventory.transfers"><StockTransfers /></G>} />
                                   <Route path="/stock-adjustments"     element={<G k="inventory.adjustments"><StockAdjustments /></G>} />
                                   <Route path="/stock-alerts"          element={<G k="inventory.alerts"><StockAlerts /></G>} />
-                                  <Route path="/suppliers"             element={<G k="inventory.suppliers"><Suppliers /></G>} />
                                   <Route path="/inventory-reports"     element={<G k="inventory.reports"><InventoryReports /></G>} />
                                   <Route path="/bundles"               element={<G k="inventory.bundles"><Bundles /></G>} />
                                   <Route path="/product-variants"      element={<G k="inventory.variants"><ProductVariants /></G>} />
