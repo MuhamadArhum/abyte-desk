@@ -53,10 +53,6 @@ const IssuanceReports = () => {
             <option value="">All Sections</option>
             {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_name}</option>)}
           </select>
-          <button onClick={fetchReport}
-            className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
-            Run Report
-          </button>
         </div>
       </div>
 

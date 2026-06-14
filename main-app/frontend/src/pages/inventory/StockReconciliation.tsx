@@ -65,7 +65,7 @@ const StockReconciliation = () => {
         </div>
         <button onClick={fetchReport}
           className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700">
-          <RefreshCw size={15} /> Refresh
+          <RefreshCw size={15} /> Reload
         </button>
       </div>
 
@@ -109,7 +109,7 @@ const StockReconciliation = () => {
               <tbody className="divide-y divide-gray-100">
                 {filtered.length === 0 ? (
                   <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">
-                    {data.length === 0 ? 'Click Refresh to load stock data' : 'No products match the filter'}
+                    {data.length === 0 ? 'Click Reload to load stock data' : 'No products match the filter'}
                   </td></tr>
                 ) : filtered.map((row, i) => (
                   <tr key={row.product_id} className="hover:bg-gray-50">

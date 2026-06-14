@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { PackageSearch, ShoppingCart, Hash, Weight, DollarSign } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
@@ -11,25 +11,19 @@ const ItemWisePurchase = () => {
   const [loading, setLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState(localToday());
   const [dateTo, setDateTo]     = useState(localToday());
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [supplierFilter, setSupplierFilter] = useState('');
   const { error } = useToast();
-
-  useEffect(() => {
-    api.get('/suppliers', { params: { limit: 200 } }).then(r => setSuppliers(r.data.data || []));
-  }, []);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get('/inventory-reports/item-wise-purchase', {
-        params: { from_date: dateFrom, to_date: dateTo, supplier_id: supplierFilter || undefined }
+        params: { from_date: dateFrom, to_date: dateTo }
       });
       setData(res.data.data || []);
       setTotals(res.data.totals);
     } catch { error('Failed to load report'); }
     finally { setLoading(false); }
-  }, [dateFrom, dateTo, supplierFilter]);
+  }, [dateFrom, dateTo]);
 
   const fmt    = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
   const fmtAmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -52,18 +46,7 @@ const ItemWisePurchase = () => {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
-        <div className="flex flex-wrap gap-4 items-end">
-          <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchReport} />
-          <select value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">All Suppliers</option>
-            {suppliers.map((s: any) => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
-          </select>
-          <button onClick={fetchReport}
-            className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-            Run Report
-          </button>
-        </div>
+        <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchReport} />
       </div>
 
       {totals && (

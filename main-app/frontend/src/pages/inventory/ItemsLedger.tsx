@@ -94,10 +94,6 @@ const ItemsLedger = () => {
             </div>
           </div>
           <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchLedger} />
-          <button onClick={fetchLedger}
-            className="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700">
-            Load Ledger
-          </button>
         </div>
       </div>
 
