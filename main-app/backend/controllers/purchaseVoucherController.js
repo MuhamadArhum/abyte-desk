@@ -238,8 +238,8 @@ exports.create = async (req, res) => {
 
     const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, branch_id, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, branch_id, supplier_id || null]
+      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, branch_id, supplier_id, purchase_account_id, payable_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, branch_id, supplier_id || null, purchase_account_id || null, payable_account_id || null]
     );
     const pvId = Number(result.insertId);
 
@@ -311,8 +311,8 @@ exports.update = async (req, res) => {
     const total           = taxable + tax_amount;
 
     await conn.query(
-      'UPDATE inv_purchase_vouchers SET voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=?, supplier_id=? WHERE pv_id=?',
-      [voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, supplier_id || null, id]
+      'UPDATE inv_purchase_vouchers SET voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=?, supplier_id=?, purchase_account_id=?, payable_account_id=? WHERE pv_id=?',
+      [voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, supplier_id || null, purchase_account_id || null, payable_account_id || null, id]
     );
 
     await applyStockForItems(conn, parseInt(id), items, voucher_date);
