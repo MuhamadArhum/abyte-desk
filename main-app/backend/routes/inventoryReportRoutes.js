@@ -19,4 +19,12 @@ router.get('/supplier-wise', controller.supplierWise);
 router.get('/issuance-summary', controller.issuanceSummary);
 router.get('/stock-reconciliation', controller.stockReconciliation);
 
+router.get('/slow-moving',          controller.slowMovingStock);
+router.get('/fast-moving',          controller.fastMovingItems);
+router.get('/purchase-vs-issuance', controller.purchaseVsIssuance);
+router.get('/opening-closing',      controller.openingClosingStock);
+router.get('/reorder-alert',        controller.reorderAlert);
+router.get('/category-wise-purchase', controller.categoryWisePurchase);
+router.get('/rate-history',         controller.rateHistory);
+
 module.exports = router;

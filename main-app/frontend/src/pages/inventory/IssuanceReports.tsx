@@ -47,12 +47,15 @@ const IssuanceReports = () => {
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
         <div className="flex flex-wrap gap-4 items-end">
-          <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchReport} />
-          <select value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
-            <option value="">All Sections</option>
-            {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_name}</option>)}
-          </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
+            <select value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="">All Sections</option>
+              {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.section_name}</option>)}
+            </select>
+          </div>
+          <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchReport} standalone={false} />
         </div>
       </div>
 

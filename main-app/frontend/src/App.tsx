@@ -60,6 +60,13 @@ const SupplierWisePurchase= lazy(() => import('./pages/inventory/SupplierWisePur
 const IssuanceReports     = lazy(() => import('./pages/inventory/IssuanceReports'));
 const StockReconciliation = lazy(() => import('./pages/inventory/StockReconciliation'));
 const OpeningStock        = lazy(() => import('./pages/inventory/OpeningStock'));
+const SlowMovingStock     = lazy(() => import('./pages/inventory/SlowMovingStock'));
+const FastMovingItems     = lazy(() => import('./pages/inventory/FastMovingItems'));
+const PurchaseVsIssuance  = lazy(() => import('./pages/inventory/PurchaseVsIssuance'));
+const OpeningClosingStock = lazy(() => import('./pages/inventory/OpeningClosingStock'));
+const ReorderAlert        = lazy(() => import('./pages/inventory/ReorderAlert'));
+const CategoryWisePurchase= lazy(() => import('./pages/inventory/CategoryWisePurchase'));
+const RateHistory         = lazy(() => import('./pages/inventory/RateHistory'));
 const Recipes             = lazy(() => import('./pages/inventory/Recipes'));
 const ProductionOrders    = lazy(() => import('./pages/inventory/ProductionOrders'));
 
@@ -215,6 +222,13 @@ function App() {
                                   <Route path="/supplier-wise-purchase"element={<G k="inventory.reports"><SupplierWisePurchase /></G>} />
                                   <Route path="/issuance-reports"      element={<G k="inventory.reports"><IssuanceReports /></G>} />
                                   <Route path="/stock-reconciliation"  element={<G k="inventory.reports"><StockReconciliation /></G>} />
+                                  <Route path="/slow-moving-stock"     element={<G k="inventory.reports"><SlowMovingStock /></G>} />
+                                  <Route path="/fast-moving-items"     element={<G k="inventory.reports"><FastMovingItems /></G>} />
+                                  <Route path="/purchase-vs-issuance"  element={<G k="inventory.reports"><PurchaseVsIssuance /></G>} />
+                                  <Route path="/opening-closing-stock" element={<G k="inventory.reports"><OpeningClosingStock /></G>} />
+                                  <Route path="/reorder-alert"         element={<G k="inventory.reports"><ReorderAlert /></G>} />
+                                  <Route path="/category-wise-purchase"element={<G k="inventory.reports"><CategoryWisePurchase /></G>} />
+                                  <Route path="/rate-history"          element={<G k="inventory.reports"><RateHistory /></G>} />
                                   <Route path="/opening-stock"         element={<G k="inventory.products"><OpeningStock /></G>} />
                                   <Route path="/recipes"               element={<G k="inventory.products"><Recipes /></G>} />
                                   <Route path="/production-orders"     element={<G k="inventory.products"><ProductionOrders /></G>} />

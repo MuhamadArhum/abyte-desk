@@ -57,6 +57,10 @@ import {
   Factory,
   Shield,
   CheckCircle,
+  Clock,
+  LayoutList,
+  AlertTriangle,
+  History,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -203,11 +207,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Factory,        label: 'Production Orders', path: '/production-orders',  moduleKey: 'inventory.products' },
         // ── REPORTS ──
         { icon: Package,        label: 'REPORTS',           isSection: true } as any,
-        { icon: BookOpen,       label: 'Items Ledger',      path: '/items-ledger',       moduleKey: 'inventory.reports' },
-        { icon: FileStack,      label: 'Item Wise Purchase',path: '/item-wise-purchase', moduleKey: 'inventory.reports' },
-        { icon: Users,          label: 'Supplier Wise',     path: '/supplier-wise-purchase', moduleKey: 'inventory.reports' },
-        { icon: ArrowLeftRight, label: 'Issuance Reports',  path: '/issuance-reports',   moduleKey: 'inventory.reports' },
-        { icon: RefreshCw,      label: 'Stock Reconciliation', path: '/stock-reconciliation', moduleKey: 'inventory.reports' },
+        { icon: BookOpen,       label: 'Items Ledger',        path: '/items-ledger',           moduleKey: 'inventory.reports' },
+        { icon: FileStack,      label: 'Item Wise Purchase',  path: '/item-wise-purchase',     moduleKey: 'inventory.reports' },
+        { icon: Users,          label: 'Supplier Wise',       path: '/supplier-wise-purchase', moduleKey: 'inventory.reports' },
+        { icon: ArrowLeftRight, label: 'Issuance Reports',    path: '/issuance-reports',       moduleKey: 'inventory.reports' },
+        { icon: RefreshCw,      label: 'Stock Reconciliation',path: '/stock-reconciliation',   moduleKey: 'inventory.reports' },
+        { icon: Clock,          label: 'Slow Moving Stock',   path: '/slow-moving-stock',      moduleKey: 'inventory.reports' },
+        { icon: TrendingUp,     label: 'Fast Moving Items',   path: '/fast-moving-items',      moduleKey: 'inventory.reports' },
+        { icon: ArrowLeftRight, label: 'Purchase vs Issuance',path: '/purchase-vs-issuance',   moduleKey: 'inventory.reports' },
+        { icon: LayoutList,     label: 'Opening/Closing Stock',path: '/opening-closing-stock', moduleKey: 'inventory.reports' },
+        { icon: AlertTriangle,  label: 'Reorder Alert',       path: '/reorder-alert',          moduleKey: 'inventory.reports' },
+        { icon: Tag,            label: 'Category Wise Purchase',path: '/category-wise-purchase',moduleKey: 'inventory.reports' },
+        { icon: History,        label: 'Rate History',         path: '/rate-history',           moduleKey: 'inventory.reports' },
       ]
     },
     {

@@ -403,3 +403,322 @@ exports.getLowStock = async (req, res) => {
     res.json({ data: rows.map(r => ({ ...r, stock_quantity: Number(r.stock_quantity), min_stock_level: Number(r.min_stock_level) })) });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
+
+exports.slowMovingStock = async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.unit,
+        c.category_name,
+        COALESCE(inv.available_stock, p.stock_quantity, 0) AS current_stock,
+        COALESCE(p.cost_price, 0) AS cost_price,
+        MAX(act.last_date) AS last_activity_date,
+        DATEDIFF(CURDATE(), MAX(act.last_date)) AS days_inactive
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory inv ON inv.product_id = p.product_id
+      LEFT JOIN (
+        SELECT pvd.product_id, pv.voucher_date AS last_date
+        FROM inv_purchase_voucher_items pvd
+        JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+        UNION ALL
+        SELECT sii.product_id, si.issue_date AS last_date
+        FROM stock_issue_items sii
+        JOIN stock_issues si ON sii.issue_id = si.issue_id
+        UNION ALL
+        SELECT sd.product_id, s.sale_date AS last_date
+        FROM sale_details sd
+        JOIN sales s ON sd.sale_id = s.sale_id
+      ) act ON act.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+        AND COALESCE(inv.available_stock, p.stock_quantity, 0) > 0
+      GROUP BY p.product_id, p.product_name, p.unit, c.category_name, inv.available_stock, p.stock_quantity, p.cost_price
+      HAVING MAX(act.last_date) IS NULL OR DATEDIFF(CURDATE(), MAX(act.last_date)) >= ?
+      ORDER BY CASE WHEN MAX(act.last_date) IS NULL THEN 0 ELSE 1 END ASC, days_inactive DESC
+    `, [days]);
+    res.json({ data: rows.map(r => ({
+      ...r,
+      current_stock: Number(r.current_stock),
+      cost_price: Number(r.cost_price),
+      days_inactive: r.days_inactive !== null ? Number(r.days_inactive) : null,
+      value_at_risk: Number(r.current_stock) * Number(r.cost_price),
+    })) });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.fastMovingItems = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const limit = parseInt(req.query.limit) || 50;
+    const p1 = [], p2 = [];
+    let dw1 = '1=1', dw2 = '1=1';
+    if (from_date) { dw1 += ' AND pv.voucher_date >= ?'; p1.push(from_date); dw2 += ' AND si.issue_date >= ?'; p2.push(from_date); }
+    if (to_date)   { dw1 += ' AND pv.voucher_date <= ?'; p1.push(to_date);   dw2 += ' AND si.issue_date <= ?'; p2.push(to_date); }
+
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.unit, c.category_name,
+        COALESCE(purch.qty, 0) AS total_purchased,
+        COALESCE(purch.pv_count, 0) AS purchase_vouchers,
+        COALESCE(iss.qty, 0) AS total_issued,
+        COALESCE(iss.issue_count, 0) AS issue_transactions,
+        COALESCE(purch.qty, 0) + COALESCE(iss.qty, 0) AS total_movement
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN (
+        SELECT pvd.product_id,
+               SUM(pvd.quantity_received) AS qty,
+               COUNT(DISTINCT pvd.pv_id) AS pv_count
+        FROM inv_purchase_voucher_items pvd
+        JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+        WHERE ${dw1}
+        GROUP BY pvd.product_id
+      ) purch ON purch.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sii.product_id,
+               SUM(sii.quantity) AS qty,
+               COUNT(DISTINCT sii.issue_id) AS issue_count
+        FROM stock_issue_items sii
+        JOIN stock_issues si ON sii.issue_id = si.issue_id
+        WHERE ${dw2}
+        GROUP BY sii.product_id
+      ) iss ON iss.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+        AND (purch.product_id IS NOT NULL OR iss.product_id IS NOT NULL)
+      ORDER BY total_movement DESC
+      LIMIT ?
+    `, [...p1, ...p2, limit]);
+
+    res.json({ data: rows.map(r => ({
+      ...r,
+      total_purchased: Number(r.total_purchased),
+      total_issued: Number(r.total_issued),
+      total_movement: Number(r.total_movement),
+    })) });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.purchaseVsIssuance = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const p1 = [], p2 = [];
+    let dw1 = '1=1', dw2 = '1=1';
+    if (from_date) { dw1 += ' AND pv.voucher_date >= ?'; p1.push(from_date); dw2 += ' AND si.issue_date >= ?'; p2.push(from_date); }
+    if (to_date)   { dw1 += ' AND pv.voucher_date <= ?'; p1.push(to_date);   dw2 += ' AND si.issue_date <= ?'; p2.push(to_date); }
+
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.unit, c.category_name,
+        COALESCE(purch.qty, 0)  AS purchased,
+        COALESCE(purch.amount, 0) AS purchase_amount,
+        COALESCE(iss.qty, 0)    AS issued,
+        COALESCE(iss.amount, 0) AS issue_amount,
+        COALESCE(purch.qty, 0) - COALESCE(iss.qty, 0) AS difference
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN (
+        SELECT pvd.product_id,
+               SUM(pvd.quantity_received) AS qty,
+               SUM(pvd.quantity_received * pvd.unit_price) AS amount
+        FROM inv_purchase_voucher_items pvd
+        JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+        WHERE ${dw1}
+        GROUP BY pvd.product_id
+      ) purch ON purch.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sii.product_id,
+               SUM(sii.quantity) AS qty,
+               SUM(sii.quantity * sii.unit_cost) AS amount
+        FROM stock_issue_items sii
+        JOIN stock_issues si ON sii.issue_id = si.issue_id
+        WHERE ${dw2}
+        GROUP BY sii.product_id
+      ) iss ON iss.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+        AND (purch.product_id IS NOT NULL OR iss.product_id IS NOT NULL)
+      ORDER BY p.product_name
+    `, [...p1, ...p2]);
+
+    res.json({ data: rows.map(r => ({
+      ...r,
+      purchased: Number(r.purchased),
+      purchase_amount: Number(r.purchase_amount),
+      issued: Number(r.issued),
+      issue_amount: Number(r.issue_amount),
+      difference: Number(r.difference),
+    })) });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.openingClosingStock = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const p1 = [], p2 = [], p3 = [];
+    let dw1 = '1=1', dw2 = '1=1', dw3 = '1=1';
+    if (from_date) { dw1 += ' AND pv.voucher_date >= ?'; p1.push(from_date); dw2 += ' AND si.issue_date >= ?'; p2.push(from_date); dw3 += ' AND s.sale_date >= ?'; p3.push(from_date); }
+    if (to_date)   { dw1 += ' AND pv.voucher_date <= ?'; p1.push(to_date);   dw2 += ' AND si.issue_date <= ?'; p2.push(to_date);   dw3 += ' AND s.sale_date <= ?'; p3.push(to_date); }
+
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.unit, c.category_name,
+        COALESCE(inv.available_stock, p.stock_quantity, 0) AS closing_stock,
+        COALESCE(purch.qty, 0)  AS purchases_in_period,
+        COALESCE(iss.qty, 0)    AS issues_in_period,
+        COALESCE(sold.qty, 0)   AS sales_in_period,
+        COALESCE(inv.available_stock, p.stock_quantity, 0)
+          - COALESCE(purch.qty, 0)
+          + COALESCE(iss.qty, 0)
+          + COALESCE(sold.qty, 0) AS opening_stock,
+        COALESCE(p.cost_price, 0) AS cost_price
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory inv ON inv.product_id = p.product_id
+      LEFT JOIN (
+        SELECT pvd.product_id, SUM(pvd.quantity_received) AS qty
+        FROM inv_purchase_voucher_items pvd
+        JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+        WHERE ${dw1} GROUP BY pvd.product_id
+      ) purch ON purch.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sii.product_id, SUM(sii.quantity) AS qty
+        FROM stock_issue_items sii
+        JOIN stock_issues si ON sii.issue_id = si.issue_id
+        WHERE ${dw2} GROUP BY sii.product_id
+      ) iss ON iss.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sd.product_id, SUM(sd.quantity) AS qty
+        FROM sale_details sd
+        JOIN sales s ON sd.sale_id = s.sale_id
+        WHERE ${dw3} GROUP BY sd.product_id
+      ) sold ON sold.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+      ORDER BY p.product_name
+    `, [...p1, ...p2, ...p3]);
+
+    res.json({ data: rows.map(r => ({
+      ...r,
+      closing_stock: Number(r.closing_stock),
+      opening_stock: Number(r.opening_stock),
+      purchases_in_period: Number(r.purchases_in_period),
+      issues_in_period: Number(r.issues_in_period),
+      sales_in_period: Number(r.sales_in_period),
+      cost_price: Number(r.cost_price),
+    })) });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.reorderAlert = async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.unit, c.category_name,
+        COALESCE(inv.available_stock, p.stock_quantity, 0) AS current_stock,
+        COALESCE(p.min_stock_level, 0) AS reorder_level,
+        COALESCE(p.cost_price, 0) AS cost_price,
+        COALESCE(usage30.avg_daily, 0) AS avg_daily_usage,
+        CASE
+          WHEN COALESCE(usage30.avg_daily, 0) > 0
+          THEN ROUND(COALESCE(inv.available_stock, p.stock_quantity, 0) / usage30.avg_daily)
+          ELSE NULL
+        END AS days_remaining
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory inv ON inv.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sii.product_id,
+               SUM(sii.quantity) / 30.0 AS avg_daily
+        FROM stock_issue_items sii
+        JOIN stock_issues si ON sii.issue_id = si.issue_id
+        WHERE si.issue_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY sii.product_id
+      ) usage30 ON usage30.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+        AND COALESCE(inv.available_stock, p.stock_quantity, 0) <= COALESCE(p.min_stock_level, 0)
+      ORDER BY current_stock ASC
+    `);
+
+    res.json({ data: rows.map(r => ({
+      ...r,
+      current_stock: Number(r.current_stock),
+      reorder_level: Number(r.reorder_level),
+      cost_price: Number(r.cost_price),
+      avg_daily_usage: Number(r.avg_daily_usage),
+      days_remaining: r.days_remaining !== null ? Number(r.days_remaining) : null,
+    })) });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.categoryWisePurchase = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const params = [];
+    let dateW = '1=1';
+    if (from_date) { dateW += ' AND pv.voucher_date >= ?'; params.push(from_date); }
+    if (to_date)   { dateW += ' AND pv.voucher_date <= ?'; params.push(to_date); }
+
+    const rows = await query(`
+      SELECT
+        c.category_id, c.category_name,
+        COUNT(DISTINCT p.product_id) AS product_count,
+        COUNT(DISTINCT pv.pv_id)    AS voucher_count,
+        SUM(pvd.quantity_received)  AS total_qty,
+        SUM(pvd.quantity_received * pvd.unit_price) AS total_amount
+      FROM categories c
+      JOIN products p ON p.category_id = c.category_id AND p.is_active = 1
+      JOIN inv_purchase_voucher_items pvd ON pvd.product_id = p.product_id
+      JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+      WHERE ${dateW}
+      GROUP BY c.category_id, c.category_name
+      ORDER BY total_amount DESC
+    `, params);
+
+    const grand_total = rows.reduce((s, r) => s + Number(r.total_amount), 0);
+    res.json({ data: rows.map(r => ({
+      ...r,
+      product_count: Number(r.product_count),
+      voucher_count: Number(r.voucher_count),
+      total_qty: Number(r.total_qty),
+      total_amount: Number(r.total_amount),
+    })), grand_total });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+exports.rateHistory = async (req, res) => {
+  try {
+    const { product_id, from_date, to_date } = req.query;
+    if (!product_id) return res.status(400).json({ message: 'product_id is required' });
+    const params = [product_id];
+    let dateW = '';
+    if (from_date) { dateW += ' AND pv.voucher_date >= ?'; params.push(from_date); }
+    if (to_date)   { dateW += ' AND pv.voucher_date <= ?'; params.push(to_date); }
+
+    const [product] = await query('SELECT product_name, unit FROM products WHERE product_id = ?', [product_id]);
+
+    const rows = await query(`
+      SELECT
+        pv.voucher_date, pv.pv_number,
+        COALESCE(acc.account_name, 'Unknown') AS supplier_name,
+        pvd.quantity_received AS qty,
+        pvd.unit_price AS rate,
+        pvd.quantity_received * pvd.unit_price AS amount
+      FROM inv_purchase_voucher_items pvd
+      JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+      LEFT JOIN journal_entries je ON je.reference_type = 'purchase_voucher' AND je.reference_id = pv.pv_id
+      LEFT JOIN journal_entry_lines jel ON jel.entry_id = je.entry_id AND jel.credit > 0
+      LEFT JOIN accounts acc ON acc.account_id = COALESCE(pv.payable_account_id, jel.account_id)
+      WHERE pvd.product_id = ? ${dateW}
+      ORDER BY pv.voucher_date DESC, pv.pv_id DESC
+    `, params);
+
+    res.json({
+      product,
+      data: rows.map(r => ({
+        ...r,
+        qty: Number(r.qty),
+        rate: Number(r.rate),
+        amount: Number(r.amount),
+      }))
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
