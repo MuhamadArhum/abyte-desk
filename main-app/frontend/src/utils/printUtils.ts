@@ -139,6 +139,8 @@ export const printGRN = (voucher: any) => {
         </tbody>
       </table>
       ${voucher.notes ? `<p class="notes">Notes: ${voucher.notes}</p>` : ''}
+
+      <br><br><br>
       <div class="sig-row">
         <div class="sig-box"><div class="sig-line">Received By</div></div>
         <div class="sig-box"><div class="sig-line">Store Keeper</div></div>
