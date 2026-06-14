@@ -26,3 +26,8 @@ Reports main Kuch Changes krni hain Inventory Module main
 3: Item Wise Purchase and issuance ko bhi polish kro or upgrade kro 
 4: Inventory Module main Jo Suppliers wala sub module hai usko bhi set kro us main sary suppliers aany chaye 
 5; Reports main agr koi mazeed koi report ban skti hai to wo bhi mujy btao
+
+
+
+
+

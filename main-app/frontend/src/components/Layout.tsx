@@ -191,7 +191,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: ClipboardList,  label: 'Purchase Orders',   path: '/purchase-orders',    moduleKey: 'inventory.purchases' },
         { icon: ArrowDownToLine,label: 'Purchase Voucher',  path: '/purchase-voucher',   moduleKey: 'inventory.purchases' },
         { icon: ArrowUpFromLine,label: 'Purchase Return',   path: '/purchase-return',    moduleKey: 'inventory.purchases' },
-        { icon: Users,          label: 'Suppliers',         path: '/suppliers',          moduleKey: 'inventory.suppliers' },
         // ── ISSUANCE ──
         { icon: Package,        label: 'ISSUANCE',          isSection: true } as any,
         { icon: ArrowUpFromLine,label: 'Stock Issue',       path: '/stock-issue',        moduleKey: 'inventory.adjustments' },
