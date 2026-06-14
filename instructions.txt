@@ -18,12 +18,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-1:https://erp.abytesol.com/items-ledger iss page route main kuch UI changes krny hain : Load Ledger ka Button ka Koi Faida ni Apply Wala Button Hi Sara Kaam kr rha hai to load Ledger wala Button Remove kro or Product Search Bar Ko Align kro Proper 
-2:https://erp.abytesol.com/item-wise-purchase iss page route main UI main Changes krni hain : Run report Wala Button or supplier filter ko remove kro Yahan Sy 
-3: https://erp.abytesol.com/supplier-wise-purchase iss page main bhi jo run report wala button hai usko remove kro 
-4: https://erp.abytesol.com/issuance-reports iss page main bhi run report wala button khatam kro 
-
-
-
-
-1: https://erp.abytesol.com/stock-reconciliation iss page main refresh Waly Button ko Reload sy Rename kro 

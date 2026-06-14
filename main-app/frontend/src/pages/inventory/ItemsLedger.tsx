@@ -71,29 +71,29 @@ const ItemsLedger = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[260px] max-w-sm" ref={searchRef}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Product *</label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-              <input type="text" value={productSearch} onChange={e => searchProducts(e.target.value)}
-                placeholder="Search product by name or barcode..."
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
-              {productResults.length > 0 && (
-                <div className="absolute z-20 left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                  {productResults.map(p => (
-                    <button key={p.product_id} onClick={() => selectProduct(p)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-purple-50 text-sm border-b last:border-0 flex items-center justify-between">
-                      <span className="font-medium text-gray-800">{p.product_name}</span>
-                      {p.barcode && <span className="text-gray-400 text-xs ml-2">{p.barcode}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5 flex flex-wrap gap-4 items-center">
+        <div className="relative min-w-[260px] max-w-sm flex-1" ref={searchRef}>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Product *</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input type="text" value={productSearch} onChange={e => searchProducts(e.target.value)}
+              placeholder="Search product by name or barcode..."
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
+            {productResults.length > 0 && (
+              <div className="absolute z-20 left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                {productResults.map(p => (
+                  <button key={p.product_id} onClick={() => selectProduct(p)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-purple-50 text-sm border-b last:border-0 flex items-center justify-between">
+                    <span className="font-medium text-gray-800">{p.product_name}</span>
+                    {p.barcode && <span className="text-gray-400 text-xs ml-2">{p.barcode}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchLedger} />
+        </div>
+        <div className="flex flex-wrap gap-3 items-end pt-5">
+          <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onApply={fetchLedger} standalone={false} />
         </div>
       </div>
 
