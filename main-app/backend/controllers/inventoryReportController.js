@@ -215,26 +215,46 @@ exports.itemWisePurchase = async (req, res) => {
 exports.supplierWise = async (req, res) => {
   try {
     const { from_date, to_date } = req.query;
-    let pvW = 'WHERE 1=1', prW = 'WHERE pr.supplier_id IS NOT NULL';
-    const pvP = [], prP = [];
-    if (from_date) { pvW += ' AND pv.voucher_date >= ?'; pvP.push(from_date); prW += ' AND pr.return_date >= ?'; prP.push(from_date); }
-    if (to_date)   { pvW += ' AND pv.voucher_date <= ?'; pvP.push(to_date);   prW += ' AND pr.return_date <= ?';  prP.push(to_date); }
+    let pvW = 'WHERE pv.payable_account_id IS NOT NULL';
+    const pvP = [];
+    if (from_date) { pvW += ' AND pv.voucher_date >= ?'; pvP.push(from_date); }
+    if (to_date)   { pvW += ' AND pv.voucher_date <= ?'; pvP.push(to_date); }
+
+    // Group by payable account (CR side) — always present on every PV
     const purchases = await query(
-      'SELECT s.supplier_id, s.supplier_name, COUNT(DISTINCT pv.pv_id) as pv_count, SUM(pv.total_amount) as purchased' +
-      ' FROM inv_purchase_vouchers pv' +
-      ' JOIN suppliers s ON pv.supplier_id = s.supplier_id' +
-      ' ' + pvW + ' GROUP BY s.supplier_id, s.supplier_name ORDER BY purchased DESC', pvP);
-    const rets = await query(
-      'SELECT s.supplier_id, SUM(pr.total_amount) as returned' +
-      ' FROM purchase_returns pr' +
-      ' JOIN suppliers s ON pr.supplier_id = s.supplier_id' +
-      ' ' + prW + ' GROUP BY s.supplier_id', prP);
+      `SELECT
+         pv.payable_account_id  AS supplier_id,
+         pv.payable_account_name AS supplier_name,
+         COUNT(DISTINCT pv.pv_id) AS pv_count,
+         SUM(pv.total_amount)     AS purchased
+       FROM inv_purchase_vouchers pv
+       ${pvW}
+       GROUP BY pv.payable_account_id, pv.payable_account_name
+       ORDER BY purchased DESC`, pvP);
+
+    let prW = 'WHERE pr.payable_account_id IS NOT NULL';
+    const prP = [];
+    if (from_date) { prW += ' AND pr.return_date >= ?'; prP.push(from_date); }
+    if (to_date)   { prW += ' AND pr.return_date <= ?'; prP.push(to_date); }
+
+    // Returns grouped by payable_account_id (if the column exists, else skip)
+    let rets = [];
+    try {
+      rets = await query(
+        `SELECT pr.payable_account_id AS supplier_id, SUM(pr.total_amount) AS returned
+         FROM purchase_returns pr
+         ${prW}
+         GROUP BY pr.payable_account_id`, prP);
+    } catch (_) { /* purchase_returns may not have payable_account_id yet */ }
+
     const retMap = {};
     rets.forEach(r => { retMap[r.supplier_id] = Number(r.returned); });
+
     res.json({ data: purchases.map(p => ({
-      ...p, purchased: Number(p.purchased),
-      returned: retMap[p.supplier_id] || 0,
-      net: Number(p.purchased) - (retMap[p.supplier_id] || 0),
+      ...p,
+      purchased: Number(p.purchased),
+      returned:  retMap[p.supplier_id] || 0,
+      net:       Number(p.purchased) - (retMap[p.supplier_id] || 0),
     })) });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
