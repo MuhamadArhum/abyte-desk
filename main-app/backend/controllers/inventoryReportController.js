@@ -220,13 +220,13 @@ exports.supplierWise = async (req, res) => {
     if (from_date) { dateW += ' AND pv.voucher_date >= ?'; params.push(from_date); }
     if (to_date)   { dateW += ' AND pv.voucher_date <= ?'; params.push(to_date); }
 
-    // Get all purchase vouchers, group by the CR (payable) account from journal entries
-    const purchases = await query(`
+    // Get all PVs with their payable account (via JE CR lines)
+    const pvRows = await query(`
       SELECT
-        jel.account_id             AS supplier_id,
-        acc.account_name           AS supplier_name,
-        COUNT(DISTINCT pv.pv_id)   AS pv_count,
-        SUM(jel.credit)            AS purchased
+        pv.pv_id, pv.pv_number, pv.voucher_date,
+        pv.total_amount, pv.shipping_cost, pv.extra_charges, pv.other_charges
+        ,jel.account_id  AS payable_account_id
+        ,acc.account_name AS supplier_name
       FROM inv_purchase_vouchers pv
       JOIN journal_entries je
         ON je.reference_type = 'purchase_voucher' AND je.reference_id = pv.pv_id
@@ -235,20 +235,85 @@ exports.supplierWise = async (req, res) => {
       JOIN accounts acc
         ON acc.account_id = jel.account_id
       WHERE 1=1 ${dateW}
-      GROUP BY jel.account_id, acc.account_name
-      ORDER BY purchased DESC
+      ORDER BY acc.account_name, pv.voucher_date, pv.pv_id
     `, params);
 
-    res.json({
-      data: purchases.map(p => ({
-        supplier_id:   p.supplier_id,
-        supplier_name: p.supplier_name,
-        pv_count:      Number(p.pv_count),
-        purchased:     Number(p.purchased),
-        returned:      0,
-        net:           Number(p.purchased),
-      }))
+    if (!pvRows.length) return res.json({ data: [], grand_total: 0 });
+
+    const pvIds = pvRows.map(r => r.pv_id);
+    const placeholders = pvIds.map(() => '?').join(',');
+
+    const itemRows = await query(`
+      SELECT
+        pvd.pv_id,
+        p.product_name,
+        p.unit,
+        pvd.quantity_received AS qty,
+        pvd.unit_price        AS rate,
+        (pvd.quantity_received * pvd.unit_price) AS amount
+      FROM inv_purchase_voucher_items pvd
+      JOIN products p ON pvd.product_id = p.product_id
+      WHERE pvd.pv_id IN (${placeholders})
+      ORDER BY pvd.item_id
+    `, pvIds);
+
+    // Map items by pv_id
+    const itemsByPv = {};
+    itemRows.forEach(r => {
+      if (!itemsByPv[r.pv_id]) itemsByPv[r.pv_id] = [];
+      itemsByPv[r.pv_id].push(r);
     });
+
+    // Group PVs by payable account
+    const supplierMap = {};
+    pvRows.forEach(pv => {
+      const key = pv.payable_account_id;
+      if (!supplierMap[key]) {
+        supplierMap[key] = {
+          supplier_id: key,
+          supplier_name: pv.supplier_name,
+          pv_count: 0,
+          total_amount: 0,
+          items: [],
+        };
+      }
+      const s = supplierMap[key];
+      s.pv_count++;
+      s.total_amount += Number(pv.total_amount);
+
+      (itemsByPv[pv.pv_id] || []).forEach(item => {
+        s.items.push({
+          product_name: item.product_name,
+          unit:         item.unit  || '',
+          qty:          Number(item.qty),
+          rate:         Number(item.rate),
+          amount:       Number(item.amount),
+          carriage:     0,
+          net_amount:   Number(item.amount),
+        });
+      });
+
+      // Add carriage row if PV has shipping/extra/other charges
+      const carriage = Number(pv.shipping_cost || 0) + Number(pv.extra_charges || 0) + Number(pv.other_charges || 0);
+      if (carriage > 0) {
+        s.items.push({
+          product_name: `Carriage / Shipping (${pv.pv_number})`,
+          unit: '', qty: null, rate: null,
+          amount: 0, carriage, net_amount: carriage,
+          is_carriage: true,
+        });
+      }
+    });
+
+    const data = Object.values(supplierMap).sort((a, b) =>
+      a.supplier_name.localeCompare(b.supplier_name)
+    );
+
+    const grand_total = data.reduce((s, r) => s + r.total_amount, 0);
+    const grand_items = data.reduce((s, r) => s + r.items.filter(i => !i.is_carriage).reduce((a, b) => a + b.amount, 0), 0);
+    const grand_carriage = data.reduce((s, r) => s + r.items.filter(i => i.is_carriage).reduce((a, b) => a + b.carriage, 0), 0);
+
+    res.json({ data, grand_total, grand_items, grand_carriage });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
