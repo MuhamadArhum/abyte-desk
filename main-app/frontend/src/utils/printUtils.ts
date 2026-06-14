@@ -84,6 +84,8 @@ export const printGRN = (voucher: any) => {
       || voucher.payable_account_name
       || '—';
 
+    const totalQty = (voucher.items || []).reduce((s: number, i: any) => s + Number(i.quantity_received || 0), 0);
+
     const rows = (voucher.items || []).map((item: any) => `
       <tr>
         <td>${item.product_name}</td>
@@ -137,6 +139,12 @@ export const printGRN = (voucher: any) => {
         </tr></thead>
         <tbody>
           ${rows}
+          <tr style="background:#f0f9ff;font-weight:bold;border-top:2px solid #bbb;">
+            <td>Total</td>
+            <td class="text-right">${fmt3(totalQty)}</td>
+            <td></td>
+            <td></td>
+          </tr>
           ${chargeRows}
           <tr class="total-row">
             <td colspan="3" class="text-right">Grand Total</td>

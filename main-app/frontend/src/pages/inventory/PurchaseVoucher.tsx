@@ -114,12 +114,35 @@ const PurchaseVoucher = () => {
   const [formDiscountPct, setFormDiscountPct] = useState<number>(0);
   const [formTaxPct, setFormTaxPct]           = useState<number>(0);
   // Two accounts: DR (purchase) and CR (supplier)
-  const [formPurchaseAccountId, setFormPurchaseAccountId] = useState('');
+  const [formPurchaseAccountId, setFormPurchaseAccountId] = useState(() => localStorage.getItem('pv_last_purchase_account') || '');
   const [formSupplierAccountId, setFormSupplierAccountId] = useState('');
   const [items, setItems]           = useState<VoucherItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
+  const [productSearchHi, setProductSearchHi] = useState(0);
+  const [lastAddedProductId, setLastAddedProductId] = useState<number | null>(null);
   const [saving, setSaving]         = useState(false);
+
+  // Refs for keyboard navigation
+  const productSearchRef = useRef<HTMLInputElement>(null);
+  const itemQtyRefs   = useRef<Record<number, HTMLInputElement>>({});
+  const itemPriceRefs = useRef<Record<number, HTMLInputElement>>({});
+
+  // Save last purchase account to localStorage whenever it changes
+  useEffect(() => {
+    if (formPurchaseAccountId) localStorage.setItem('pv_last_purchase_account', formPurchaseAccountId);
+  }, [formPurchaseAccountId]);
+
+  // Reset dropdown highlight when results change
+  useEffect(() => { setProductSearchHi(0); }, [productResults]);
+
+  // Focus qty field after new item is added
+  useEffect(() => {
+    if (lastAddedProductId !== null) {
+      const el = itemQtyRefs.current[lastAddedProductId];
+      if (el) { el.focus(); el.select(); setLastAddedProductId(null); }
+    }
+  }, [items, lastAddedProductId]);
 
   const fetchVouchers = useCallback(async () => {
     setLoading(true);
@@ -165,7 +188,8 @@ const PurchaseVoucher = () => {
   const addItem = (p: Product) => {
     if (items.find(i => i.product_id === p.product_id)) return;
     setItems(prev => [...prev, { product_id: p.product_id, product_name: p.product_name, quantity_received: 1, unit_price: Number(p.cost_price || 0) }]);
-    setProductSearch(''); setProductResults([]);
+    setProductSearch(''); setProductResults([]); setProductSearchHi(0);
+    setLastAddedProductId(p.product_id);
   };
 
   const updateItem = (id: number, field: 'quantity_received' | 'unit_price', val: number) =>
@@ -176,8 +200,10 @@ const PurchaseVoucher = () => {
     setFormDate(localToday()); setFormNotes('');
     setFormShipping(0); setFormExtra(0); setFormOther(0);
     setFormDiscountPct(0); setFormTaxPct(0);
-    setFormPurchaseAccountId(''); setFormSupplierAccountId('');
-    setItems([]); setProductSearch(''); setProductResults([]);
+    setFormPurchaseAccountId(localStorage.getItem('pv_last_purchase_account') || '');
+    setFormSupplierAccountId('');
+    setItems([]); setProductSearch(''); setProductResults([]); setProductSearchHi(0);
+    setLastAddedProductId(null);
     setEditingPV(null);
   };
 
@@ -385,15 +411,24 @@ const PurchaseVoucher = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Add Products</label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                    <input type="text" value={productSearch} onChange={e => searchProducts(e.target.value)}
+                    <input
+                      ref={productSearchRef}
+                      type="text" value={productSearch}
+                      onChange={e => searchProducts(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'ArrowDown') { e.preventDefault(); setProductSearchHi(h => Math.min(h + 1, productResults.length - 1)); }
+                        else if (e.key === 'ArrowUp') { e.preventDefault(); setProductSearchHi(h => Math.max(h - 1, 0)); }
+                        else if (e.key === 'Enter' && productResults.length > 0) { e.preventDefault(); addItem(productResults[productSearchHi]); }
+                        else if (e.key === 'Escape') { setProductResults([]); setProductSearch(''); }
+                      }}
                       placeholder="Search by name or barcode…"
                       className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
                   </div>
                   {productResults.length > 0 && (
                     <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {productResults.map(p => (
+                      {productResults.map((p, idx) => (
                         <button key={p.product_id} onClick={() => addItem(p)}
-                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-sm border-b last:border-0">
+                          className={`w-full text-left px-4 py-2.5 text-sm border-b last:border-0 ${idx === productSearchHi ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50'}`}>
                           {p.product_name}
                           {p.barcode && <span className="text-gray-400 ml-2 text-xs">{p.barcode}</span>}
                         </button>
@@ -421,12 +456,16 @@ const PurchaseVoucher = () => {
                         <td className="px-4 py-2.5 font-medium text-gray-800">{item.product_name}</td>
                         <td className="px-4 py-2.5">
                           <input type="number" min="0.001" step="0.001" value={item.quantity_received}
+                            ref={el => { if (el) itemQtyRefs.current[item.product_id] = el; }}
                             onChange={e => updateItem(item.product_id, 'quantity_received', parseFloat(e.target.value) || 0)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); itemPriceRefs.current[item.product_id]?.focus(); } }}
                             className="w-full text-right border border-gray-200 rounded px-2 py-1 text-sm outline-none" />
                         </td>
                         <td className="px-4 py-2.5">
                           <input type="number" min="0" step="0.01" value={item.unit_price}
+                            ref={el => { if (el) itemPriceRefs.current[item.product_id] = el; }}
                             onChange={e => updateItem(item.product_id, 'unit_price', parseFloat(e.target.value) || 0)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); productSearchRef.current?.focus(); } }}
                             className="w-full text-right border border-gray-200 rounded px-2 py-1 text-sm outline-none" />
                         </td>
                         <td className="px-4 py-2.5 text-right font-medium">{fmt(item.quantity_received * item.unit_price)}</td>

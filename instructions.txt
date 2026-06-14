@@ -14,4 +14,9 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+Purchase Voucher Form main Kuch Changes krny hain
+1: From jab Open HOta hai to sbse phly user Purhcase account select krta hai usko Aik Kaam Kro Last Time user jo account Select krta hai usi Ko next Time Save Kro 
+2: Supplier account har dafa user khhud select kry ga 
+3: User Jab Form main Sy Product Search krta hai to Arrow button sy nichy jana chaye for product selection or jab kis product py la kr enter button dbaye to wo product nichy add ho jani chaye or cursor direct qty receievd feild main jana chaye then enter press krny py unit price py  then dobara product search main jana chaye 
+
 
