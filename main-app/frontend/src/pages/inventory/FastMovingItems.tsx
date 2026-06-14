@@ -39,7 +39,7 @@ const FastMovingItems = () => {
         <p className="text-sm text-gray-500 mt-0.5">Products with highest purchase and issuance activity</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5 flex flex-wrap gap-4 items-center">
         <DateRangeFilter
           dateFrom={dateFrom} dateTo={dateTo}
           onFromChange={setDateFrom} onToChange={setDateTo}

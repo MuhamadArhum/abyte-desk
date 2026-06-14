@@ -9,6 +9,12 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+1:https://erp.abytesol.com/category-wise-purchase iska filter and search bar ko thik kro baqi module ki trha kro phly walo ki trha
+2: https://erp.abytesol.com/reorder-alert iss main Print ka Button and Excel main convert krna ka option do 
+3: https://erp.abytesol.com/opening-closing-stock iska bhi filter wala section thik kro 
+4: https://erp.abytesol.com/purchase-vs-issuance iska bhi filter wala section thik kro 
+5: https://erp.abytesol.com/fast-moving-items iska bhi filter wala section thik kro 
+
 
 
 

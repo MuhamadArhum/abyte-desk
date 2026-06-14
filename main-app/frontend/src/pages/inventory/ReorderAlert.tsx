@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Printer, Download } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
 
@@ -20,6 +20,29 @@ const ReorderAlert = () => {
   useEffect(() => { fetchReport(); }, []);
 
   const fmt3 = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+  const exportCSV = () => {
+    const headers = ['#', 'Product', 'Category', 'Unit', 'Current Stock', 'Reorder Level', 'Avg Daily Usage', 'Days Remaining', 'Status'];
+    const getStatus = (row: any) => {
+      const stock = Number(row.current_stock || 0);
+      const days  = row.days_remaining !== null ? Number(row.days_remaining) : null;
+      if (stock <= 0) return 'Out of Stock';
+      if (days !== null && days < 3) return 'Critical';
+      return 'Low';
+    };
+    const rows = data.map((row, i) => [
+      i + 1, row.product_name, row.category_name || '', row.unit || '',
+      Number(row.current_stock || 0), Number(row.reorder_level || 0),
+      Number(row.avg_daily_usage || 0),
+      row.days_remaining !== null ? Number(row.days_remaining) : 'N/A',
+      getStatus(row)
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href = url; a.download = 'reorder-alert.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const belowReorder = data.filter(r => Number(r.current_stock || 0) <= Number(r.reorder_level || 0)).length;
   const outOfStock   = data.filter(r => Number(r.current_stock || 0) <= 0).length;
@@ -51,10 +74,20 @@ const ReorderAlert = () => {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Products at or below reorder level</p>
         </div>
-        <button onClick={fetchReport} disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Reload
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} disabled={loading || data.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
+            <Download size={14} /> Export CSV
+          </button>
+          <button onClick={() => window.print()} disabled={loading || data.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
+            <Printer size={14} /> Print
+          </button>
+          <button onClick={fetchReport} disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Reload
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-5">
