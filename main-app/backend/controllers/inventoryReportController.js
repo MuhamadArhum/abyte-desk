@@ -215,7 +215,7 @@ exports.itemWisePurchase = async (req, res) => {
 exports.supplierWise = async (req, res) => {
   try {
     const { from_date, to_date } = req.query;
-    let pvW = 'WHERE pv.supplier_id IS NOT NULL', prW = 'WHERE pr.supplier_id IS NOT NULL';
+    let pvW = 'WHERE 1=1', prW = 'WHERE pr.supplier_id IS NOT NULL';
     const pvP = [], prP = [];
     if (from_date) { pvW += ' AND pv.voucher_date >= ?'; pvP.push(from_date); prW += ' AND pr.return_date >= ?'; prP.push(from_date); }
     if (to_date)   { pvW += ' AND pv.voucher_date <= ?'; pvP.push(to_date);   prW += ' AND pr.return_date <= ?';  prP.push(to_date); }

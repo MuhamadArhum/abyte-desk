@@ -168,14 +168,16 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const [pv] = await query(
-      `SELECT pv.*, u.name as created_by_name, po.po_number, s.supplier_name,
+      `SELECT pv.*, u.name as created_by_name, po.po_number,
+              COALESCE(s.supplier_name, pos.supplier_name) as supplier_name,
               puracc.account_name as purchase_account_name,
               puracc.account_code as purchase_account_code,
               suracc.account_name as payable_account_name,
               suracc.account_code as payable_account_code
        FROM inv_purchase_vouchers pv
        LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
-       LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
+       LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
+       LEFT JOIN suppliers pos ON po.supplier_id = pos.supplier_id
        JOIN users u ON pv.created_by = u.user_id
        LEFT JOIN accounts puracc ON pv.purchase_account_id = puracc.account_id
        LEFT JOIN accounts suracc ON pv.payable_account_id = suracc.account_id
@@ -211,7 +213,7 @@ exports.getPOItems = async (req, res) => {
 exports.create = async (req, res) => {
   const conn = await getConnection();
   try {
-    const { po_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id } = req.body;
+    const { po_id, voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id, supplier_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
     }
@@ -236,8 +238,8 @@ exports.create = async (req, res) => {
 
     const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, branch_id]
+      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, branch_id, supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, branch_id, supplier_id || null]
     );
     const pvId = Number(result.insertId);
 
@@ -279,7 +281,7 @@ exports.update = async (req, res) => {
   const conn = await getConnection();
   try {
     const { id } = req.params;
-    const { voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id } = req.body;
+    const { voucher_date, notes, items, shipping_cost, extra_charges, other_charges, discount_percent, tax_percent, purchase_account_id, payable_account_id, supplier_id } = req.body;
     if (!voucher_date || !items?.length) {
       return res.status(400).json({ message: 'voucher_date and items are required' });
     }
@@ -309,8 +311,8 @@ exports.update = async (req, res) => {
     const total           = taxable + tax_amount;
 
     await conn.query(
-      'UPDATE inv_purchase_vouchers SET voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=? WHERE pv_id=?',
-      [voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, id]
+      'UPDATE inv_purchase_vouchers SET voucher_date=?, total_amount=?, shipping_cost=?, extra_charges=?, other_charges=?, discount_percent=?, discount_amount=?, tax_percent=?, tax_amount=?, notes=?, supplier_id=? WHERE pv_id=?',
+      [voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, supplier_id || null, id]
     );
 
     await applyStockForItems(conn, parseInt(id), items, voucher_date);

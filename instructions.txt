@@ -20,3 +20,9 @@ Purchase Voucher Form main Kuch Changes krny hain
 3: User Jab Form main Sy Product Search krta hai to Arrow button sy nichy jana chaye for product selection or jab kis product py la kr enter button dbaye to wo product nichy add ho jani chaye or cursor direct qty receievd feild main jana chaye then enter press krny py unit price py  then dobara product search main jana chaye 
 
 
+Reports main Kuch Changes krni hain Inventory Module main 
+1: Supplier Wise Purchase Show Ni ho rahi Check kro isko proper configure kro 
+2: Item Ledger Ka UI Bhi Proper Thik kro 
+3: Item Wise Purchase and issuance ko bhi polish kro or upgrade kro 
+4: Inventory Module main Jo Suppliers wala sub module hai usko bhi set kro us main sary suppliers aany chaye 
+5; Reports main agr koi mazeed koi report ban skti hai to wo bhi mujy btao

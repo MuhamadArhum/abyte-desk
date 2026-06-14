@@ -91,6 +91,7 @@ interface VoucherItem { product_id: number; product_name: string; quantity_recei
 const PurchaseVoucher = () => {
   const [vouchers, setVouchers]   = useState<any[]>([]);
   const [accounts, setAccounts]   = useState<any[]>([]);   // Level 4 accounts
+  const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
   const [editingPV, setEditingPV] = useState<any>(null);
@@ -116,6 +117,7 @@ const PurchaseVoucher = () => {
   // Two accounts: DR (purchase) and CR (supplier)
   const [formPurchaseAccountId, setFormPurchaseAccountId] = useState(() => localStorage.getItem('pv_last_purchase_account') || '');
   const [formSupplierAccountId, setFormSupplierAccountId] = useState('');
+  const [formSupplierId, setFormSupplierId]               = useState('');
   const [items, setItems]           = useState<VoucherItem[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [productResults, setProductResults] = useState<Product[]>([]);
@@ -162,6 +164,8 @@ const PurchaseVoucher = () => {
       .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)));
     api.get('/purchase-orders', { params: { limit: 200 } })
       .then(r => setPOs((r.data.data || []).filter((p: any) => p.status !== 'received' && p.status !== 'cancelled')));
+    api.get('/suppliers', { params: { limit: 500, is_active: 1 } })
+      .then(r => setSuppliers(r.data.data || []));
   }, []);
   useEffect(() => { fetchVouchers(); }, [fetchVouchers]);
 
@@ -201,7 +205,7 @@ const PurchaseVoucher = () => {
     setFormShipping(0); setFormExtra(0); setFormOther(0);
     setFormDiscountPct(0); setFormTaxPct(0);
     setFormPurchaseAccountId(localStorage.getItem('pv_last_purchase_account') || '');
-    setFormSupplierAccountId('');
+    setFormSupplierAccountId(''); setFormSupplierId('');
     setItems([]); setProductSearch(''); setProductResults([]); setProductSearchHi(0);
     setLastAddedProductId(null);
     setEditingPV(null);
@@ -224,6 +228,7 @@ const PurchaseVoucher = () => {
       setFormTaxPct(Number(data.tax_percent) || 0);
       setFormPurchaseAccountId(data.purchase_account_id ? String(data.purchase_account_id) : '');
       setFormSupplierAccountId(data.payable_account_id ? String(data.payable_account_id) : '');
+      setFormSupplierId(data.supplier_id ? String(data.supplier_id) : '');
       setItems((data.items || []).map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
@@ -260,6 +265,7 @@ const PurchaseVoucher = () => {
         tax_percent: formTaxPct,
         purchase_account_id: formPurchaseAccountId,
         payable_account_id: formSupplierAccountId,
+        supplier_id: formSupplierId || undefined,
         items,
       };
       if (!editingPV && mode === 'po' && selectedPO) payload.po_id = selectedPO;
@@ -391,8 +397,16 @@ const PurchaseVoucher = () => {
                 </div>
               </div>
 
-              {/* Date & Notes */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Supplier + Date + Notes */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                  <select value={formSupplierId} onChange={e => setFormSupplierId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    <option value="">— Select Supplier —</option>
+                    {suppliers.map((s: any) => <option key={s.supplier_id} value={s.supplier_id}>{s.supplier_name}</option>)}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date *</label>
                   <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
