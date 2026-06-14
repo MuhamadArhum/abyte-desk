@@ -168,13 +168,14 @@ exports.getAll = async (req, res) => {
 exports.getById = async (req, res) => {
   try {
     const [pv] = await query(
-      `SELECT pv.*, u.name as created_by_name, po.po_number,
+      `SELECT pv.*, u.name as created_by_name, po.po_number, s.supplier_name,
               puracc.account_name as purchase_account_name,
               puracc.account_code as purchase_account_code,
               suracc.account_name as payable_account_name,
               suracc.account_code as payable_account_code
        FROM inv_purchase_vouchers pv
        LEFT JOIN purchase_orders po ON pv.po_id = po.po_id
+       LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
        JOIN users u ON pv.created_by = u.user_id
        LEFT JOIN accounts puracc ON pv.purchase_account_id = puracc.account_id
        LEFT JOIN accounts suracc ON pv.payable_account_id = suracc.account_id

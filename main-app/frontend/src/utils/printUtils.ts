@@ -71,6 +71,19 @@ export const printGRN = (voucher: any) => {
     const address     = settings.address || '';
     const phone       = settings.phone   || '';
 
+    // Date + time: use created_at if available, else voucher_date + current time
+    const printDateTime = (() => {
+      const d = voucher.created_at ? new Date(voucher.created_at) : new Date();
+      const date = d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = d.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', hour12: true });
+      return `${date} ${time}`;
+    })();
+
+    // Supplier: prefer supplier_name from PO link, fallback to payable account name
+    const supplierDisplay = voucher.supplier_name
+      || voucher.payable_account_name
+      || '—';
+
     const rows = (voucher.items || []).map((item: any) => `
       <tr>
         <td>${item.product_name}</td>
@@ -104,10 +117,10 @@ export const printGRN = (voucher: any) => {
       </div>
       <div class="meta-grid">
         <div><span>GRN # : </span><strong>${voucher.pv_number}</strong></div>
-        <div><span>Date : </span><strong>${voucher.voucher_date}</strong></div>
-        <div><span>Supplier : </span><strong>${voucher.supplier_name || '—'}</strong></div>
-        ${voucher.po_number ? `<div><span>PO Ref : </span><strong>${voucher.po_number}</strong></div>` : '<div></div>'}
-        <div><span>Received By : </span><strong>${voucher.created_by_name || ''}</strong></div>
+        <div><span>Date &amp; Time : </span><strong>${printDateTime}</strong></div>
+        <div><span>Supplier : </span><strong>${supplierDisplay}</strong></div>
+        <div><span>PO Reference : </span><strong>${voucher.po_number || '—'}</strong></div>
+        <div><span>Received By : </span><strong>${voucher.created_by_name || '—'}</strong></div>
       </div>
       <table>
         <thead><tr>
