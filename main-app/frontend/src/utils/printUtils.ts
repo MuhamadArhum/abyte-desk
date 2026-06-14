@@ -109,18 +109,24 @@ export const printGRN = (voucher: any) => {
     ].join('');
 
     return `
-      <div class="doc-header">
-        <div class="company-name">${companyName}</div>
-        ${address ? `<div style="font-size:12px;color:#444;margin-top:3px">${address}</div>` : ''}
-        ${phone   ? `<div style="font-size:12px;color:#444">Tel: ${phone}</div>` : ''}
-        <div class="doc-title">Goods Received Note (GRN)</div>
-      </div>
-      <div class="meta-grid">
-        <div><span>GRN # : </span><strong>${voucher.pv_number}</strong></div>
-        <div><span>Date &amp; Time : </span><strong>${printDateTime}</strong></div>
-        <div><span>Supplier : </span><strong>${supplierDisplay}</strong></div>
-        <div><span>PO Reference : </span><strong>${voucher.po_number || '—'}</strong></div>
-        <div><span>Received By : </span><strong>${voucher.created_by_name || '—'}</strong></div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111; padding-bottom:12px; margin-bottom:16px;">
+        <div>
+          <div style="font-size:22px;font-weight:bold;letter-spacing:1px;">${companyName}</div>
+          ${address ? `<div style="font-size:12px;color:#444;margin-top:4px;">${address}</div>` : ''}
+          ${phone   ? `<div style="font-size:12px;color:#444;">Tel: ${phone}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:15px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;color:#333;margin-bottom:8px;">Goods Received Note (GRN)</div>
+          <table style="margin-left:auto;font-size:12px;border:none;margin-bottom:0;">
+            <tbody>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">GRN # :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.pv_number}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Date &amp; Time :</td><td style="font-weight:bold;border:none;padding:2px 0;">${printDateTime}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Supplier :</td><td style="font-weight:bold;border:none;padding:2px 0;">${supplierDisplay}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">PO Reference :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.po_number || '—'}</td></tr>
+              <tr><td style="color:#555;padding:2px 8px 2px 0;border:none;text-align:right;">Received By :</td><td style="font-weight:bold;border:none;padding:2px 0;">${voucher.created_by_name || '—'}</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       <table>
         <thead><tr>
