@@ -110,6 +110,7 @@ const TableManagement = lazy(() => import('./pages/restaurant/TableManagement'))
 
 // System
 const Stores        = lazy(() => import('./pages/system/Stores'));
+const Users         = lazy(() => import('./pages/system/Users'));
 const AccessControl = lazy(() => import('./pages/system/AccessControl'));
 const AuditLog      = lazy(() => import('./pages/system/AuditLog'));
 const Backup        = lazy(() => import('./pages/system/Backup'));
@@ -152,6 +153,13 @@ const G = ({ k, children }: { k: string; children: React.ReactNode }) => (
     <PermissionGuard moduleKey={k}>{children}</PermissionGuard>
   </Suspense>
 );
+
+// ── Admin-only guard ──────────────────────────────────────────
+const AdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
 
 function App() {
   return (
@@ -269,7 +277,8 @@ function App() {
 
                                   {/* System */}
                                   <Route path="/stores"         element={<G k="system.stores"><Stores /></G>} />
-                                  <Route path="/access-control" element={<G k="system.settings"><AccessControl /></G>} />
+                                  <Route path="/users"          element={<Suspense fallback={<PageLoader />}><AdminGuard><Users /></AdminGuard></Suspense>} />
+                                  <Route path="/access-control" element={<Suspense fallback={<PageLoader />}><AdminGuard><AccessControl /></AdminGuard></Suspense>} />
                                   <Route path="/audit-log"      element={<G k="system.audit"><AuditLog /></G>} />
                                   <Route path="/backup"         element={<G k="system.backup"><Backup /></G>} />
                                   <Route path="/settings"       element={<G k="system.settings"><SettingsPage /></G>} />
