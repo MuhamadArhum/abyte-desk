@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Fingerprint, Plus, Edit2, Trash2, Upload, RefreshCw, Check, X,
-  Wifi, WifiOff, Users, Link2, AlertTriangle, Search, ChevronDown, ChevronUp,
-  Clock, Calendar, Play, FileText,
+  Wifi, WifiOff, Users, Link2, AlertTriangle, Search,
+  Clock, Play, FileText,
 } from 'lucide-react';
 import api from '../../utils/api';
 

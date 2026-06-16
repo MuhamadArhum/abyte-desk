@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Plus, Trash2, ChevronDown, Search,
   Lock, Eye, EyeOff, AlertTriangle, CheckCircle2,
-  FileText, TrendingUp, TrendingDown, Send, RefreshCw, X, ArrowLeft, Calendar
+  FileText, TrendingUp, TrendingDown, Send, RefreshCw, ArrowLeft, Calendar
 } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
