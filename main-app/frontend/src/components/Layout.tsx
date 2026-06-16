@@ -286,7 +286,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       color: 'gray',
       children: [
         { icon: Store, label: 'Stores', path: '/stores', moduleKey: 'system.stores' },
-        { icon: Users, label: 'User Management', path: '/users', adminOnly: true },
         { icon: Shield, label: 'Access Control', path: '/access-control', adminOnly: true },
         { icon: ScrollText, label: 'Audit Log', path: '/audit-log', moduleKey: 'system.audit' },
         { icon: Database, label: 'Backup', path: '/backup', moduleKey: 'system.backup' },
