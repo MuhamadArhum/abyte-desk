@@ -10,7 +10,7 @@ router.get('/overdue', controller.getOverdue);
 router.get('/customer/:id/balance', controller.getCustomerBalance);
 router.get('/', controller.getAll);
 router.get('/:id', controller.getById);
-router.post('/', requirePermission('sales'), controller.create);
-router.post('/:id/payment', requirePermission('sales'), controller.recordPayment);
+router.post('/',             requirePermission('sales.credit'), controller.create);
+router.post('/:id/payment', requirePermission('sales.credit'), controller.recordPayment);
 
 module.exports = router;

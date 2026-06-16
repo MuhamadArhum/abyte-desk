@@ -9,8 +9,8 @@ router.get('/stats', controller.getStats);
 router.post('/evaluate', controller.evaluate);
 router.get('/:id', controller.getById);
 router.get('/', controller.getAll);
-router.post('/', requirePermission('inventory.products'), controller.create);
-router.put('/:id', requirePermission('inventory.products'), controller.update);
-router.delete('/:id', requirePermission('inventory.products'), controller.delete);
+router.post('/',   requirePermission('sales.pricerules'), controller.create);
+router.put('/:id', requirePermission('sales.pricerules'), controller.update);
+router.delete('/:id', requirePermission('sales.pricerules'), controller.delete);
 
 module.exports = router;

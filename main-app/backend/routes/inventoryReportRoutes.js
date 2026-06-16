@@ -4,7 +4,7 @@ const controller = require('../controllers/inventoryReportController');
 const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
-router.use(requirePermission('inventory'));
+router.use(requirePermission('inventory.reports'));
 
 router.get('/summary', controller.getStockSummary);
 router.get('/low-stock', controller.getLowStock);

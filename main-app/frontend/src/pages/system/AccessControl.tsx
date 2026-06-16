@@ -68,6 +68,7 @@ const MODULE_TREE = [
       { key: 'inventory.bundles',     label: 'Deals & Bundles' },
       { key: 'inventory.purchases',   label: 'Purchases' },
       { key: 'inventory.suppliers',   label: 'Suppliers' },
+      { key: 'inventory.stock',        label: 'Stock Update (API)' },
       { key: 'inventory.adjustments', label: 'Stock Adjustments / Issuance' },
       { key: 'inventory.transfers',   label: 'Stock Transfers' },
       { key: 'inventory.alerts',      label: 'Stock Alerts' },
