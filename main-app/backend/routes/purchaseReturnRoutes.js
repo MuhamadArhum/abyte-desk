@@ -6,7 +6,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 router.use(authenticate);
 router.get('/',         ctrl.getAll);
 router.get('/:id',      ctrl.getById);
-router.post('/',        requirePermission('inventory.purchase_returns'), ctrl.create);
-router.delete('/:id',   requirePermission('inventory.purchase_returns'), ctrl.remove);
+router.post('/',        requirePermission('inventory.purchases'), ctrl.create);
+router.delete('/:id',   requirePermission('inventory.purchases'), ctrl.remove);
 
 module.exports = router;
