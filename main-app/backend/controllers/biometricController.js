@@ -136,7 +136,7 @@ exports.getDevices = async (req, res) => {
     const devices = await query(
       `SELECT * FROM biometric_devices ORDER BY device_name`
     );
-    res.json({ devices });
+    res.json({ data: devices });
   } catch (err) {
     logger.error('[Biometric] getDevices error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
@@ -243,7 +243,7 @@ exports.getMappings = async (req, res) => {
        JOIN staff s ON bsm.staff_id = s.staff_id
        ORDER BY bsm.employee_code`
     );
-    res.json({ mappings });
+    res.json({ data: mappings });
   } catch (err) {
     logger.error('[Biometric] getMappings error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
@@ -413,7 +413,7 @@ exports.getLogs = async (req, res) => {
       [...params, parseInt(limit, 10), offset]
     );
 
-    res.json({ logs, total, page: parseInt(page, 10), limit: parseInt(limit, 10) });
+    res.json({ data: logs, total, page: parseInt(page, 10), limit: parseInt(limit, 10) });
   } catch (err) {
     logger.error('[Biometric] getLogs error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
