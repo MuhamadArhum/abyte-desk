@@ -61,6 +61,8 @@ import {
   LayoutList,
   AlertTriangle,
   History,
+  Fingerprint,
+  Barcode,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -206,6 +208,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { icon: Factory,        label: 'MANUFACTURING',     isSection: true } as any,
         { icon: FlaskConical,   label: 'Recipes',           path: '/recipes',            moduleKey: 'inventory.products' },
         { icon: Factory,        label: 'Production Orders', path: '/production-orders',  moduleKey: 'inventory.products' },
+        { icon: Barcode,        label: 'Barcode Generator', path: '/barcode-generator',  moduleKey: 'inventory.products' },
         // ── REPORTS ──
         { icon: Package,        label: 'REPORTS',           isSection: true } as any,
         { icon: BookOpen,       label: 'Items Ledger',        path: '/items-ledger',           moduleKey: 'inventory.reports' },
@@ -231,8 +234,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         // ── EMPLOYEES ──
         { icon: Users,       label: 'EMPLOYEES',        isSection: true } as any,
         { icon: User,        label: 'Employee List',     path: '/staff',            moduleKey: 'hr.staff' },
-        { icon: Calendar,    label: 'Daily Attendance',  path: '/daily-attendance', moduleKey: 'hr.daily-attendance' },
-        { icon: ScrollText,  label: 'Attendance',        path: '/attendance',       moduleKey: 'hr.attendance' },
+        { icon: Calendar,    label: 'Daily Attendance',  path: '/daily-attendance',     moduleKey: 'hr.daily-attendance' },
+        { icon: ScrollText,  label: 'Attendance',        path: '/attendance',           moduleKey: 'hr.attendance' },
+        { icon: Fingerprint, label: 'Biometric Attendance', path: '/biometric-attendance', moduleKey: 'hr.attendance' },
         { icon: BookOpen,    label: 'Employee Ledger',   path: '/employee-ledger',  moduleKey: 'hr.ledger' },
         { icon: BarChart3,   label: 'Employee Reports',  path: '/staff-reports',    moduleKey: 'hr.reports' },
         // ── PAYROLL ──

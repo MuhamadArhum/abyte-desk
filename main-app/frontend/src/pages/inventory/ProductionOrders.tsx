@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Factory, Check, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Factory, Check, X, ChevronDown, ChevronUp, AlertTriangle, Search, Calendar, TrendingUp, BarChart3 } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 
@@ -35,14 +35,36 @@ interface ProductionOrder {
   produced_at: string;
 }
 
+const isSameDay = (dateStr: string, ref: Date) => {
+  const d = new Date(dateStr);
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth() && d.getDate() === ref.getDate();
+};
+
+const isSameWeek = (dateStr: string, ref: Date) => {
+  const d = new Date(dateStr);
+  const startOfWeek = new Date(ref);
+  startOfWeek.setDate(ref.getDate() - ref.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+  return d >= startOfWeek && d < endOfWeek;
+};
+
 const ProductionOrders = () => {
   const [orders, setOrders] = useState<ProductionOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<ProductionOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [recipeFilter, setRecipeFilter] = useState<string>('');
 
   // New order modal
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +78,10 @@ const ProductionOrders = () => {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/production-orders', { params: { page: currentPage, limit: itemsPerPage } });
+      const params: any = { page: currentPage, limit: itemsPerPage };
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      const res = await api.get('/production-orders', { params });
       setOrders(res.data.data || []);
       if (res.data.pagination) {
         setTotalItems(res.data.pagination.total);
@@ -64,7 +89,14 @@ const ProductionOrders = () => {
       }
     } catch { /* silent */ }
     finally { setLoading(false); }
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, dateFrom, dateTo]);
+
+  const fetchAllOrdersForStats = useCallback(async () => {
+    try {
+      const res = await api.get('/production-orders', { params: { limit: 9999 } });
+      setAllOrders(res.data.data || []);
+    } catch { /* silent */ }
+  }, []);
 
   const fetchRecipes = async () => {
     try {
@@ -74,6 +106,44 @@ const ProductionOrders = () => {
   };
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useEffect(() => { fetchAllOrdersForStats(); }, [fetchAllOrdersForStats]);
+
+  // Stats computed from all orders
+  const stats = useMemo(() => {
+    const now = new Date();
+    const todayOutput = allOrders
+      .filter(o => isSameDay(o.produced_at, now))
+      .reduce((s, o) => s + Number(o.output_quantity || 0), 0);
+    const weekOutput = allOrders
+      .filter(o => isSameWeek(o.produced_at, now))
+      .reduce((s, o) => s + Number(o.output_quantity || 0), 0);
+    const totalRuns = allOrders.length;
+    const totalOutput = allOrders.reduce((s, o) => s + Number(o.output_quantity || 0), 0);
+    return { todayOutput, weekOutput, totalRuns, totalOutput };
+  }, [allOrders]);
+
+  // Unique recipes for filter dropdown (from current page orders)
+  const uniqueRecipes = useMemo(() => {
+    const seen = new Map<number, string>();
+    allOrders.forEach(o => { if (!seen.has(o.recipe_id)) seen.set(o.recipe_id, o.recipe_name); });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [allOrders]);
+
+  // Client-side filtering on loaded orders
+  const filteredOrders = useMemo(() => {
+    let result = orders;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(o =>
+        o.recipe_name?.toLowerCase().includes(q) ||
+        o.output_product_name?.toLowerCase().includes(q)
+      );
+    }
+    if (recipeFilter) {
+      result = result.filter(o => String(o.recipe_id) === recipeFilter);
+    }
+    return result;
+  }, [orders, search, recipeFilter]);
 
   const openModal = async () => {
     await fetchRecipes();
@@ -104,6 +174,7 @@ const ProductionOrders = () => {
       await api.post('/production-orders', { recipe_id: selectedRecipe.recipe_id, batches, notes });
       setShowModal(false);
       fetchOrders();
+      fetchAllOrdersForStats();
     } catch (err: any) {
       const details = err.response?.data?.details;
       setError(err.response?.data?.message || 'Failed to create production order');
@@ -121,6 +192,13 @@ const ProductionOrders = () => {
   const typeLabel = (t: string) =>
     t === 'finished_good' ? 'FG' : t === 'semi_finished' ? 'SF' : 'RM';
 
+  const statCards = [
+    { label: "Today's Output", value: stats.todayOutput, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'This Week', value: stats.weekOutput, icon: BarChart3, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Total Runs', value: stats.totalRuns, icon: Factory, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Total Output', value: stats.totalOutput, icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
+  ];
+
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
@@ -137,15 +215,75 @@ const ProductionOrders = () => {
         </button>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {statCards.map(card => (
+          <div key={card.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-3">
+            <div className={`${card.bg} rounded-lg p-2.5`}>
+              <card.icon size={18} className={card.color} />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">{card.label}</p>
+              <p className={`text-xl font-bold ${card.color} mt-0.5`}>{card.value.toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-center">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+            <input
+              type="text" placeholder="Search recipe or product..."
+              value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* Recipe filter */}
+          <select
+            value={recipeFilter}
+            onChange={e => setRecipeFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-700"
+          >
+            <option value="">All Recipes</option>
+            {uniqueRecipes.map(r => (
+              <option key={r.id} value={String(r.id)}>{r.name}</option>
+            ))}
+          </select>
+
+          {/* Date range */}
+          <div className="flex items-center gap-2">
+            <Calendar size={15} className="text-gray-400 shrink-0" />
+            <input
+              type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
+              className="border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-700"
+            />
+            <span className="text-gray-400 text-xs">to</span>
+            <input
+              type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
+              className="border border-gray-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-700"
+            />
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(''); setDateTo(''); setCurrentPage(1); }}
+                className="text-gray-400 hover:text-gray-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600" />
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="p-12 text-center text-gray-400">
             <Factory size={40} className="mx-auto mb-3 opacity-30" />
-            <p>No production orders yet.</p>
+            <p>No production orders found.</p>
           </div>
         ) : (
           <>
@@ -158,12 +296,13 @@ const ProductionOrders = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Output Product</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Batches</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty Produced</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produced By</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {orders.map(o => (
+                  {filteredOrders.map(o => (
                     <>
                       <tr key={o.production_id} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
@@ -180,12 +319,17 @@ const ProductionOrders = () => {
                             +{o.output_quantity}
                           </span>
                         </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-medium px-2 py-0.5 rounded-full">
+                            <Check size={10} /> Completed
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-gray-500">{o.produced_by_name || '-'}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs">{new Date(o.produced_at).toLocaleString()}</td>
                       </tr>
                       {expandedId === o.production_id && o.notes && (
                         <tr key={`${o.production_id}-note`}>
-                          <td colSpan={7} className="px-12 py-2 bg-gray-50 text-xs text-gray-500 italic">{o.notes}</td>
+                          <td colSpan={8} className="px-12 py-2 bg-gray-50 text-xs text-gray-500 italic">{o.notes}</td>
                         </tr>
                       )}
                     </>

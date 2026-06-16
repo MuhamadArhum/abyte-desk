@@ -108,6 +108,12 @@ const Reports          = lazy(() => import('./pages/accounts/Reports'));
 // Restaurant
 const TableManagement = lazy(() => import('./pages/restaurant/TableManagement'));
 
+// Biometric
+const BiometricAttendance = lazy(() => import('./pages/hr/BiometricAttendance'));
+
+// Barcode
+const BarcodeGenerator = lazy(() => import('./pages/inventory/BarcodeGenerator'));
+
 // System
 const Stores        = lazy(() => import('./pages/system/Stores'));
 const Users         = lazy(() => import('./pages/system/Users'));
@@ -218,6 +224,7 @@ function App() {
                                   <Route path="/bundles"               element={<G k="inventory.bundles"><Bundles /></G>} />
                                   <Route path="/product-variants"      element={<G k="inventory.variants"><ProductVariants /></G>} />
                                   <Route path="/stock-count"           element={<G k="inventory.stockcount"><StockCount /></G>} />
+                                  <Route path="/barcode-generator"     element={<G k="inventory.products"><BarcodeGenerator /></G>} />
                                   <Route path="/products"              element={<G k="inventory.products"><Products /></G>} />
                                   <Route path="/purchase-voucher"      element={<G k="inventory.purchases"><PurchaseVoucher /></G>} />
                                   <Route path="/purchase-return"       element={<G k="inventory.purchases"><PurchaseReturn /></G>} />
@@ -242,6 +249,7 @@ function App() {
                                   <Route path="/production-orders"     element={<G k="inventory.products"><ProductionOrders /></G>} />
 
                                   {/* HR */}
+                                  <Route path="/biometric-attendance" element={<G k="hr.attendance"><BiometricAttendance /></G>} />
                                   <Route path="/staff"             element={<G k="hr.staff"><Staff /></G>} />
                                   <Route path="/attendance"        element={<G k="hr.attendance"><Attendance /></G>} />
                                   <Route path="/daily-attendance"  element={<G k="hr.daily-attendance"><DailyAttendance /></G>} />

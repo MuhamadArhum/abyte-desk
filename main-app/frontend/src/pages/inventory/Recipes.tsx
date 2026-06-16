@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp, FlaskConical, Search, X, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, FlaskConical, Search, X, Check, Copy, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
 
 interface Ingredient {
@@ -33,6 +33,8 @@ interface Product {
   unit?: string;
 }
 
+type ActiveFilter = 'all' | 'active' | 'inactive';
+
 const emptyForm = () => ({
   recipe_name: '',
   output_product_id: '',
@@ -46,13 +48,16 @@ const Recipes = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   // Modal
   const [showModal, setShowModal] = useState(false);
   const [editRecipe, setEditRecipe] = useState<Recipe | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [duplicating, setDuplicating] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   // Products for dropdowns
@@ -64,15 +69,15 @@ const Recipes = () => {
     try {
       const params: any = {};
       if (search) params.search = search;
+      if (activeFilter !== 'all') params.is_active = activeFilter === 'active' ? 1 : 0;
       const res = await api.get('/recipes', { params });
       setRecipes(res.data.data || []);
     } catch { /* silent */ }
     finally { setLoading(false); }
-  }, [search]);
+  }, [search, activeFilter]);
 
   const fetchProducts = async () => {
     try {
-      // Output: finished_good or semi_finished
       const [fg, sf] = await Promise.all([
         api.get('/products', { params: { type: 'finished_good', limit: 500 } }),
         api.get('/products', { params: { type: 'semi_finished', limit: 500 } }),
@@ -81,7 +86,6 @@ const Recipes = () => {
         ...(fg.data.data || fg.data || []).map((p: Product) => ({ ...p, product_type: 'finished_good' })),
         ...(sf.data.data || sf.data || []).map((p: Product) => ({ ...p, product_type: 'semi_finished' })),
       ]);
-      // Ingredients: raw_material or semi_finished
       const [rm, sf2] = await Promise.all([
         api.get('/products', { params: { type: 'raw_material', limit: 500 } }),
         api.get('/products', { params: { type: 'semi_finished', limit: 500 } }),
@@ -95,6 +99,11 @@ const Recipes = () => {
 
   useEffect(() => { fetchProducts(); }, []);
   useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+
+  // Stats computed from loaded data
+  const totalRecipes = recipes.length;
+  const activeRecipes = recipes.filter(r => r.is_active).length;
+  const totalIngredients = recipes.reduce((sum, r) => sum + (r.ingredients?.length || 0), 0);
 
   const openAdd = () => {
     setEditRecipe(null);
@@ -118,6 +127,29 @@ const Recipes = () => {
   };
 
   const closeModal = () => { setShowModal(false); setEditRecipe(null); };
+
+  const handleDuplicate = async (r: Recipe) => {
+    setDuplicating(r.recipe_id);
+    try {
+      await api.post('/recipes', {
+        recipe_name: `${r.recipe_name} (Copy)`,
+        output_product_id: r.output_product_id,
+        output_quantity: r.output_quantity,
+        notes: r.notes || '',
+        is_active: r.is_active,
+        ingredients: r.ingredients.map(i => ({
+          product_id: i.product_id,
+          quantity: i.quantity,
+          unit: i.unit,
+        })),
+      });
+      fetchRecipes();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to duplicate recipe');
+    } finally {
+      setDuplicating(null);
+    }
+  };
 
   const addIngredient = () => {
     setForm(f => ({ ...f, ingredients: [...f.ingredients, { product_id: 0, quantity: 1, unit: 'pcs' }] }));
@@ -183,6 +215,12 @@ const Recipes = () => {
     return 'bg-orange-100 text-orange-700';
   };
 
+  const filterTabs: { key: ActiveFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'active', label: 'Active' },
+    { key: 'inactive', label: 'Inactive' },
+  ];
+
   return (
     <div className="p-4 md:p-8">
       {/* Header */}
@@ -200,16 +238,48 @@ const Recipes = () => {
         </button>
       </div>
 
-      {/* Search */}
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Recipes</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{totalRecipes}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Active Recipes</p>
+          <p className="text-2xl font-bold text-emerald-600 mt-1">{activeRecipes}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Ingredients</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{totalIngredients}</p>
+        </div>
+      </div>
+
+      {/* Search + Filter */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100">
-          <div className="relative max-w-sm">
+        <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
+          <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text" placeholder="Search recipes..."
               value={search} onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
+          </div>
+          {/* Active/Inactive filter tabs */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            {filterTabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveFilter(tab.key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  activeFilter === tab.key
+                    ? 'bg-white text-emerald-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -220,13 +290,17 @@ const Recipes = () => {
         ) : recipes.length === 0 ? (
           <div className="p-12 text-center text-gray-400">
             <FlaskConical size={40} className="mx-auto mb-3 opacity-30" />
-            <p>No recipes yet. Create one to start manufacturing.</p>
+            <p>No recipes found. {activeFilter !== 'all' && 'Try changing the filter.'}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {recipes.map(r => (
               <div key={r.recipe_id}>
-                <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+                <div
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+                  onMouseEnter={() => setHoveredId(r.recipe_id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                >
                   <button className="text-gray-400 hover:text-gray-600"
                     onClick={() => setExpandedId(expandedId === r.recipe_id ? null : r.recipe_id)}>
                     {expandedId === r.recipe_id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -234,14 +308,29 @@ const Recipes = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-gray-900">{r.recipe_name}</span>
-                      {!r.is_active && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>}
+                      {!r.is_active && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
                       Produces: <span className={`font-medium px-1.5 py-0.5 rounded ${typeBadge(r.output_product_type)}`}>{r.output_product_name}</span>
                       &nbsp;× {r.output_quantity} per batch &nbsp;·&nbsp; Current stock: {r.output_stock ?? 0}
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 shrink-0 items-center">
+                    {/* Duplicate button — visible on hover */}
+                    <button
+                      title="Duplicate recipe"
+                      onClick={() => handleDuplicate(r)}
+                      disabled={duplicating === r.recipe_id}
+                      className={`transition-opacity text-gray-400 hover:text-emerald-600 ${
+                        hoveredId === r.recipe_id ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      {duplicating === r.recipe_id
+                        ? <div className="w-3.5 h-3.5 border-2 border-emerald-400/40 border-t-emerald-500 rounded-full animate-spin" />
+                        : <Copy size={15} />}
+                    </button>
                     <button className="text-emerald-600 hover:text-emerald-800" onClick={() => openEdit(r)}><Edit size={15} /></button>
                     <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(r.recipe_id)}><Trash2 size={15} /></button>
                   </div>
@@ -253,11 +342,16 @@ const Recipes = () => {
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Ingredients per batch</p>
                     <div className="space-y-1.5">
                       {r.ingredients.map(ing => (
-                        <div key={ing.ingredient_id} className="flex items-center gap-3 text-sm">
+                        <div key={ing.ingredient_id} className="flex items-center gap-3 text-sm flex-wrap">
                           <span className={`text-xs px-1.5 py-0.5 rounded ${typeBadge(ing.product_type || '')}`}>{typeLabel(ing.product_type || '')}</span>
                           <span className="font-medium text-gray-800">{ing.product_name}</span>
                           <span className="text-gray-500">× {ing.quantity} {ing.unit}</span>
                           <span className="text-gray-400 text-xs">(stock: {ing.available_stock ?? 0})</span>
+                          {(ing.available_stock ?? 0) === 0 && (
+                            <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                              <AlertTriangle size={11} /> Out of Stock
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
