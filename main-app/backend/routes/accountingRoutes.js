@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule }                   = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('accounting'));
+router.use(requireModule('accounts'));
 
 router.get('/account-groups', accountingController.getAccountGroups);
 

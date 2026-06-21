@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requirePermission } = require('../middleware/auth');
 const ctrl = require('../controllers/restaurantController');
 
 router.use(authenticate);
 
 router.get('/', ctrl.getTables);
-router.post('/', ctrl.createTable);
-router.put('/:id', ctrl.updateTable);
-router.delete('/:id', ctrl.deleteTable);
+router.post('/', requirePermission('restaurant.tables'), ctrl.createTable);
+router.put('/:id', requirePermission('restaurant.tables'), ctrl.updateTable);
+router.delete('/:id', requirePermission('restaurant.tables'), ctrl.deleteTable);
 
 module.exports = router;

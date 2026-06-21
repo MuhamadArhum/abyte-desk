@@ -98,7 +98,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setToken(null);
           }
         })
-        .catch(() => { /* network failure — token kept, user loads on retry */ })
+        .catch(() => {
+          // B-030: On network failure, clear auth state to avoid null user with valid token
+          localStorage.removeItem('token');
+          setToken(null);
+        })
         .finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -196,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return modules.includes(moduleName);
   }, [modules]);
 
-  const currentPlan    = modules.length > 0 ? 'active' : 'enterprise';
+  const currentPlan    = modules.length > 0 ? 'active' : 'free';  // B-022: empty modules = free/unset, not enterprise
   const currencySymbol = tenantConfig?.currency_symbol || 'Rs.';
   const isAdmin        = user?.role_name === 'Admin';
 

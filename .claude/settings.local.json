@@ -164,7 +164,9 @@
       "Bash(Invoice)",
       "Bash(Receipt\")",
       "Bash(sed 's/^\\\\.//')",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(npx jest *)",
+      "Bash(npx vitest *)"
     ]
   }
 }

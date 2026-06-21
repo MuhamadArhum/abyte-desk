@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule }                   = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('hr_payroll'));
+router.use(requireModule('hr'));
 
 router.get('/reports/attendance-monthly', staffController.getMonthlyAttendanceReport);
 router.get('/reports/salary-summary', staffController.getSalarySummaryReport);

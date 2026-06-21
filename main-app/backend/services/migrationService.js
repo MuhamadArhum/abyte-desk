@@ -322,6 +322,71 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    version: 14,
+    name: 'store_inventory_table',
+    async run(db) {
+      // B-010: store_inventory used in stockTransferController but never created in migrations
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS store_inventory (
+          id              INT PRIMARY KEY AUTO_INCREMENT,
+          store_id        INT NOT NULL,
+          product_id      INT NOT NULL,
+          available_stock DECIMAL(10,2) DEFAULT 0,
+          updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_store_product (store_id, product_id),
+          INDEX idx_si_store (store_id),
+          INDEX idx_si_product (product_id)
+        )
+      `);
+    },
+  },
+  {
+    version: 15,
+    name: 'ensure_runtime_created_tables',
+    async run(db) {
+      // B-023: Tables created at runtime in controllers — add to migrations for fresh installs
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS sale_bundles (
+          id              INT PRIMARY KEY AUTO_INCREMENT,
+          sale_id         INT NOT NULL,
+          bundle_id       INT NOT NULL,
+          bundle_name     VARCHAR(200) NOT NULL,
+          discount_amount DECIMAL(10,2) DEFAULT 0,
+          created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_sb_sale (sale_id)
+        )
+      `);
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS stock_layers (
+          layer_id      INT PRIMARY KEY AUTO_INCREMENT,
+          product_id    INT NOT NULL,
+          pv_id         INT NULL,
+          source_type   VARCHAR(50) NOT NULL DEFAULT 'purchase',
+          ref_date      DATE NULL,
+          qty_original  DECIMAL(10,2) NOT NULL DEFAULT 0,
+          qty_remaining DECIMAL(10,2) NOT NULL DEFAULT 0,
+          unit_cost     DECIMAL(10,4) NOT NULL DEFAULT 0,
+          created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_sl_product (product_id),
+          INDEX idx_sl_pv (pv_id)
+        )
+      `);
+      await queryDb(db, `
+        CREATE TABLE IF NOT EXISTS opening_stock_entries (
+          entry_id    INT PRIMARY KEY AUTO_INCREMENT,
+          product_id  INT NOT NULL,
+          quantity    DECIMAL(10,2) NOT NULL,
+          unit_cost   DECIMAL(10,4) DEFAULT 0,
+          entry_date  DATE NOT NULL,
+          notes       TEXT NULL,
+          created_by  INT NULL,
+          created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_ose_product (product_id)
+        )
+      `);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

@@ -119,6 +119,16 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ message: 'Credit sales require a due date' });
     }
 
+    // Validate tax/charges are within sensible bounds (B-017)
+    const taxPctVal = parseFloat(tax_percent) || 0;
+    const addPctVal = parseFloat(additional_charges_percent) || 0;
+    if (taxPctVal < 0 || taxPctVal > 100) {
+      return res.status(400).json({ message: 'Tax percent must be between 0 and 100' });
+    }
+    if (addPctVal < 0 || addPctVal > 100) {
+      return res.status(400).json({ message: 'Additional charges percent must be between 0 and 100' });
+    }
+
     // Get a dedicated connection for the transaction (not from the shared query helper)
     conn = await getConnection();
     await conn.beginTransaction();  // START TRANSACTION
@@ -288,13 +298,26 @@ exports.createSale = async (req, res) => {
       }
     }
 
-    // Step 6: Create credit sale record if credit payment
+    // Step 6: Create credit sale record if credit payment (B-004: use balance_due + pending status)
     if (is_credit) {
       await conn.query(
-        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, remaining_amount, due_date, status)
-         VALUES (?, ?, ?, 0, ?, ?, 'active')`,
-        [sale_id, customer_id, total_amount, total_amount, credit_due_date]
+        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, branch_id)
+         VALUES (?, ?, ?, 0, ?, ?, 'pending', ?)`,
+        [sale_id, customer_id, total_amount, total_amount, credit_due_date, branch_id]
       );
+    }
+
+    // Update cash register inside the transaction (B-025)
+    if (status === 'completed' && !is_credit) {
+      const pm = payment_method || 'cash';
+      const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+      if (openRegister.length > 0) {
+        if (pm === 'cash') {
+          await conn.query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+        } else if (pm === 'card') {
+          await conn.query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+        }
+      }
     }
 
     await conn.commit();  // COMMIT TRANSACTION
@@ -308,19 +331,6 @@ exports.createSale = async (req, res) => {
        WHERE sd.sale_id = ?`,
       [sale_id]
     );
-
-    // Update cash register if cash sale
-    if (status === 'completed' && !is_credit && (payment_method || 'cash') === 'cash') {
-      const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
-      if (openRegister.length > 0) {
-        await query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
-      }
-    } else if (status === 'completed' && !is_credit && payment_method === 'card') {
-      const openRegister = await query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
-      if (openRegister.length > 0) {
-        await query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
-      }
-    }
 
     await logAction(req.user.user_id, req.user.name, 'SALE_CREATED', 'sale', sale_id, {
       total_amount, status, items_count: items.length,
@@ -471,35 +481,48 @@ exports.assignUser = async (req, res) => {
 };
 
 // --- Complete a Pending Sale ---
+// B-005: wrapped in transaction with FOR UPDATE lock to prevent race conditions
+// B-011: total_amount recalculated server-side — client-sent value is ignored
 exports.completeSale = async (req, res) => {
+  let conn;
   try {
     const { id } = req.params;
-    const { payment_method, amount_paid, discount, total_amount, note, tax_percent, additional_charges_percent } = req.body;
+    const { payment_method, amount_paid, discount, note, tax_percent, additional_charges_percent } = req.body;
 
-    // Check if sale exists and is pending
-    const sale = await query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    conn = await getConnection();
+    await conn.beginTransaction();
+
+    // Lock the sale row to prevent concurrent completions (FOR UPDATE)
+    const sale = await conn.query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending" FOR UPDATE', [id]);
     if (sale.length === 0) {
+      await conn.rollback();
       return res.status(404).json({ message: 'Pending sale not found' });
     }
 
-    // invoice_no was already assigned when the order was created — no need to regenerate
     const invoice_no = sale[0].invoice_no;
 
-    // Recalculate tax/charges amounts if rates were changed at checkout
+    // Recalculate totals server-side — never trust client-sent total_amount (B-011)
     const subTotal = parseFloat(sale[0].sub_total) || 0;
     const finalTaxPercent = tax_percent !== undefined && tax_percent !== null ? parseFloat(tax_percent) : parseFloat(sale[0].tax_percent);
     const finalAdditionalPercent = additional_charges_percent !== undefined && additional_charges_percent !== null ? parseFloat(additional_charges_percent) : parseFloat(sale[0].additional_charges_percent);
+    const finalDiscount = discount !== undefined && discount !== null ? parseFloat(discount) : parseFloat(sale[0].discount || 0);
+    const bundleDiscount = parseFloat(sale[0].bundle_discount || 0);
     const finalTaxAmount = round2(subTotal * finalTaxPercent / 100);
     const finalAdditionalAmount = round2(subTotal * finalAdditionalPercent / 100);
+    const serverTotal = round2(Math.max(0, subTotal + finalTaxAmount + finalAdditionalAmount - finalDiscount - bundleDiscount));
+    const finalPaymentMethod = payment_method || 'cash';
+    const finalAmountPaid = amount_paid !== undefined && amount_paid !== null ? parseFloat(amount_paid) : serverTotal;
+    const finalNote = note !== undefined && note !== null ? note : (sale[0].note || null);
 
-    // Update sale: status, payment info, AND corrected tax/charges
-    await query(
+    // Update sale inside transaction
+    await conn.query(
       `UPDATE sales SET
         status = "completed",
         payment_method = ?,
         amount_paid = ?,
         discount = ?,
         total_amount = ?,
+        net_amount = ?,
         note = ?,
         tax_percent = ?,
         tax_amount = ?,
@@ -507,11 +530,12 @@ exports.completeSale = async (req, res) => {
         additional_charges_amount = ?
        WHERE sale_id = ?`,
       [
-        payment_method || 'cash',
-        amount_paid || sale[0].total_amount,
-        discount !== undefined && discount !== null ? discount : sale[0].discount,
-        total_amount !== undefined && total_amount !== null ? total_amount : sale[0].total_amount,
-        note !== undefined && note !== null ? note : (sale[0].note || null),
+        finalPaymentMethod,
+        finalAmountPaid,
+        finalDiscount,
+        serverTotal,
+        serverTotal,
+        finalNote,
         finalTaxPercent,
         finalTaxAmount,
         finalAdditionalPercent,
@@ -520,24 +544,39 @@ exports.completeSale = async (req, res) => {
       ]
     );
 
-    // Deduct stock now that the order is being paid/completed
-    const saleItems = await query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
+    // Deduct stock inside transaction
+    const saleItems = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
     for (const item of saleItems) {
       if (item.variant_id) {
-        await query('UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
-        await query('UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
+        await conn.query('UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?', [item.quantity, item.variant_id]);
       } else {
-        await query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
-        await query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity, item.product_id]);
+        await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity, item.product_id]);
       }
     }
 
-    await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: payment_method || 'cash', invoice_no }, req.ip);
+    // Update cash register inside transaction (B-025)
+    const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
+    if (openRegister.length > 0) {
+      if (finalPaymentMethod === 'cash') {
+        await conn.query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [serverTotal, openRegister[0].register_id]);
+      } else if (finalPaymentMethod === 'card') {
+        await conn.query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [serverTotal, openRegister[0].register_id]);
+      }
+    }
+
+    await conn.commit();
+
+    await logAction(req.user.user_id, req.user.name, 'SALE_COMPLETED', 'sale', id, { payment_method: finalPaymentMethod, invoice_no }, req.ip);
 
     res.json({ message: 'Sale completed successfully', sale_id: id, invoice_no });
   } catch (error) {
+    if (conn) await conn.rollback();
     logger.error('Complete sale error:', error);
     res.status(500).json({ message: 'Failed to complete sale' });
+  } finally {
+    if (conn) conn.release();
   }
 };
 

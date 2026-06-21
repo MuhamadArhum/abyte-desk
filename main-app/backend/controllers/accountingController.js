@@ -189,9 +189,11 @@ exports.updateAccount = async (req, res) => {
 
     if (!account_name) return res.status(400).json({ message: 'Account name is required' });
 
+    // Only update is_active when explicitly provided — omitting it must not silently re-activate (B-016)
+    const activeVal = 'is_active' in req.body ? (is_active ?? 1) : existing[0].is_active;
     await query(
       'UPDATE accounts SET account_name=?, is_active=?, description=?, updated_at=CURRENT_TIMESTAMP WHERE account_id=?',
-      [account_name, is_active ?? 1, description || null, id]
+      [account_name, activeVal, description || null, id]
     );
 
     await logAction(req.user.user_id, req.user.name, 'ACCOUNT_UPDATED', 'accounts', id, { account_name }, req.ip);

@@ -4,6 +4,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/tests/setup.ts'],
+    include: ['src/tests/**/*.test.{ts,tsx}'],
+    css: false,
+  },
   plugins: [
     react(),
     VitePWA({

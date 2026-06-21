@@ -165,10 +165,12 @@ exports.create = async (req, res) => {
     // Update product stock
     await conn.query('UPDATE products SET stock_quantity = ? WHERE product_id = ?', [quantity_after, product_id]);
 
-    // Update inventory table too
+    // Update inventory — preserve avg_cost on INSERT (B-024)
+    const [existingInv] = await conn.query('SELECT avg_cost FROM inventory WHERE product_id = ?', [product_id]);
+    const existingAvgCost = existingInv?.avg_cost || 0;
     await conn.query(
-      'INSERT INTO inventory (product_id, available_stock) VALUES (?, ?) ON DUPLICATE KEY UPDATE available_stock = ?',
-      [product_id, quantity_after, quantity_after]
+      'INSERT INTO inventory (product_id, available_stock, avg_cost) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE available_stock = ?',
+      [product_id, quantity_after, existingAvgCost, quantity_after]
     );
 
     await conn.commit();

@@ -325,11 +325,18 @@ exports.getStats = async (req, res) => {
       bParam
     );
 
-    const [collected] = await query(
-      `SELECT COALESCE(SUM(amount), 0) as collected_this_month
-       FROM credit_payments
-       WHERE MONTH(payment_date) = MONTH(CURDATE()) AND YEAR(payment_date) = YEAR(CURDATE())`
-    );
+    // B-021: Apply branch filter via join through credit_sales
+    let collectedSql = `SELECT COALESCE(SUM(cp.amount), 0) as collected_this_month
+       FROM credit_payments cp
+       JOIN credit_sales cs ON cp.credit_sale_id = cs.credit_sale_id
+       WHERE MONTH(cp.payment_date) = MONTH(CURDATE()) AND YEAR(cp.payment_date) = YEAR(CURDATE())`;
+    const collectedParams = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      collectedSql += ' AND cs.branch_id = ?'; collectedParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      collectedSql += ' AND cs.branch_id = ?'; collectedParams.push(req.query.filter_branch);
+    }
+    const [collected] = await query(collectedSql, collectedParams);
 
     res.json({
       total_outstanding: stats.total_outstanding,

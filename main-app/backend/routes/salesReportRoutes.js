@@ -4,7 +4,7 @@ const controller = require('../controllers/salesReportController');
 const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
-router.use(requirePermission('sales'));
+router.use(requirePermission('sales.reports'));
 
 router.get('/summary', controller.getSalesSummary);
 router.get('/hourly', controller.getHourlySales);

@@ -131,12 +131,14 @@ exports.updateIssue = async (req, res) => {
       return res.status(400).json({ message: 'section_id, issue_date and items are required' });
     }
 
-    const [issue] = await query('SELECT * FROM stock_issues WHERE issue_id = ?', [req.params.id]);
-    if (!issue) return res.status(404).json({ message: 'Not found' });
-
-    const oldItems = await query('SELECT * FROM stock_issue_items WHERE issue_id = ?', [req.params.id]);
-
     await conn.beginTransaction();
+
+    // Fetch and lock inside transaction to prevent race conditions (B-012)
+    const issueRows = await conn.query('SELECT * FROM stock_issues WHERE issue_id = ? FOR UPDATE', [req.params.id]);
+    const issue = issueRows[0];
+    if (!issue) { await conn.rollback(); return res.status(404).json({ message: 'Not found' }); }
+
+    const oldItems = await conn.query('SELECT * FROM stock_issue_items WHERE issue_id = ?', [req.params.id]);
 
     // Reverse old stock
     for (const item of oldItems) {
@@ -202,10 +204,18 @@ exports.getReturns = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
-    const branch = getBranch(req);
 
-    let where = `WHERE 1=1${branch.clause.replace(' AND branch_id', ' AND sir.branch_id')}`;
-    const params = [...branch.params];
+    // Build branch clause with explicit table alias (B-029)
+    let branchClause = '';
+    const branchParams = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchClause = ' AND sir.branch_id = ?'; branchParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchClause = ' AND sir.branch_id = ?'; branchParams.push(req.query.filter_branch);
+    }
+
+    let where = `WHERE 1=1${branchClause}`;
+    const params = [...branchParams];
     if (section_id) { where += ' AND sir.section_id = ?'; params.push(section_id); }
     if (from_date)  { where += ' AND sir.return_date >= ?'; params.push(from_date); }
     if (to_date)    { where += ' AND sir.return_date <= ?'; params.push(to_date); }
@@ -292,10 +302,18 @@ exports.getRawSales = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = (page - 1) * limit;
-    const branch = getBranch(req);
 
-    let where = `WHERE 1=1${branch.clause.replace(' AND branch_id', ' AND rs.branch_id')}`;
-    const params = [...branch.params];
+    // Build branch clause with explicit table alias (B-029)
+    let branchClause = '';
+    const branchParams = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      branchClause = ' AND rs.branch_id = ?'; branchParams.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      branchClause = ' AND rs.branch_id = ?'; branchParams.push(req.query.filter_branch);
+    }
+
+    let where = `WHERE 1=1${branchClause}`;
+    const params = [...branchParams];
     if (section_id) { where += ' AND rs.section_id = ?'; params.push(section_id); }
     if (from_date)  { where += ' AND rs.sale_date >= ?'; params.push(from_date); }
     if (to_date)    { where += ' AND rs.sale_date <= ?'; params.push(to_date); }
@@ -379,8 +397,13 @@ exports.createRawSale = async (req, res) => {
 exports.deleteRawSale = async (req, res) => {
   const conn = await getConnection();
   try {
-    const items = await query('SELECT * FROM raw_sale_items WHERE sale_id = ?', [req.params.id]);
     await conn.beginTransaction();
+
+    // Fetch sale and items inside transaction with lock (B-014)
+    const saleRows = await conn.query('SELECT * FROM raw_sales WHERE sale_id = ? FOR UPDATE', [req.params.id]);
+    if (!saleRows[0]) { await conn.rollback(); return res.status(404).json({ message: 'Raw sale not found' }); }
+
+    const items = await conn.query('SELECT * FROM raw_sale_items WHERE sale_id = ?', [req.params.id]);
     for (const item of items) {
       await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity, item.product_id]);
       await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity, item.product_id]);

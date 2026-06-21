@@ -8,7 +8,25 @@ const parsePagination = (page, limit) => {
   return { page: Math.max(1, pageNum), limit: Math.max(1, limitNum), offset: (Math.max(1, pageNum) - 1) * Math.max(1, limitNum) };
 };
 
+// B-010: Ensure store_inventory table exists (migration v14 handles this, this is a safety net)
+let storeInvReady = false;
+async function ensureStoreInventory() {
+  if (storeInvReady) return;
+  try {
+    await query(`CREATE TABLE IF NOT EXISTS store_inventory (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      store_id INT NOT NULL,
+      product_id INT NOT NULL,
+      available_stock DECIMAL(10,2) DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_store_product (store_id, product_id)
+    )`);
+    storeInvReady = true;
+  } catch (_) { storeInvReady = true; }
+}
+
 exports.getAll = async (req, res) => {
+  await ensureStoreInventory();
   try {
     const { status, store_id, date_from, date_to } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);

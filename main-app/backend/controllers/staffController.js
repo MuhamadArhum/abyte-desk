@@ -5,7 +5,6 @@ const { logAction } = require('../services/auditService');
 let dbReady = false;
 async function ensureTablesAndColumns() {
   if (dbReady) return;
-  dbReady = true;
   try {
     await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS salary_account_id INT DEFAULT NULL`);
     await query(`ALTER TABLE staff ADD COLUMN IF NOT EXISTS time_in TIME DEFAULT NULL`);
@@ -57,7 +56,8 @@ async function ensureTablesAndColumns() {
       FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE,
       FOREIGN KEY (component_id) REFERENCES salary_components(component_id) ON DELETE CASCADE
     )`);
-  } catch (e) { /* already exists */ }
+    dbReady = true;  // Set only after successful completion (B-019)
+  } catch (e) { /* already exists — dbReady stays false so next call retries */ }
 }
 
 const parsePagination = (page, limit) => {

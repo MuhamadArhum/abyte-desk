@@ -22,13 +22,16 @@ async function reverseStockForPV(conn, pvId) {
     await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity_received, item.product_id]);
     await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity_received, item.product_id]);
     await conn.query('DELETE FROM stock_layers WHERE pv_id = ? AND product_id = ?', [pvId, item.product_id]);
-    // Recalculate weighted avg from remaining layers
+    // Recalculate weighted avg from remaining layers (B-020: skip update when no layers remain)
     const layers = await conn.query('SELECT qty_remaining, unit_cost FROM stock_layers WHERE product_id = ? AND qty_remaining > 0', [item.product_id]);
     const totalQty  = layers.reduce((s, l) => s + Number(l.qty_remaining), 0);
     const totalCost = layers.reduce((s, l) => s + Number(l.qty_remaining) * Number(l.unit_cost), 0);
-    const newAvg = totalQty > 0 ? totalCost / totalQty : 0;
-    await conn.query('UPDATE inventory SET avg_cost = ? WHERE product_id = ?', [newAvg, item.product_id]);
-    await conn.query('UPDATE products SET cost_price = ? WHERE product_id = ?', [newAvg, item.product_id]);
+    if (totalQty > 0) {
+      const newAvg = totalCost / totalQty;
+      await conn.query('UPDATE inventory SET avg_cost = ? WHERE product_id = ?', [newAvg, item.product_id]);
+      await conn.query('UPDATE products SET cost_price = ? WHERE product_id = ?', [newAvg, item.product_id]);
+    }
+    // When totalQty = 0 (all stock reversed), preserve existing avg_cost — do not set to 0
   }
 }
 

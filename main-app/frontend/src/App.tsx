@@ -104,6 +104,7 @@ const PaymentVouchers  = lazy(() => import('./pages/accounts/PaymentVouchers'));
 const ReceiptVouchers  = lazy(() => import('./pages/accounts/ReceiptVouchers'));
 const Analytics        = lazy(() => import('./pages/accounts/Analytics'));
 const Reports          = lazy(() => import('./pages/accounts/Reports'));
+const CashPosition     = lazy(() => import('./pages/accounts/CashPosition'));
 
 // Restaurant
 const TableManagement = lazy(() => import('./pages/restaurant/TableManagement'));
@@ -114,9 +115,17 @@ const BiometricAttendance = lazy(() => import('./pages/hr/BiometricAttendance'))
 // Barcode
 const BarcodeGenerator = lazy(() => import('./pages/inventory/BarcodeGenerator'));
 
+// Inventory extras (B-009: were missing from imports)
+const Suppliers               = lazy(() => import('./pages/inventory/Suppliers'));
+const FinishedGoodsCategories = lazy(() => import('./pages/inventory/FinishedGoodsCategories'));
+const RawMaterialCategories   = lazy(() => import('./pages/inventory/RawMaterialCategories'));
+const RawMaterialItems        = lazy(() => import('./pages/inventory/RawMaterialItems'));
+const SemiFinishedCategories  = lazy(() => import('./pages/inventory/SemiFinishedCategories'));
+
 // System
 const Stores        = lazy(() => import('./pages/system/Stores'));
 const Users         = lazy(() => import('./pages/system/Users'));
+const Tenants       = lazy(() => import('./pages/system/Tenants'));
 const AccessControl = lazy(() => import('./pages/system/AccessControl'));
 const AuditLog      = lazy(() => import('./pages/system/AuditLog'));
 const Backup        = lazy(() => import('./pages/system/Backup'));
@@ -216,6 +225,11 @@ function App() {
                                   <Route path="/finished-goods"        element={<G k="inventory.products"><FinishedGoods /></G>} />
                                   <Route path="/raw-materials"         element={<G k="inventory.products"><RawMaterials /></G>} />
                                   <Route path="/categories"            element={<G k="inventory.categories"><Categories /></G>} />
+                                  <Route path="/suppliers"             element={<G k="inventory.purchases"><Suppliers /></G>} />
+                                  <Route path="/finished-goods-categories" element={<G k="inventory.categories"><FinishedGoodsCategories /></G>} />
+                                  <Route path="/raw-material-categories"   element={<G k="inventory.categories"><RawMaterialCategories /></G>} />
+                                  <Route path="/raw-material-items"        element={<G k="inventory.products"><RawMaterialItems /></G>} />
+                                  <Route path="/semi-finished-categories"  element={<G k="inventory.categories"><SemiFinishedCategories /></G>} />
                                   <Route path="/purchase-orders"       element={<G k="inventory.purchases"><PurchaseOrders /></G>} />
                                   <Route path="/stock-transfers"       element={<G k="inventory.transfers"><StockTransfers /></G>} />
                                   <Route path="/stock-adjustments"     element={<G k="inventory.adjustments"><StockAdjustments /></G>} />
@@ -282,6 +296,7 @@ function App() {
                                   <Route path="/receipt-vouchers"   element={<G k="accounts.receipt-vouchers"><ReceiptVouchers /></G>} />
                                   <Route path="/analytics"          element={<G k="accounts.analytics"><Analytics /></G>} />
                                   <Route path="/reports"            element={<G k="accounts.reports"><Reports /></G>} />
+                                  <Route path="/cash-position"      element={<G k="accounts.cash-position"><CashPosition /></G>} />
 
                                   {/* System */}
                                   <Route path="/stores"         element={<G k="system.stores"><Stores /></G>} />
@@ -291,6 +306,7 @@ function App() {
                                   <Route path="/backup"         element={<G k="system.backup"><Backup /></G>} />
                                   <Route path="/settings"       element={<G k="system.settings"><SettingsPage /></G>} />
                                   <Route path="/email-settings" element={<G k="system.settings"><EmailSettings /></G>} />
+                                  <Route path="/tenants"        element={<Suspense fallback={<PageLoader />}><AdminGuard><Tenants /></AdminGuard></Suspense>} />
                                   <Route path="/help"           element={<HelpSupport />} />
                                 </Routes>
                               </Suspense>

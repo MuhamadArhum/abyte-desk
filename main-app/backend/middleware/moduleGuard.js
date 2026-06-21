@@ -45,9 +45,9 @@ const PLAN_MODULES = {
 const requireModule = (moduleName) => {
   return (req, res, next) => {
     // Single-client mode or no tenant context — allow all
-    if (!req.user?.modules_enabled) return next();
+    if (!req.modules || req.modules.length === 0) return next();
 
-    const enabled = req.user.modules_enabled;
+    const enabled = req.modules;
     if (Array.isArray(enabled) && enabled.includes(moduleName)) {
       return next();
     }

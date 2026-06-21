@@ -15,7 +15,7 @@ const LeavePolicies = () => {
   const toast = useToast();
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [saving, setSaving] = useState<number | null>(null);  // B-035: policy_id is number
   const [carrying, setCarrying] = useState(false);
   const [edited, setEdited] = useState<Record<number, any>>({});
 
@@ -46,9 +46,11 @@ const LeavePolicies = () => {
     if (!changes) return;
     setSaving(policy.policy_id);
     try {
-      await api.put(`/staff/leave-policies/${policy.policy_id}`, {
+      // B-007: URL must use leave_type (backend route is /leave-policies/:leave_type)
+      // B-007: field must be carry_forward_allowed (matches backend column name)
+      await api.put(`/staff/leave-policies/${policy.leave_type}`, {
         annual_entitlement: getVal(policy, 'annual_entitlement'),
-        carry_forward_enabled: getVal(policy, 'carry_forward_enabled'),
+        carry_forward_allowed: getVal(policy, 'carry_forward_allowed'),
         max_carry_forward: getVal(policy, 'max_carry_forward'),
       });
       toast.success(`${policy.leave_type} policy updated`);
@@ -114,7 +116,7 @@ const LeavePolicies = () => {
           {policies.map((policy, i) => {
             const info = typeInfo(policy.leave_type);
             const isDirty = !!edited[policy.policy_id];
-            const carryEnabled = getVal(policy, 'carry_forward_enabled');
+            const carryEnabled = getVal(policy, 'carry_forward_allowed');
             return (
               <motion.div
                 key={policy.policy_id}
@@ -173,7 +175,7 @@ const LeavePolicies = () => {
                       <input
                         type="checkbox"
                         checked={!!carryEnabled}
-                        onChange={e => handleChange(policy.policy_id, 'carry_forward_enabled', e.target.checked)}
+                        onChange={e => handleChange(policy.policy_id, 'carry_forward_allowed', e.target.checked)}
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
@@ -203,7 +205,7 @@ const LeavePolicies = () => {
 
                   <div className="pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-400">
                     <span>Entitlement: <span className="font-semibold text-gray-600">{policy.annual_entitlement} days/yr</span></span>
-                    <span>Max carry-forward: <span className="font-semibold text-gray-600">{policy.carry_forward_enabled ? (policy.max_carry_forward || 'Unlimited') : 'None'}</span></span>
+                    <span>Max carry-forward: <span className="font-semibold text-gray-600">{policy.carry_forward_allowed ? (policy.max_carry_forward || 'Unlimited') : 'None'}</span></span>
                   </div>
                 </div>
               </motion.div>

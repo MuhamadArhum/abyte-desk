@@ -112,8 +112,13 @@ exports.create = async (req, res) => {
 exports.remove = async (req, res) => {
   const conn = await getConnection();
   try {
-    const items = await query('SELECT * FROM purchase_return_items WHERE pr_id = ?', [req.params.id]);
     await conn.beginTransaction();
+
+    // Fetch record and items inside transaction with lock (B-013)
+    const prRows = await conn.query('SELECT * FROM purchase_returns WHERE pr_id = ? FOR UPDATE', [req.params.id]);
+    if (!prRows[0]) { await conn.rollback(); return res.status(404).json({ message: 'Purchase return not found' }); }
+
+    const items = await conn.query('SELECT * FROM purchase_return_items WHERE pr_id = ?', [req.params.id]);
     for (const item of items) {
       await conn.query('UPDATE inventory SET available_stock = available_stock + ? WHERE product_id = ?', [item.quantity_returned, item.product_id]);
       await conn.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?', [item.quantity_returned, item.product_id]);

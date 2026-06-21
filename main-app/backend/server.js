@@ -95,6 +95,7 @@ const restaurantRoutes      = require('./routes/restaurantRoutes');
 const recipeRoutes          = require('./routes/recipeRoutes');
 const productionRoutes      = require('./routes/productionRoutes');
 const biometricRoutes       = require('./routes/biometricRoutes');
+const agentRoutes           = require('./routes/agentRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -248,6 +249,7 @@ app.use('/api/accounting',          accountingRoutes);
 // HR/Payroll module — PROFESSIONAL+ only
 app.use('/api/staff',               staffRoutes);
 app.use('/api/biometric',           biometricRoutes);
+app.use('/api/agent',               agentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

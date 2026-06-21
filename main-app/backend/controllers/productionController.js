@@ -52,33 +52,35 @@ exports.create = async (req, res) => {
     );
     if (!recipe) return res.status(404).json({ message: 'Recipe not found or inactive' });
 
-    const ingredients = await query(
-      `SELECT ri.*, p.product_name, i.available_stock
-       FROM recipe_ingredients ri
-       JOIN products p ON ri.product_id = p.product_id
-       LEFT JOIN inventory i ON i.product_id = p.product_id
-       WHERE ri.recipe_id = ?`,
-      [recipe_id]
-    );
-
-    // Check sufficient stock for all ingredients
-    const insufficient = [];
-    for (const ing of ingredients) {
-      const needed = Number(ing.quantity) * Number(batches);
-      const available = Number(ing.available_stock || 0);
-      if (available < needed) {
-        insufficient.push(`${ing.product_name}: need ${needed}, have ${available}`);
-      }
-    }
-    if (insufficient.length > 0) {
-      return res.status(400).json({ message: 'Insufficient stock', details: insufficient });
-    }
-
     const outputQty = Number(recipe.output_quantity) * Number(batches);
 
     const conn = await getConnection();
     try {
       await conn.beginTransaction();
+
+      // Check and lock ingredient stock inside the transaction (B-015)
+      const ingredients = await conn.query(
+        `SELECT ri.*, p.product_name, i.available_stock
+         FROM recipe_ingredients ri
+         JOIN products p ON ri.product_id = p.product_id
+         LEFT JOIN inventory i ON i.product_id = p.product_id AND i.product_id = ri.product_id
+         WHERE ri.recipe_id = ?
+         FOR UPDATE`,
+        [recipe_id]
+      );
+
+      const insufficient = [];
+      for (const ing of ingredients) {
+        const needed = Number(ing.quantity) * Number(batches);
+        const available = Number(ing.available_stock || 0);
+        if (available < needed) {
+          insufficient.push(`${ing.product_name}: need ${needed}, have ${available}`);
+        }
+      }
+      if (insufficient.length > 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: 'Insufficient stock', details: insufficient });
+      }
 
       // Deduct each ingredient from inventory
       for (const ing of ingredients) {
