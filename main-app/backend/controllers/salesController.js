@@ -668,7 +668,9 @@ exports.deleteSale = async (req, res) => {
     await conn.beginTransaction();
 
     // Check sale status
-    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ?', [id]);
+    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND branch_id = ?' : '';
+    const branchParams = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
+    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchCondition}`, [id, ...branchParams]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });
@@ -939,6 +941,8 @@ exports.getAll = async (req, res) => {
 // --- Get Sale by ID ---
 exports.getById = async (req, res) => {
   try {
+    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND s.branch_id = ?' : '';
+    const branchParam = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
     const sale = await query(`
       SELECT s.*, u.name as cashier_name,
              rt.table_name
@@ -946,8 +950,8 @@ exports.getById = async (req, res) => {
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
       LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
-      WHERE s.sale_id = ?
-    `, [req.params.id]);
+      WHERE s.sale_id = ? ${branchCondition}
+    `, [req.params.id, ...branchParam]);
 
     if (sale.length === 0) {
       return res.status(404).json({ message: 'Sale not found' });
@@ -977,7 +981,9 @@ exports.refundSale = async (req, res) => {
     await conn.beginTransaction();
 
     // Check sale status
-    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ? FOR UPDATE', [id]);
+    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND branch_id = ?' : '';
+    const branchParams = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
+    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchCondition} FOR UPDATE`, [id, ...branchParams]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });

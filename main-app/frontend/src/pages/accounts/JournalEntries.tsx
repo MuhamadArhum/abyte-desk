@@ -352,17 +352,22 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState('');
-  const [correct, setCorrect] = useState('');
   const [ready, setReady] = useState(false);
+  const [requiresPassword, setRequiresPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    api.get('/settings').then(r => { setCorrect(r.data.jv_delete_password || ''); setReady(true); }).catch(() => setReady(true));
+    api.get('/settings').then(r => { setRequiresPassword(!!r.data.jv_delete_password_set); setReady(true); }).catch(() => setReady(true));
   }, []);
 
   const del = async () => {
     if (!ready) return;
-    if (correct && pw !== correct) { setErr('Incorrect password'); setPw(''); return; }
+    if (requiresPassword) {
+      try {
+        const res = await api.post('/settings/verify-password', { type: 'jv_delete', password: pw });
+        if (!res.data.valid) { setErr('Incorrect password'); setPw(''); return; }
+      } catch { setErr('Verification failed'); return; }
+    }
     setDeleting(true);
     try {
       await api.delete(`/accounting/journal-entries/${entry.entry_id}`);
@@ -403,7 +408,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
               ⚠ Posted entry — account balances will be reversed.
             </p>
           )}
-          {ready && correct && (
+          {ready && requiresPassword && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
                 <Lock size={12} /> Password Required
@@ -427,7 +432,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
               className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition">
               Cancel
             </button>
-            <button onClick={del} disabled={deleting || !ready || (!!correct && !pw)}
+            <button onClick={del} disabled={deleting || !ready || (requiresPassword && !pw)}
               className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 flex items-center justify-center gap-2">
               <Trash2 size={14} /> {deleting ? 'Deleting…' : 'Delete'}
             </button>

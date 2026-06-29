@@ -38,7 +38,7 @@ const validateCreateUser = [
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Username: only letters, numbers, underscores'),
   body('email').trim().notEmpty().isEmail().withMessage('Valid email required')
     .isLength({ max: 255 }),
-  body('password').isLength({ min: 6, max: 128 }).withMessage('Password must be 6-128 characters'),
+  body('password').isLength({ min: 8, max: 128 }).withMessage('Password must be 8-128 characters'),
   body('role_name').trim().notEmpty().withMessage('Role is required')
     .isIn(['Admin', 'Manager', 'Cashier', 'Staff']).withMessage('Invalid role'),
   body('branch_id').optional({ nullable: true }).isInt({ min: 1 }).withMessage('Invalid branch ID'),

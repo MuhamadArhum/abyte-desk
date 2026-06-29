@@ -13,36 +13,40 @@ const ReportPasswordGate: React.FC<Props> = ({ children }) => {
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [correctPassword, setCorrectPassword] = useState('');
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     api.get('/settings').then(res => {
-      const pw = res.data.reports_password || '';
-      if (!pw) {
-        // No password set — always unlocked
+      if (!res.data.reports_password_set) {
         setStatus('unlocked');
         return;
       }
-      setCorrectPassword(pw);
-      // Check session unlock
       if (sessionStorage.getItem(SESSION_KEY) === 'yes') {
         setStatus('unlocked');
       } else {
         setStatus('locked');
       }
     }).catch(() => {
-      // On error, allow access
       setStatus('unlocked');
     });
   }, []);
 
-  const handleUnlock = () => {
-    if (password === correctPassword) {
-      sessionStorage.setItem(SESSION_KEY, 'yes');
-      setStatus('unlocked');
-    } else {
-      setError('Incorrect password. Please try again.');
-      setPassword('');
+  const handleUnlock = async () => {
+    setChecking(true);
+    setError('');
+    try {
+      const res = await api.post('/settings/verify-password', { type: 'reports', password });
+      if (res.data.valid) {
+        sessionStorage.setItem(SESSION_KEY, 'yes');
+        setStatus('unlocked');
+      } else {
+        setError('Incorrect password. Please try again.');
+        setPassword('');
+      }
+    } catch {
+      setError('Verification failed. Please try again.');
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -78,6 +82,7 @@ const ReportPasswordGate: React.FC<Props> = ({ children }) => {
             placeholder="Enter reports password..."
             className="w-full pl-4 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
             autoFocus
+            disabled={checking}
           />
           <button
             type="button"
@@ -92,10 +97,11 @@ const ReportPasswordGate: React.FC<Props> = ({ children }) => {
 
         <button
           onClick={handleUnlock}
-          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors"
+          disabled={checking}
+          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors"
         >
           <Lock size={18} />
-          Unlock Reports
+          {checking ? 'Verifying...' : 'Unlock Reports'}
         </button>
       </div>
     </div>

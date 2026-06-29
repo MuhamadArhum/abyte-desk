@@ -52,7 +52,7 @@ exports.login = async (req, res) => {
     const tenantDb = tenant.db_name;
 
     // Find user in tenant DB
-    const rows = await queryDb(tenantDb, 'SELECT * FROM users WHERE email = ?', [email]);
+    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, branch_id, is_active, password_hash FROM users WHERE email = ?', [email]);
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -188,7 +188,7 @@ exports.updateProfile = async (req, res) => {
     const tenantDb = req.tenantDb;
     const { name, email, current_password, new_password } = req.body;
 
-    const rows = await queryDb(tenantDb, 'SELECT * FROM users WHERE user_id = ?', [userId]);
+    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, branch_id, is_active, password_hash FROM users WHERE user_id = ?', [userId]);
     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
     const user = rows[0];
 

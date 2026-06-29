@@ -153,6 +153,9 @@ exports.getDashboardStats = async (req, res) => {
 exports.getSalesTrend = async (req, res) => {
   try {
     const { period = 'daily', start_date, end_date } = req.query;
+    if (!['daily', 'weekly', 'monthly'].includes(period)) {
+      return res.status(400).json({ message: 'Invalid period. Must be daily, weekly, or monthly.' });
+    }
     const bf = getBranchFilter(req);
     const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
 

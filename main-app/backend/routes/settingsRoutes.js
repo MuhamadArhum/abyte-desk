@@ -15,6 +15,9 @@ router.put('/', authorize('Admin'), settingsController.updateSettings);
 // Change own password: Any authenticated user
 router.post('/change-password', settingsController.changePassword);
 
+// Verify POS security password (server-side bcrypt comparison)
+router.post('/verify-password', authenticate, settingsController.verifyPosPassword);
+
 // Print receipt via configured printer
 router.post('/print-receipt', settingsController.printReceipt);
 

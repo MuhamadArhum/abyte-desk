@@ -22,13 +22,23 @@ import { useToast } from './Toast';
 import { useConfirm } from './ConfirmDialog';
 
 // ─── Password Gate Modal ────────────────────────────────────────────────────
-const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
-  title: string; correctPassword: string; onSuccess: () => void; onClose: () => void;
+const PasswordModal = ({ title, passwordType, onSuccess, onClose }: {
+  title: string; passwordType: 'view_completed' | 'refund'; onSuccess: () => void; onClose: () => void;
 }) => {
   const [input, setInput] = useState('');
   const [show, setShow]   = useState(false);
   const [error, setError] = useState('');
-  const verify = () => { if (input === correctPassword) onSuccess(); else { setError('Incorrect password.'); setInput(''); } };
+  const [checking, setChecking] = useState(false);
+  const verify = async () => {
+    setChecking(true);
+    setError('');
+    try {
+      const res = await api.post('/settings/verify-password', { type: passwordType, password: input });
+      if (res.data.valid) { onSuccess(); }
+      else { setError('Incorrect password.'); setInput(''); }
+    } catch { setError('Verification failed. Please try again.'); }
+    finally { setChecking(false); }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onClose}>
@@ -43,6 +53,7 @@ const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
             onKeyDown={e => { if (e.key === 'Enter') verify(); }}
             placeholder="Enter password..."
             className="w-full pl-4 pr-10 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+            disabled={checking}
           />
           <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -51,7 +62,7 @@ const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-medium transition-colors">Cancel</button>
-          <button onClick={verify} className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold transition-colors">Unlock</button>
+          <button onClick={verify} disabled={checking} className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-semibold transition-colors">{checking ? 'Verifying...' : 'Unlock'}</button>
         </div>
       </div>
     </div>
@@ -124,7 +135,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [unlocked,       setUnlocked]       = useState(false);
   const [pwModal,      setPwModal]      = useState<{ type: 'unlock' | 'refund'; refundId?: number } | null>(null);
-  const [passwords,    setPasswords]    = useState({ view_completed: '', refund: '' });
+  const [passwords,    setPasswords]    = useState({ view_completed: false, refund: false });
   const [syncingSaleId, setSyncingSaleId] = useState<number | null>(null);
   const [syncedIds,    setSyncedIds]    = useState<Set<number>>(new Set());
 
@@ -132,8 +143,8 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   useEffect(() => {
     api.get('/settings').then(res => {
       setCs(res.data.currency_symbol || 'Rs.');
-      setPasswords({ view_completed: res.data.view_completed_orders_password || '', refund: res.data.refund_password || '' });
-      if (isOverlay && res.data.view_completed_orders_password) setPwModal({ type: 'unlock' });
+      setPasswords({ view_completed: !!res.data.view_completed_orders_password_set, refund: !!res.data.refund_password_set });
+      if (isOverlay && res.data.view_completed_orders_password_set) setPwModal({ type: 'unlock' });
     }).catch(() => {});
   }, [isOverlay]);
 
@@ -671,7 +682,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       {pwModal && (
         <PasswordModal
           title={pwModal.type === 'unlock' ? 'Completed Orders' : 'Refund Authorization'}
-          correctPassword={pwModal.type === 'unlock' ? passwords.view_completed : passwords.refund}
+          passwordType={pwModal.type === 'unlock' ? 'view_completed' : 'refund'}
           onSuccess={() => {
             if (pwModal.type === 'unlock') { setUnlocked(true); fetchSales(); }
             else if (pwModal.refundId)     { handleRefund(pwModal.refundId); }

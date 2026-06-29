@@ -28,7 +28,7 @@ const authenticate = async (req, res, next) => {
 
     const rows = await queryDb(
       tenantDb,
-      'SELECT * FROM users WHERE user_id = ?',
+      'SELECT user_id, username, name, email, role_id, role_name, branch_id, is_active FROM users WHERE user_id = ?',
       [decoded.user_id]
     );
 

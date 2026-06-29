@@ -27,7 +27,7 @@ router.get('/config/public', tenantController.getPublicConfig);
 
 // ── Authenticated ─────────────────────────────────────────────
 router.get('/config',  authenticate, tenantController.getConfig);
-router.put('/config',  authenticate, tenantController.updateConfig);
+router.put('/config',  authenticate, authorize('Admin'), tenantController.updateConfig);
 
 // ── Admin only ────────────────────────────────────────────────
 router.get('/plans',   authenticate, authorize('Admin'), tenantController.getPlans);

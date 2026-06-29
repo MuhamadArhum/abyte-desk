@@ -160,9 +160,17 @@ const aiLimiter = rateLimit({
   message: { message: 'AI request limit reached. Please wait before asking again.' },
 });
 
+// Agent endpoint limiter: 300 requests per 15 minutes per IP
+const agentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many agent requests. Please wait.' },
+});
+
 // ── Global Middleware ────────────────────────────────────────
 app.use(helmet());
-app.set('trust proxy', 1);
 app.use(cors(corsOptions));
 
 app.use(morgan('combined', {
@@ -249,6 +257,7 @@ app.use('/api/accounting',          accountingRoutes);
 // HR/Payroll module — PROFESSIONAL+ only
 app.use('/api/staff',               staffRoutes);
 app.use('/api/biometric',           biometricRoutes);
+app.use('/api/agent', agentLimiter);
 app.use('/api/agent',               agentRoutes);
 
 // Health check

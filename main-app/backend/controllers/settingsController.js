@@ -47,6 +47,8 @@ exports.getSettings = async (req, res) => {
         address: '', phone: '', receipt_footer: 'Thank you!',
         tax_rate: 0, tax_on_cash: 0, tax_on_card: 0, tax_on_online: 0,
         pos_mode: 'simple', pos_tax_config: null,
+        view_completed_orders_password_set: false, refund_password_set: false,
+        reports_password_set: false, jv_delete_password_set: false,
       });
     }
     const row = rows[0];
@@ -61,7 +63,15 @@ exports.getSettings = async (req, res) => {
     if (row.pos_tax_config && typeof row.pos_tax_config === 'string') {
       try { row.pos_tax_config = JSON.parse(row.pos_tax_config); } catch { row.pos_tax_config = null; }
     }
-    res.json(row);
+
+    // Strip sensitive password fields from response
+    const { view_completed_orders_password, refund_password, reports_password, jv_delete_password, ...safeRow } = row;
+    // Return boolean flags so frontend knows if a password is set
+    safeRow.view_completed_orders_password_set = !!view_completed_orders_password;
+    safeRow.refund_password_set = !!refund_password;
+    safeRow.reports_password_set = !!reports_password;
+    safeRow.jv_delete_password_set = !!jv_delete_password;
+    res.json(safeRow);
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -122,14 +132,31 @@ exports.updateSettings = async (req, res) => {
       baseParams
     );
 
-    // Update POS security passwords separately (columns may not exist on older DBs)
+    // Update POS security passwords separately — only update if non-empty value provided
     try {
-      await query(
-        `UPDATE store_settings SET
-          view_completed_orders_password=?, refund_password=?, reports_password=?
-        WHERE setting_id=1`,
-        [view_completed_orders_password || null, refund_password || null, reports_password || null]
-      );
+      const updates = [];
+      const params = [];
+      const hashIfNeeded = async (pw) => {
+        if (!pw) return null;
+        if (pw.startsWith('$2b$') || pw.startsWith('$2a$')) return pw;
+        return bcrypt.hash(pw, 10);
+      };
+      if (view_completed_orders_password !== undefined && view_completed_orders_password !== '') {
+        updates.push('view_completed_orders_password=?');
+        params.push(await hashIfNeeded(view_completed_orders_password));
+      }
+      if (refund_password !== undefined && refund_password !== '') {
+        updates.push('refund_password=?');
+        params.push(await hashIfNeeded(refund_password));
+      }
+      if (reports_password !== undefined && reports_password !== '') {
+        updates.push('reports_password=?');
+        params.push(await hashIfNeeded(reports_password));
+      }
+      if (updates.length > 0) {
+        params.push(1); // setting_id
+        await query(`UPDATE store_settings SET ${updates.join(', ')} WHERE setting_id=?`, params);
+      }
     } catch (pwErr) {
       logger.warn('POS security password columns not found. Run migrate_pos_security.js');
     }
@@ -137,8 +164,12 @@ exports.updateSettings = async (req, res) => {
     // Update accounts security password
     try {
       await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS jv_delete_password VARCHAR(255) NULL`);
-      await query(`UPDATE store_settings SET jv_delete_password=? WHERE setting_id=1`,
-        [jv_delete_password || null]);
+      if (jv_delete_password !== undefined && jv_delete_password !== '') {
+        const hash = jv_delete_password.startsWith('$2b$') || jv_delete_password.startsWith('$2a$')
+          ? jv_delete_password
+          : await bcrypt.hash(jv_delete_password, 10);
+        await query(`UPDATE store_settings SET jv_delete_password=? WHERE setting_id=1`, [hash]);
+      }
     } catch (jvErr) {
       logger.warn('jv_delete_password column error:', jvErr.message);
     }
@@ -219,8 +250,8 @@ exports.changePassword = async (req, res) => {
     if (!current_password || !new_password) {
       return res.status(400).json({ message: 'Current password and new password are required' });
     }
-    if (new_password.length < 6) {
-      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    if (new_password.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
     }
 
     // Verify current password
@@ -241,6 +272,38 @@ exports.changePassword = async (req, res) => {
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Verify POS Security Password ---
+// POST /api/settings/verify-password
+// Body: { type: 'view_completed'|'refund'|'reports'|'jv_delete', password: string }
+exports.verifyPosPassword = async (req, res) => {
+  try {
+    const { type, password } = req.body;
+    const validTypes = { view_completed: 'view_completed_orders_password', refund: 'refund_password', reports: 'reports_password', jv_delete: 'jv_delete_password' };
+    const col = validTypes[type];
+    if (!col || !password) return res.status(400).json({ valid: false });
+
+    const rows = await query(`SELECT ${col} FROM store_settings WHERE setting_id = 1`);
+    if (!rows.length || !rows[0][col]) return res.json({ valid: true }); // no password set = always valid
+
+    const stored = rows[0][col];
+    let valid = false;
+    if (stored.startsWith('$2b$') || stored.startsWith('$2a$')) {
+      valid = await bcrypt.compare(password, stored);
+    } else {
+      // Legacy plaintext — compare and upgrade to hash
+      valid = (password === stored);
+      if (valid) {
+        const hash = await bcrypt.hash(password, 10);
+        await query(`UPDATE store_settings SET ${col} = ? WHERE setting_id = 1`, [hash]);
+      }
+    }
+    res.json({ valid });
+  } catch (err) {
+    logger.error('Verify POS password error:', err);
+    res.status(500).json({ valid: false });
   }
 };
 
@@ -737,26 +800,28 @@ function sendToNetworkPrinter(ip, port, data) {
 function sendToUsbPrinter(printerName, data) {
   return new Promise((resolve, reject) => {
     const fs = require('fs');
-    const { execSync } = require('child_process');
+    const { spawnSync } = require('child_process');
     const path = require('path');
     const os = require('os');
 
-    // Write to temp file then copy to printer
     const tmpFile = path.join(os.tmpdir(), `receipt_${Date.now()}.bin`);
     fs.writeFileSync(tmpFile, data);
 
     try {
+      let result;
       if (process.platform === 'win32') {
-        // Windows: use "copy /b" to send raw data to printer share
-        execSync(`copy /b "${tmpFile}" "${printerName}"`, { timeout: 10000 });
+        result = spawnSync('cmd.exe', ['/c', 'copy', '/b', tmpFile, printerName], { timeout: 10000, shell: false });
       } else {
-        // Linux/Mac: use lp command
-        execSync(`lp -d "${printerName}" -o raw "${tmpFile}"`, { timeout: 10000 });
+        result = spawnSync('lp', ['-d', printerName, '-o', 'raw', tmpFile], { timeout: 10000, shell: false });
       }
       fs.unlinkSync(tmpFile);
-      resolve();
+      if (result.status !== 0) {
+        reject(new Error(`USB print failed: ${result.stderr ? result.stderr.toString() : 'unknown error'}`));
+      } else {
+        resolve();
+      }
     } catch (err) {
-      fs.unlinkSync(tmpFile);
+      try { fs.unlinkSync(tmpFile); } catch {}
       reject(new Error(`USB print failed: ${err.message}`));
     }
   });
