@@ -3,6 +3,7 @@ import { Plus, Eye, Trash2, X, Search, RotateCcw } from 'lucide-react';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
@@ -24,6 +25,7 @@ const PurchaseReturn = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const { error, success } = useToast();
+  const confirm = useConfirm();
 
   // Form
   const [mode, setMode]           = useState<'pv' | 'manual'>('manual');
@@ -112,7 +114,8 @@ const PurchaseReturn = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this return? Stock will be restored.')) return;
+    const ok = await confirm({ title: 'Delete Return', message: 'Delete this return? Stock will be restored.', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/purchase-returns/${id}`); success('Deleted'); fetchReturns(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };

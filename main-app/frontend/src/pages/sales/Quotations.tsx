@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { FileText, Plus, Search, X, Send, Check, XCircle, ShoppingCart, Trash2, Eye, Printer, Pencil } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import Pagination from '../../components/Pagination';
 import QuotationPrintModal from '../../components/QuotationPrintModal';
 
@@ -34,6 +36,8 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }>
 
 const Quotations = () => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -111,7 +115,7 @@ const Quotations = () => {
   };
 
   const handleCreate = async () => {
-    if (!formCustomer || formItems.length === 0) return alert('Select a customer and add items');
+    if (!formCustomer || formItems.length === 0) { toast.error('Select a customer and add items'); return; }
     try {
       await api.post('/quotations', {
         customer_id: parseInt(formCustomer),
@@ -120,24 +124,26 @@ const Quotations = () => {
         valid_until: formValidUntil || null, notes: formNotes || null,
       });
       setShowModal(false); fetchQuotations(); fetchStats();
-    } catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const handleStatusChange = async (id: number, status: string) => {
     try { await api.put(`/quotations/${id}/status`, { status }); fetchQuotations(); fetchStats(); }
-    catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+    catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const handleConvert = async (id: number) => {
-    if (!window.confirm('Convert this quotation to a sale? Stock will be deducted.')) return;
+    const ok = await confirm({ title: 'Convert Quotation', message: 'Convert this quotation to a sale? Stock will be deducted.', type: 'warning' });
+    if (!ok) return;
     try { await api.post(`/quotations/${id}/convert`); fetchQuotations(); fetchStats(); }
-    catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+    catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this draft quotation?')) return;
+    const ok = await confirm({ title: 'Delete Quotation', message: 'Delete this draft quotation?', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/quotations/${id}`); fetchQuotations(); fetchStats(); }
-    catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+    catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const openEdit = async (qt: Quotation) => {
@@ -165,7 +171,7 @@ const Quotations = () => {
       setEditProductSearch('');
     } catch (err: any) {
       console.error(err);
-      alert('Failed to load quotation: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to load quotation: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -182,7 +188,7 @@ const Quotations = () => {
   };
 
   const handleUpdate = async () => {
-    if (!editingQt || editFormItems.length === 0) return alert('Add at least one item');
+    if (!editingQt || editFormItems.length === 0) { toast.error('Add at least one item'); return; }
     try {
       await api.put(`/quotations/${editingQt.quotation_id}`, {
         customer_id: parseInt(editFormCustomer) || 1,
@@ -195,7 +201,7 @@ const Quotations = () => {
       setEditingQt(null);
       fetchQuotations();
       fetchStats();
-    } catch (err: any) { alert(err.response?.data?.message || 'Failed to update'); }
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to update'); }
   };
 
   const viewDetail = async (id: number) => {

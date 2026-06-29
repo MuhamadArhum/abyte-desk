@@ -3,6 +3,8 @@ import { X, Clock, CheckCircle, Printer, Search, Archive, RotateCcw, FileText, D
 import api from '../utils/api';
 import { printToThermalPrinter } from '../printing/receiptPrinter';
 import Pagination from './Pagination';
+import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -12,6 +14,8 @@ interface OrdersModalProps {
 }
 
 const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending }) => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<'pending' | 'done'>('pending');
 
   // Pending tab state
@@ -93,19 +97,20 @@ const OrdersModal: React.FC<OrdersModalProps> = ({ isOpen, onClose, onPayPending
       await printToThermalPrinter(saleRes.data, settingsRes.data, saleRes.data.cashier_name || 'Staff', saleRes.data.customer_name);
     } catch (error) {
       console.error('Failed to print order', error);
-      alert('Failed to print order');
+      toast.error('Failed to print order');
     }
   };
 
   const handleRefund = async (saleId: number) => {
-    if (!confirm(`Are you sure you want to refund Order #${saleId}? This will restore stock.`)) return;
+    const ok = await confirm({ title: 'Refund Order', message: `Are you sure you want to refund Order #${saleId}? This will restore stock.`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.post(`/sales/${saleId}/refund`);
-      alert('Order refunded successfully');
+      toast.success('Order refunded successfully');
       fetchDone();
     } catch (error) {
       console.error('Failed to refund order', error);
-      alert('Failed to refund order');
+      toast.error('Failed to refund order');
     }
   };
 

@@ -4,6 +4,7 @@ import api from '../../utils/api';
 import { printGRN } from '../../utils/printUtils';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
@@ -101,6 +102,7 @@ const PurchaseVoucher = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const { error, success } = useToast();
+  const confirm = useConfirm();
 
   // Form state
   const [mode, setMode]             = useState<'po' | 'manual'>('manual');
@@ -277,7 +279,8 @@ const PurchaseVoucher = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this voucher? Stock will be reversed.')) return;
+    const ok = await confirm({ title: 'Delete Voucher', message: 'Delete this voucher? Stock will be reversed.', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/purchase-vouchers/${id}`); success('Deleted'); fetchVouchers(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };

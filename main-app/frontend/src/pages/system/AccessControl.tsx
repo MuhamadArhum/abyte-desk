@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 // ─── CRUD actions ─────────────────────────────────────────────────────────────
 const CRUD = [
@@ -153,6 +155,8 @@ const subKeys = (base: string) => CRUD.map(c => `${base}.${c.action}`);
 // ─── Component ────────────────────────────────────────────────────────────────
 const AccessControl = () => {
   const { user, refreshPermissions } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [roles, setRoles]               = useState<string[]>([]);
   const [allPerms, setAllPerms]         = useState<Record<string, Set<string>>>({});
   const [savedPerms, setSavedPerms]     = useState<Record<string, Set<string>>>({});
@@ -274,7 +278,7 @@ const AccessControl = () => {
       setSelectedRole(created);
       setNewRoleName('');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create role');
+      toast.error(err.response?.data?.message || 'Failed to create role');
     } finally {
       setCreatingRole(false);
     }
@@ -282,7 +286,8 @@ const AccessControl = () => {
 
   // ── Delete role ───────────────────────────────────────────────────────────
   const handleDeleteRole = async (roleName: string, _roleId?: number) => {
-    if (!confirm(`Delete role "${roleName}"? This cannot be undone.`)) return;
+    const ok = await confirm({ title: 'Delete Role', message: `Delete role "${roleName}"? This cannot be undone.`, type: 'danger' });
+    if (!ok) return;
     setDeletingRole(roleName);
     try {
       // We need role_id — fetch it first if not known
@@ -295,7 +300,7 @@ const AccessControl = () => {
       setSavedPerms(prev => { const n = { ...prev }; delete n[roleName]; return n; });
       if (selectedRole === roleName) setSelectedRole(roles.find(r => r !== roleName) || '');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete role');
+      toast.error(err.response?.data?.message || 'Failed to delete role');
     } finally {
       setDeletingRole(null);
     }
@@ -316,7 +321,7 @@ const AccessControl = () => {
         refreshPermissions();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save permissions');
+      toast.error(err.response?.data?.message || 'Failed to save permissions');
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, ChevronDown, ChevronUp, FlaskConical, Search, X, Check, Copy, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface Ingredient {
   ingredient_id?: number;
@@ -45,6 +47,8 @@ const emptyForm = () => ({
 });
 
 const Recipes = () => {
+  const confirm = useConfirm();
+  const { error: toastError, success: toastSuccess } = useToast();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -143,9 +147,10 @@ const Recipes = () => {
           unit: i.unit,
         })),
       });
+      toastSuccess('Recipe duplicated');
       fetchRecipes();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to duplicate recipe');
+      toastError(err.response?.data?.message || 'Failed to duplicate recipe');
     } finally {
       setDuplicating(null);
     }
@@ -197,12 +202,13 @@ const Recipes = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this recipe?')) return;
+    const ok = await confirm({ title: 'Delete Recipe', message: 'Delete this recipe?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/recipes/${id}`);
       fetchRecipes();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete recipe');
+      toastError(err.response?.data?.message || 'Failed to delete recipe');
     }
   };
 

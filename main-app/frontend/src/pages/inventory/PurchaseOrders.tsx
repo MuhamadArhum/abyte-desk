@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import CreatePOModal from '../../components/CreatePOModal';
 import ViewPODetailsModal from '../../components/ViewPODetailsModal';
 
 const PurchaseOrders = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const { error, success } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,8 @@ const PurchaseOrders = () => {
   };
 
   const handleDelete = async (po: any) => {
-    if (!window.confirm(`Delete ${po.po_number}? This cannot be undone.`)) return;
+    const ok = await confirm({ title: 'Delete Purchase Order', message: `Delete ${po.po_number}? This cannot be undone.`, type: 'danger' });
+    if (!ok) return;
     setDeletingId(po.po_id);
     try {
       await api.delete(`/purchase-orders/${po.po_id}`);

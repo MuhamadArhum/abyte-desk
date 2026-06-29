@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { X, User, Calendar, DollarSign, TrendingUp, Edit, Trash2, BarChart3, CreditCard, Printer } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 import { useAuth } from '../context/AuthContext';
 import EditSalaryPaymentModal from './EditSalaryPaymentModal';
 import SalarySlipModal from './SalarySlipModal';
@@ -16,6 +17,7 @@ interface StaffDetailsModalProps {
 const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps) => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const { user } = useAuth();
   const isAdmin = (user?.role_name || user?.role) === 'Admin';
 
@@ -86,7 +88,8 @@ const StaffDetailsModal = ({ isOpen, onClose, staffId }: StaffDetailsModalProps)
   };
 
   const handleDeletePayment = async (payment: any) => {
-    if (!window.confirm(`Delete salary payment of $${Number(payment.net_amount).toFixed(0)}?`)) return;
+    const ok = await confirm({ title: 'Delete Salary Payment', message: `Delete salary payment of $${Number(payment.net_amount).toFixed(0)}?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/salary-payment/${payment.payment_id}`);
       toast.success('Salary payment deleted');

@@ -7,6 +7,7 @@ import {
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
@@ -439,6 +440,7 @@ const JvDeleteModal = ({ entry, onClose, onDeleted }: { entry: any; onClose: () 
 
 const JournalEntries = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [view, setView]                 = useState<'list' | 'new'>('list');
   const [entries, setEntries]           = useState<any[]>([]);
   const [loading, setLoading]           = useState(false);
@@ -466,7 +468,8 @@ const JournalEntries = () => {
   };
 
   const post = async (entry: any) => {
-    if (!window.confirm(`Post ${entry.entry_number}? This will update account balances.`)) return;
+    const ok = await confirm({ title: 'Post Journal Entry', message: `Post ${entry.entry_number}? This will update account balances.`, type: 'warning' });
+    if (!ok) return;
     try {
       await api.post(`/accounting/journal-entries/${entry.entry_id}/post`);
       toast.success('Entry posted'); load();

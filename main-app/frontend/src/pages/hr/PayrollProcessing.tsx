@@ -4,6 +4,7 @@ import { DollarSign, Calendar, Play, Download, CheckCircle, Printer, Search, Che
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 // Inline Level-4 account selector (same pattern as other vouchers)
 const AccountSelector = ({ accounts, value, onChange }: { accounts: any[]; value: number | ''; onChange: (id: number | '') => void }) => {
@@ -57,6 +58,7 @@ const AccountSelector = ({ accounts, value, onChange }: { accounts: any[]; value
 const PayrollProcessing = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const [step, setStep] = useState<'setup' | 'preview' | 'processing' | 'complete'>('setup');
   const [loading, setLoading] = useState(false);
 
@@ -129,7 +131,8 @@ const PayrollProcessing = () => {
   };
 
   const handleProcess = async () => {
-    if (!window.confirm(`Process payroll for ${preview.length} staff members?\nTotal amount: ${currency}${totals.total_net.toLocaleString()}`)) return;
+    const ok = await confirm({ title: 'Process Payroll', message: `Process payroll for ${preview.length} staff members? Total amount: ${currency}${totals.total_net.toLocaleString()}`, type: 'warning' });
+    if (!ok) return;
 
     setStep('processing');
     setLoading(true);

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Warehouse, ToggleLeft, ToggleRight } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 interface Section {
   section_id: number;
@@ -18,6 +19,7 @@ const Sections = () => {
   const [form, setForm] = useState({ section_name: '', description: '' });
   const [saving, setSaving] = useState(false);
   const { error, success } = useToast();
+  const confirm = useConfirm();
 
   const fetchSections = useCallback(async () => {
     setLoading(true);
@@ -60,7 +62,8 @@ const Sections = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this section?')) return;
+    const ok = await confirm({ title: 'Delete Section', message: 'Delete this section?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/sections/${id}`);
       success('Section deleted');

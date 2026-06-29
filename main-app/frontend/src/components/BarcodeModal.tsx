@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { X, Printer, RefreshCw, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import JsBarcode from 'jsbarcode';
+import { useToast } from './Toast';
 
 interface BarcodeModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface BarcodeModalProps {
 
 const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, onBarcodeGenerated }) => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [barcode, setBarcode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [printQty, setPrintQty] = useState(1);
@@ -56,7 +58,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
       setBarcode(res.data.barcode);
       onBarcodeGenerated?.();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to generate barcode');
+      toast.error(error.response?.data?.message || 'Failed to generate barcode');
     } finally {
       setGenerating(false);
     }

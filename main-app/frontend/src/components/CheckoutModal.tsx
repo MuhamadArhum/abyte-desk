@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck, FileText } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from './Toast';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { printBillWithTax } from '../printing/receiptPrinter';
@@ -25,6 +26,7 @@ const r = (n: number) => Math.round(n);
 const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSuccess, pendingSale, selectedCustomer, appliedBundles = [], deliveryId, deliveryCharges = 0 }) => {
   const { cart, subtotal, clearCart, additionalRate, bundleDiscount } = useCart();
   const { user } = useAuth();
+  const toast = useToast();
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'split' | 'credit'>('cash');
 
   const [amountPaid, setAmountPaid] = useState('');
@@ -226,11 +228,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     // Validate credit sale
     if (paymentMethod === 'credit') {
       if (!selectedCustomer || selectedCustomer.customer_id === 1) {
-        alert('Credit sales require a named customer (not Walk-in).');
+        toast.error('Credit sales require a named customer (not Walk-in).');
         return;
       }
       if (!creditDueDate) {
-        alert('Please set a due date for the credit sale.');
+        toast.error('Please set a due date for the credit sale.');
         return;
       }
     }
@@ -245,7 +247,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         const cash = parseFloat(splitCash) || 0;
         const card = parseFloat(splitCard) || 0;
         if (Math.abs((cash + card) - finalTotal) > 0.01) {
-          alert(`Split amounts (Rs. ${r(cash + card)}) do not match Total (Rs. ${r(finalTotal)})`);
+          toast.error(`Split amounts (Rs. ${r(cash + card)}) do not match Total (Rs. ${r(finalTotal)})`);
           setIsProcessing(false);
           return;
         }
@@ -349,7 +351,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       onSuccess();
     } catch (error: any) {
       console.error('Checkout failed', error);
-      alert(error.response?.data?.message || 'Checkout failed. Please try again.');
+      toast.error(error.response?.data?.message || 'Checkout failed. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -445,7 +447,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       await api.post(`/sales/${saleId}/sync-tax`);
       setSynced(true);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Sync failed');
+      toast.error(err.response?.data?.message || 'Sync failed');
     } finally {
       setSyncLoading(false);
     }

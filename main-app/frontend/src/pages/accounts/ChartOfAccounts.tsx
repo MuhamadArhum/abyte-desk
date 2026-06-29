@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Account {
@@ -428,6 +429,7 @@ const AccountRow = ({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 const ChartOfAccounts = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -476,7 +478,8 @@ const ChartOfAccounts = () => {
   };
 
   const handleDelete = async (account: Account) => {
-    if (!window.confirm(`Delete "${account.account_name}"? This cannot be undone.`)) return;
+    const ok = await confirm({ title: 'Delete Account', message: `Delete "${account.account_name}"? This cannot be undone.`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/accounting/accounts/${account.account_id}`);
       toast.success('Account deleted');

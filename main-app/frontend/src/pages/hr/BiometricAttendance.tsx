@@ -5,6 +5,8 @@ import {
   Clock, Play, FileText, Activity,
 } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 // ── Types ─────────────────────────────────────────────────────
 interface Device {
@@ -60,6 +62,8 @@ const emptyDevice = { device_name: '', ip_address: '', port: 80, serial_number: 
 
 // ── Main Component ────────────────────────────────────────────
 export default function BiometricAttendance() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<Tab>('Devices');
 
   // --- Devices ---
@@ -148,9 +152,10 @@ export default function BiometricAttendance() {
   };
 
   const deleteDev = async (id: number) => {
-    if (!confirm('Delete this device?')) return;
+    const ok = await confirm({ title: 'Delete Device', message: 'Delete this device?', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/biometric/devices/${id}`); fetchDevices(); }
-    catch (e: any) { alert(e.response?.data?.message || 'Failed to delete'); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Failed to delete'); }
   };
 
   // ── Upload CSV ──────────────────────────────────────────────
@@ -163,7 +168,7 @@ export default function BiometricAttendance() {
       formData.append('file', file);
       const r = await api.post('/biometric/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setUploadResult(r.data); fetchLogs();
-    } catch (e: any) { alert(e.response?.data?.message || 'Upload failed'); }
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Upload failed'); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
   };
 
@@ -179,9 +184,10 @@ export default function BiometricAttendance() {
   };
 
   const deleteMapping = async (code: string) => {
-    if (!confirm(`Remove mapping for code "${code}"?`)) return;
+    const ok = await confirm({ title: 'Remove Mapping', message: `Remove mapping for code "${code}"?`, type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/biometric/mappings/${encodeURIComponent(code)}`); fetchMappings(); }
-    catch (e: any) { alert(e.response?.data?.message || 'Failed to delete'); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Failed to delete'); }
   };
 
   // ── Process logs ────────────────────────────────────────────

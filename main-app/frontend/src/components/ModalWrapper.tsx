@@ -6,9 +6,10 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   maxWidth?: string;
+  title?: string;
 }
 
-const ModalWrapper = ({ open = true, onClose, children, maxWidth = 'max-w-lg' }: Props) => (
+const ModalWrapper = ({ open = true, onClose, children, maxWidth = 'max-w-lg', title }: Props) => (
   <AnimatePresence>
     {open && (
       <motion.div
@@ -20,6 +21,9 @@ const ModalWrapper = ({ open = true, onClose, children, maxWidth = 'max-w-lg' }:
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          {...(title ? { 'aria-labelledby': 'modal-title' } : {})}
           initial={{ opacity: 0, scale: 0.93, y: 24 }}
           animate={{ opacity: 1, scale: 1,    y: 0  }}
           exit={{   opacity: 0, scale: 0.93, y: 24  }}

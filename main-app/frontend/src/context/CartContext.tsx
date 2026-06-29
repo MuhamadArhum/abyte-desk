@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 
 export interface Product {
   product_id: number;
@@ -69,7 +70,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (existing) {
         if (existing.quantity >= maxStock) {
-          alert(`Cannot add more. Only ${maxStock} in stock.`);
+          toast.error(`Cannot add more. Only ${maxStock} in stock.`);
           return prev;
         }
         return prev.map(item => {
@@ -81,7 +82,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (maxStock <= 0) {
-        alert('Product is out of stock!');
+        toast.error('Product is out of stock!');
         return prev;
       }
 

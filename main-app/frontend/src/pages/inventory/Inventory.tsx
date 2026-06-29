@@ -6,6 +6,9 @@ import { localToday } from '../../utils/dateUtils';
 import AddProductModal from '../../components/AddProductModal';
 import BarcodeModal from '../../components/BarcodeModal';
 import Pagination from '../../components/Pagination';
+import EmptyState from '../../components/EmptyState';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface InventoryItem {
   product_id: number;
@@ -36,6 +39,8 @@ interface Category {
 
 const Inventory = ({ productType }: InventoryProps = {}) => {
   const { currencySymbol: currency } = useSettings();
+  const confirm = useConfirm();
+  const { error } = useToast();
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -101,13 +106,14 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
   useEffect(() => { fetchInventory(); }, [fetchInventory]);
 
   const handleDelete = async (productId: number) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    const ok = await confirm({ title: 'Delete Product', message: 'Are you sure you want to delete this product?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/products/${productId}`);
       fetchInventory();
       fetchStats();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to delete product');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Failed to delete product');
     }
   };
 
@@ -325,8 +331,12 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                 })}
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
-                      No products found
+                    <td colSpan={7}>
+                      <EmptyState
+                        icon={Package}
+                        title="No products found"
+                        description="Try adjusting your search or add a new product"
+                      />
                     </td>
                   </tr>
                 )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, AlertCircle, Eye, Package } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -264,14 +264,18 @@ export default function Clients() {
               {/* Empty state */}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-14 text-center">
-                    <AlertCircle size={32} className="text-slate-200 mx-auto mb-3" />
-                    <p className="text-slate-400 font-medium">
-                      {search ? 'No clients match your search' : 'No clients yet'}
-                    </p>
-                    {!search && (
-                      <p className="text-slate-300 text-xs mt-1">Click "Add Client" to get started</p>
-                    )}
+                  <td colSpan={6}>
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                        <Users size={28} className="text-gray-300" />
+                      </div>
+                      <p className="text-gray-700 font-semibold">
+                        {search ? 'No clients match your search' : 'No clients found'}
+                      </p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        {search ? 'Try a different name, email, or code' : 'Add your first client to get started'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}

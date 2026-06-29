@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { RotateCcw, Search, Loader2, Check, Printer, FileText } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 import Pagination from '../../components/Pagination';
 import { ReceiptModal } from '../../printing/ReceiptView';
 import { buildReturnReceipt } from '../../printing/receiptBuilder';
@@ -36,6 +37,7 @@ const REASONS = [
 
 const Returns = () => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [saleId, setSaleId] = useState('');
   const [sale, setSale] = useState<SaleData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,13 +74,13 @@ const Returns = () => {
     try {
       const res = await api.get(`/returns/sale/${saleId}`);
       if (res.data.status !== 'completed') {
-        alert('Only completed sales can be returned');
+        toast.error('Only completed sales can be returned');
         setLoading(false);
         return;
       }
       setSale(res.data);
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Sale not found');
+      toast.error(error.response?.data?.message || 'Sale not found');
     } finally {
       setLoading(false);
     }
@@ -107,11 +109,11 @@ const Returns = () => {
 
   const handleReturn = async () => {
     if (Object.keys(selectedItems).length === 0) {
-      alert('Please select at least one item to return');
+      toast.error('Please select at least one item to return');
       return;
     }
     if (!reason) {
-      alert('Please select a reason');
+      toast.error('Please select a reason');
       return;
     }
 
@@ -153,7 +155,7 @@ const Returns = () => {
       setReasonNote('');
       setSaleId('');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to process return');
+      toast.error(error.response?.data?.message || 'Failed to process return');
     } finally {
       setProcessing(false);
     }
@@ -174,7 +176,7 @@ const Returns = () => {
         documentData: returnData,
       });
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Print failed');
+      toast.error(err.response?.data?.message || 'Print failed');
     } finally {
       setThermalPrinting(false);
     }

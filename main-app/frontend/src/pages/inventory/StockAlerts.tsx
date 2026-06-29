@@ -2,6 +2,8 @@
 import { AlertTriangle, Search, XCircle, CheckCircle, Bell, Package } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface StockAlert {
   alert_id: number;
@@ -22,6 +24,8 @@ const ALERT_BADGES: Record<string, { label: string; bg: string; text: string }> 
 };
 
 const StockAlerts = () => {
+  const confirm = useConfirm();
+  const { error } = useToast();
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -73,13 +77,14 @@ const StockAlerts = () => {
   useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
 
   const handleResolve = async (alertId: number) => {
-    if (!window.confirm('Mark this alert as resolved?')) return;
+    const ok = await confirm({ title: 'Resolve Alert', message: 'Mark this alert as resolved?', type: 'warning' });
+    if (!ok) return;
     try {
       await api.put(`/purchase-orders/stock-alerts/${alertId}/resolve`);
       fetchAlerts();
       fetchStats();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to resolve alert');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Failed to resolve alert');
     }
   };
 

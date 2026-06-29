@@ -4,16 +4,20 @@ import { Plus, Eye, Edit, Trash2, User, Search, Filter, RotateCcw, TrendingUp } 
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import AddStaffModal from '../../components/AddStaffModal';
 import StaffDetailsModal from '../../components/StaffDetailsModal';
 import SalaryIncrementModal from '../../components/SalaryIncrementModal';
 import { SkeletonTable } from '../../components/Skeleton';
+import EmptyState from '../../components/EmptyState';
 
 const Staff = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
 
   // Modals
@@ -43,6 +47,7 @@ const Staff = () => {
 
   const fetchStaff = async () => {
     setLoading(true);
+    setError(null);
     try {
       const params: any = {
         page: pagination.page,
@@ -68,6 +73,7 @@ const Staff = () => {
       }
     } catch (error) {
       console.error(error);
+      setError('Failed to load staff. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -89,7 +95,8 @@ const Staff = () => {
   };
 
   const handleDelete = async (staffId: number, name: string) => {
-    if (!window.confirm(`Are you sure you want to deactivate ${name}?`)) return;
+    const ok = await confirm({ title: 'Deactivate Staff', message: `Are you sure you want to deactivate ${name}?`, type: 'danger' });
+    if (!ok) return;
 
     try {
       await api.delete(`/staff/${staffId}`);
@@ -102,7 +109,8 @@ const Staff = () => {
   };
 
   const handleReactivate = async (staffId: number, name: string) => {
-    if (!window.confirm(`Reactivate ${name}?`)) return;
+    const ok = await confirm({ title: 'Reactivate Staff', message: `Reactivate ${name}?`, type: 'warning' });
+    if (!ok) return;
 
     try {
       await api.put(`/staff/${staffId}`, { is_active: 1 });
@@ -219,6 +227,16 @@ const Staff = () => {
       {/* Staff Table */}
       {loading ? (
         <SkeletonTable rows={6} cols={7} />
+      ) : error && !loading ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+          <p className="text-red-700 font-medium mb-3">{error}</p>
+          <button
+            onClick={fetchStaff}
+            className="px-5 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition font-medium text-sm"
+          >
+            Retry
+          </button>
+        </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <table className="w-full">
@@ -305,13 +323,17 @@ const Staff = () => {
                     </td>
                   </tr>
                 ))
-              ) : (
+              ) : !loading && staff.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-gray-500">
-                    No staff members found. Add your first team member to get started.
+                  <td colSpan={8} className="p-0">
+                    <EmptyState
+                      icon={User}
+                      title="No staff members found"
+                      description="Try adjusting your filters or add a new staff member"
+                    />
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
 

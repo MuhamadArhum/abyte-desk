@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext';
 import { X, Plus, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
+import { useToast } from './Toast';
 
 interface Product {
   product_id: number;
@@ -36,6 +37,7 @@ interface CreatePOModalProps {
 const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProps) => {
   const isEdit = !!editPO;
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [step, setStep] = useState(1);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -98,7 +100,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
 
   const addItem = () => {
     if (!selectedProduct || quantity <= 0 || unitCost <= 0) {
-      alert('Please select a product and enter valid quantity and cost');
+      toast.error('Please select a product and enter valid quantity and cost');
       return;
     }
 
@@ -108,7 +110,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
     // Check if product already exists
     const existingIndex = items.findIndex(item => item.product_id === selectedProduct);
     if (existingIndex >= 0) {
-      alert('Product already added. Please edit the existing item.');
+      toast.error('Product already added. Please edit the existing item.');
       return;
     }
 
@@ -146,13 +148,13 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
   const handleNext = () => {
     if (step === 1) {
       if (!selectedSupplier) {
-        alert('Please select a supplier');
+        toast.error('Please select a supplier');
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (items.length === 0) {
-        alert('Please add at least one item');
+        toast.error('Please add at least one item');
         return;
       }
       setStep(3);
@@ -186,7 +188,7 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
       onClose();
     } catch (error: any) {
       console.error('Error saving PO:', error);
-      alert(error.response?.data?.message || 'Failed to save Purchase Order');
+      toast.error(error.response?.data?.message || 'Failed to save Purchase Order');
     } finally {
       setLoading(false);
     }

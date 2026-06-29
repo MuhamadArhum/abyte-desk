@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { X, FileText, Calendar, User, Package, DollarSign } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface POItem {
   po_item_id: number;
@@ -37,6 +38,7 @@ interface ViewPODetailsModalProps {
 
 const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [po, setPO] = useState<PODetails | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -59,7 +61,7 @@ const ViewPODetailsModal = ({ isOpen, onClose, poId }: ViewPODetailsModalProps) 
       setPO(poData);
     } catch (error) {
       console.error('Error fetching PO details:', error);
-      alert('Failed to fetch PO details');
+      toast.error('Failed to fetch PO details');
     } finally {
       setLoading(false);
     }

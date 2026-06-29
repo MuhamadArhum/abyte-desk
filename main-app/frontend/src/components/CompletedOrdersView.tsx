@@ -18,6 +18,8 @@ import { ReceiptModal } from '../printing/ReceiptView';
 import { buildSaleReceipt } from '../printing/receiptBuilder';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
+import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 
 // ─── Password Gate Modal ────────────────────────────────────────────────────
 const PasswordModal = ({ title, correctPassword, onSuccess, onClose }: {
@@ -91,6 +93,8 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   title = 'Completed Orders',
 }) => {
   const isOverlay = Boolean(onClose);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   // View mode: 'shift' uses register boundaries; 'date' uses manual date range
   const [viewMode, setViewMode] = useState<'shift' | 'date'>('shift');
@@ -225,9 +229,10 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   useEffect(() => { setPage(1); }, [search, dateFrom, dateTo, typeFilter, cashierSearch, fbrFilter, viewMode, shiftInfo]);
 
   const handleRefund = async (saleId: number) => {
-    if (!confirm(`Refund Order #${saleId}? Stock will be restored.`)) return;
+    const ok = await confirm({ title: 'Refund Order', message: `Refund Order #${saleId}? Stock will be restored.`, type: 'danger' });
+    if (!ok) return;
     try { await api.post(`/sales/${saleId}/refund`); fetchSales(); }
-    catch { alert('Failed to refund order'); }
+    catch { toast.error('Failed to refund order'); }
   };
 
   const handleRefundClick = (saleId: number) => {
@@ -241,7 +246,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
       await api.post(`/sales/${saleId}/sync-tax`);
       setSyncedIds(prev => new Set(prev).add(saleId));
     } catch {
-      alert('Sync to tax system failed');
+      toast.error('Sync to tax system failed');
     } finally {
       setSyncingSaleId(null);
     }

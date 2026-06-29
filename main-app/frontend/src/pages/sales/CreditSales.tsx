@@ -3,6 +3,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { CreditCard, Search, DollarSign, AlertTriangle, Clock, CheckCircle, X, Printer, Loader2, FileText } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 import Pagination from '../../components/Pagination';
 import { ReceiptModal } from '../../printing/ReceiptView';
 import { buildCreditSaleReceipt } from '../../printing/receiptBuilder';
@@ -29,6 +30,7 @@ const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }>
 
 const CreditSales = () => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [sales, setSales] = useState<CreditSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -89,7 +91,7 @@ const CreditSales = () => {
   };
 
   const handlePayment = async () => {
-    if (!paymentModal || !payAmount || parseFloat(payAmount) <= 0) return alert('Enter a valid amount');
+    if (!paymentModal || !payAmount || parseFloat(payAmount) <= 0) { toast.error('Enter a valid amount'); return; }
     try {
       await api.post(`/credit-sales/${paymentModal.credit_sale_id}/payment`, {
         amount: parseFloat(payAmount), payment_method: payMethod, notes: payNotes || null
@@ -97,7 +99,7 @@ const CreditSales = () => {
       setPaymentModal(null);
       fetchSales();
       fetchStats();
-    } catch (err: any) { alert(err.response?.data?.message || 'Failed'); }
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const isOverdue = (cs: CreditSale) => cs.status !== 'paid' && new Date(cs.due_date) < new Date();
@@ -118,7 +120,7 @@ const CreditSales = () => {
         },
       });
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Print failed');
+      toast.error(err.response?.data?.message || 'Print failed');
     } finally {
       setThermalPrintingId(null);
     }

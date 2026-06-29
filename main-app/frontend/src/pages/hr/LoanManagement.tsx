@@ -5,6 +5,7 @@ import { DollarSign, Plus, Ban, Eye, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import IssueLoanModal from '../../components/IssueLoanModal';
 import LoanRepaymentModal from '../../components/LoanRepaymentModal';
 import { SkeletonTable } from '../../components/Skeleton';
@@ -12,6 +13,7 @@ import { SkeletonTable } from '../../components/Skeleton';
 const LoanManagement = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const [loans, setLoans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -47,7 +49,8 @@ const LoanManagement = () => {
   };
 
   const handleCancel = async (loan: any) => {
-    if (!window.confirm(`Cancel loan of ${currency}${Number(loan.loan_amount).toLocaleString()} for ${loan.full_name}?`)) return;
+    const ok = await confirm({ title: 'Cancel Loan', message: `Cancel loan of ${currency}${Number(loan.loan_amount).toLocaleString()} for ${loan.full_name}?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.put(`/staff/loans/${loan.loan_id}/cancel`);
       toast.success('Loan cancelled');

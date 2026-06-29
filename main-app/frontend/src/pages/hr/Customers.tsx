@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Plus, Search, Edit, Trash2, User, Phone, ShoppingBag, Clock } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import AddCustomerModal from '../../components/AddCustomerModal';
 import Pagination from '../../components/Pagination';
 
@@ -22,6 +24,8 @@ interface Customer {
 
 const Customers = () => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -102,7 +106,8 @@ const Customers = () => {
   }, [selectedCustomer, historyPage, fetchCustomerDetails]);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this customer?')) return;
+    const ok = await confirm({ title: 'Delete Customer', message: 'Are you sure you want to delete this customer?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/customers/${id}`);
       fetchCustomers();
@@ -111,7 +116,7 @@ const Customers = () => {
       }
     } catch (error: any) {
       console.error("Failed to delete customer", error);
-      alert(error.response?.data?.message || 'Failed to delete customer');
+      toast.error(error.response?.data?.message || 'Failed to delete customer');
     }
   };
 

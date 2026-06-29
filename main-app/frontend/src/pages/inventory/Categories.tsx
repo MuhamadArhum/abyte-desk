@@ -4,6 +4,9 @@ import {
   FlaskConical, Layers, CheckCircle, Package, FolderPlus
 } from 'lucide-react';
 import api from '../../utils/api';
+import EmptyState from '../../components/EmptyState';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 type CategoryType = 'raw_material' | 'semi_finished' | 'finished_good';
 type TabKey = 'finished_good' | 'raw_material' | 'semi_finished';
@@ -71,6 +74,8 @@ function buildTree(flat: Category[]): Category[] {
 }
 
 const Categories = ({ categoryType }: CategoriesProps = {}) => {
+  const confirm = useConfirm();
+  const { error } = useToast();
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -158,12 +163,13 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
   };
 
   const handleDelete = async (cat: Category) => {
-    if (!window.confirm(`Delete "${cat.category_name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Category', message: `Delete "${cat.category_name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/products/categories/${cat.category_id}`);
       fetchCategories();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete');
+      error(err.response?.data?.message || 'Failed to delete');
     }
   };
 
@@ -362,8 +368,12 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
                   }
                   {displayList.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
-                        {search ? 'No categories match your search.' : `No ${currentTab.label.toLowerCase()} categories yet. Click "Add Category" to create one.`}
+                      <td colSpan={6}>
+                        <EmptyState
+                          icon={Tag}
+                          title={search ? 'No categories match your search' : `No ${currentTab.label.toLowerCase()} categories yet`}
+                          description={search ? 'Try a different search term' : 'Click "Add Category" to create one'}
+                        />
                       </td>
                     </tr>
                   )}

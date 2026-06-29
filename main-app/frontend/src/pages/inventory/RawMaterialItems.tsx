@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Package, AlertTriangle, XCircle, X, Save, FlaskConical } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface RawMaterial {
   product_id: number;
@@ -39,6 +41,8 @@ const emptyForm = {
 };
 
 const RawMaterialItems = () => {
+  const confirm = useConfirm();
+  const { error, success } = useToast();
   const [items, setItems] = useState<RawMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -156,12 +160,14 @@ const RawMaterialItems = () => {
   };
 
   const handleDelete = async (item: RawMaterial) => {
-    if (!window.confirm(`Delete "${item.product_name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Raw Material', message: `Delete "${item.product_name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/products/${item.product_id}`);
+      success('Item deleted');
       fetchItems();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete');
+      error(err.response?.data?.message || 'Failed to delete');
     }
   };
 

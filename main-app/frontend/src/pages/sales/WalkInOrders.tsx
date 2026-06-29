@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { ReceiptModal, PaymentSelectModal } from '../../printing/ReceiptView';
@@ -30,6 +32,8 @@ const StatCard = ({ icon: Icon, label, value, color }: { icon: any; label: strin
 const WalkInOrders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
   const isAdmin = user?.role_name === 'Admin';
   const [cs, setCs] = useState('Rs.');
 
@@ -134,12 +138,13 @@ const WalkInOrders = () => {
   useEffect(() => { fetchActive(); }, [fetchActive, categoryFilter]);
 
   const handleDeleteActive = async (sale: any) => {
-    if (!confirm(`Delete Order${sale.token_no ? ` Token ${sale.token_no}` : ` #${sale.sale_id}`}? Stock will be restored.`)) return;
+    const ok = await confirm({ title: 'Delete Order', message: `Delete Order${sale.token_no ? ` Token ${sale.token_no}` : ` #${sale.sale_id}`}? Stock will be restored.`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/sales/${sale.sale_id}`);
       fetchActive();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete order');
+      toast.error(err.response?.data?.message || 'Failed to delete order');
     }
   };
 

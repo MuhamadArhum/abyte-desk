@@ -4,6 +4,7 @@ import api from '../../utils/api';
 import { printRawSaleInvoice } from '../../utils/printUtils';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
@@ -26,6 +27,7 @@ const RawSale = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const { error, success } = useToast();
+  const confirm = useConfirm();
 
   const [formSection, setFormSection]   = useState('');
   const [formCustomer, setFormCustomer] = useState('');
@@ -85,7 +87,8 @@ const RawSale = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this sale? Stock will be reversed.')) return;
+    const ok = await confirm({ title: 'Delete Sale', message: 'Delete this sale? Stock will be reversed.', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/issuance/raw-sales/${id}`); success('Deleted'); fetchSales(); }
     catch (err: any) { error(err.response?.data?.message || 'Error'); }
   };

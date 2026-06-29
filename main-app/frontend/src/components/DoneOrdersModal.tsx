@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { X, Archive, Search, FileText, CheckCircle, RotateCcw } from 'lucide-react';
 import api from '../utils/api';
 import Pagination from './Pagination';
+import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 
 interface DoneOrdersModalProps {
   isOpen: boolean;
@@ -9,6 +11,8 @@ interface DoneOrdersModalProps {
 }
 
 const DoneOrdersModal: React.FC<DoneOrdersModalProps> = ({ isOpen, onClose }) => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,15 +50,16 @@ const DoneOrdersModal: React.FC<DoneOrdersModalProps> = ({ isOpen, onClose }) =>
   }, [currentPage, itemsPerPage, searchTerm]);
 
   const handleRefund = async (saleId: number) => {
-    if (!confirm(`Are you sure you want to refund Order #${saleId}? This will restore stock.`)) return;
-    
+    const ok = await confirm({ title: 'Refund Order', message: `Are you sure you want to refund Order #${saleId}? This will restore stock.`, type: 'danger' });
+    if (!ok) return;
+
     try {
       await api.post(`/sales/${saleId}/refund`);
-      alert('Order refunded successfully');
+      toast.success('Order refunded successfully');
       fetchSales();
     } catch (error) {
       console.error("Failed to refund order", error);
-      alert('Failed to refund order');
+      toast.error('Failed to refund order');
     }
   };
 

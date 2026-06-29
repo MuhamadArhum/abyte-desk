@@ -4,6 +4,7 @@ import api from '../../utils/api';
 import { printChallan } from '../../utils/printUtils';
 import { localToday } from '../../utils/dateUtils';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 
@@ -26,6 +27,7 @@ const StockIssue = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const { showToast } = useToast();
+  const confirm = useConfirm();
 
   // Form state
   const [formSection, setFormSection]   = useState('');
@@ -130,9 +132,10 @@ const StockIssue = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this issue? Stock will be reversed.')) return;
+    const ok = await confirm({ title: 'Delete Issue', message: 'Delete this issue? Stock will be reversed.', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/issuance/issues/${id}`); showToast('success', 'Deleted'); fetchIssues(); }
-    catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    catch (err: any) { showToast('error', err.response?.data?.message || 'Error'); }
   };
 
   const openView = async (id: number) => {

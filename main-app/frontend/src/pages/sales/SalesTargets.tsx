@@ -4,6 +4,7 @@ import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3, Pr
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import Pagination from '../../components/Pagination';
 
 interface TargetItem {
@@ -332,6 +333,7 @@ const getTypeBadgeClass = (type: string): string => {
 const SalesTargets = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'manage'>('dashboard');
 
   // Dashboard state
@@ -437,7 +439,8 @@ const SalesTargets = () => {
   }, [pagination.page, pagination.limit, filterUserId, filterType]);
 
   const handleDelete = async (target: TargetItem) => {
-    if (!window.confirm(`Delete target for "${target.user_name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Target', message: `Delete target for "${target.user_name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/sales-targets/${target.target_id}`);
       toast.success('Target deleted');

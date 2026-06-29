@@ -3,6 +3,7 @@ import { BookOpen, Save, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 const LEAVE_TYPES = [
   { key: 'annual', label: 'Annual Leave',  color: 'bg-blue-50 border-blue-200',   accent: 'text-blue-700',  dot: 'bg-blue-500',  icon: 'bg-blue-100 text-blue-600' },
@@ -13,6 +14,7 @@ const LEAVE_TYPES = [
 
 const LeavePolicies = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<number | null>(null);  // B-035: policy_id is number
@@ -62,7 +64,8 @@ const LeavePolicies = () => {
   };
 
   const handleCarryForward = async () => {
-    if (!window.confirm('Run year-end carry-forward for all staff? This will update leave balances based on current policies.')) return;
+    const ok = await confirm({ title: 'Run Year-End Carry-Forward', message: 'Run year-end carry-forward for all staff? This will update leave balances based on current policies.', type: 'warning' });
+    if (!ok) return;
     setCarrying(true);
     try {
       const res = await api.post('/staff/leave-policies/carry-forward');

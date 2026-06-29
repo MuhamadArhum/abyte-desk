@@ -3,6 +3,8 @@ import { ClipboardCheck, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle,
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { localToday } from '../../utils/dateUtils';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface StockCountItem {
   product_id: number;
@@ -24,6 +26,8 @@ const STATUS_OPTIONS = [
 ];
 
 const StockCount = () => {
+  const confirm = useConfirm();
+  const { error, success } = useToast();
   const [items, setItems] = useState<StockCountItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -92,7 +96,7 @@ const StockCount = () => {
       // Scroll to the item
       document.getElementById(`row-${found.product_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      alert(`Product not found: ${code}`);
+      error(`Product not found: ${code}`);
     }
     setBarcodeInput('');
   };
@@ -100,10 +104,11 @@ const StockCount = () => {
   const applyAdjustments = async () => {
     const discrepancies = items.filter(i => i.physical_count !== null && i.discrepancy !== 0);
     if (discrepancies.length === 0) {
-      alert('No discrepancies to apply. Count all products first, or there are no differences.');
+      error('No discrepancies to apply. Count all products first, or there are no differences.');
       return;
     }
-    if (!confirm(`Apply ${discrepancies.length} stock adjustment(s) for counted items with discrepancies?`)) return;
+    const ok = await confirm({ title: 'Apply Adjustments', message: `Apply ${discrepancies.length} stock adjustment(s) for counted items with discrepancies?`, type: 'warning' });
+    if (!ok) return;
     setApplying(true);
     try {
       for (const item of discrepancies) {
@@ -119,7 +124,7 @@ const StockCount = () => {
       setTimeout(() => setApplySuccess(false), 3000);
       fetchProducts();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to apply adjustments');
+      error(err.response?.data?.message || 'Failed to apply adjustments');
     } finally {
       setApplying(false);
     }
@@ -127,7 +132,7 @@ const StockCount = () => {
 
   const exportCSV = () => {
     const counted = items.filter(i => i.physical_count !== null);
-    if (counted.length === 0) { alert('No counted items to export.'); return; }
+    if (counted.length === 0) { error('No counted items to export.'); return; }
     const headers = ['Product', 'Category', 'Barcode', 'SKU', 'System Stock', 'Physical Count', 'Discrepancy', 'Status'];
     const rows = counted.map(i => [
       i.product_name,

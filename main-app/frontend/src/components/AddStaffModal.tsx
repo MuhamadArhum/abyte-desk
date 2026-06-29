@@ -655,7 +655,8 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
             Cancel
           </button>
           <button onClick={handleSubmit} disabled={loading}
-            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 text-sm font-medium">
+            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2">
+            {loading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
             {loading ? 'Saving...' : staffToEdit ? 'Update Staff Member' : 'Add Staff Member'}
           </button>
         </div>

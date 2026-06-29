@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Package, Tag, X, Layers, DollarSign, Hash, BarChart2, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface VariantType {
   variant_type_id: number;
@@ -27,6 +29,8 @@ interface Product {
 }
 
 const ProductVariants = () => {
+  const confirm = useConfirm();
+  const { error, success } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
@@ -112,14 +116,14 @@ const ProductVariants = () => {
       setNewTypeName('');
       fetchVariantTypes();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add variant type');
+      error(err.response?.data?.message || 'Failed to add variant type');
     } finally {
       setAddingType(false);
     }
   };
 
   const openCreate = () => {
-    if (!selectedProduct) { alert('Select a product first'); return; }
+    if (!selectedProduct) { error('Select a product first'); return; }
     setEditVariant(null);
     setForm({ variant_name: '', sku: '', barcode: '', price_adjustment: '0', initial_stock: '0' });
     setError('');
@@ -168,29 +172,31 @@ const ProductVariants = () => {
   };
 
   const handleDelete = async (variantId: number, name: string) => {
-    if (!confirm(`Delete variant "${name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Variant', message: `Delete variant "${name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/variants/${variantId}`);
       fetchVariants(selectedProduct!.product_id);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete variant');
+      error(err.response?.data?.message || 'Failed to delete variant');
     }
   };
 
   const handleAdjustStock = async () => {
     if (!stockVariant) return;
     const qty = parseInt(stockQty);
-    if (isNaN(qty)) { alert('Enter valid quantity'); return; }
+    if (isNaN(qty)) { error('Enter valid quantity'); return; }
     setAdjustingStock(true);
     try {
       await api.post(`/variants/${stockVariant.variant_id}/stock/adjust`, {
         quantity: qty,
         reason: stockReason,
       });
+      success('Stock adjusted');
       setStockVariant(null);
       fetchVariants(selectedProduct!.product_id);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to adjust stock');
+      error(err.response?.data?.message || 'Failed to adjust stock');
     } finally {
       setAdjustingStock(false);
     }

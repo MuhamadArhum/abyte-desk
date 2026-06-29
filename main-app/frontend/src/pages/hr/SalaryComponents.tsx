@@ -4,6 +4,7 @@ import { Sliders, Plus, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import ModalWrapper from '../../components/ModalWrapper';
 
 const ComponentModal = ({ comp, onClose, onSuccess }: { comp: any | null; onClose: () => void; onSuccess: () => void }) => {
@@ -94,6 +95,7 @@ const ComponentModal = ({ comp, onClose, onSuccess }: { comp: any | null; onClos
 const SalaryComponents = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
+  const confirm = useConfirm();
   const [components, setComponents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -111,7 +113,8 @@ const SalaryComponents = () => {
   };
 
   const handleDelete = async (comp: any) => {
-    if (!window.confirm(`Delete "${comp.name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Component', message: `Delete "${comp.name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/salary-components/${comp.component_id}`);
       toast.success('Component deleted');

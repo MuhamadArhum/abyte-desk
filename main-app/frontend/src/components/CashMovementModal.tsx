@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { X, ArrowDownCircle, ArrowUpCircle, Loader2, DollarSign, FileText, Calculator, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface CashMovementModalProps {
   isOpen: boolean;
@@ -29,13 +30,14 @@ const CASH_OUT_REASONS = [
   'Other'
 ];
 
-const CashMovementModal: React.FC<CashMovementModalProps> = ({ 
-  isOpen, 
-  onClose, 
+const CashMovementModal: React.FC<CashMovementModalProps> = ({
+  isOpen,
+  onClose,
   onSuccess,
-  currentBalance = 0 
+  currentBalance = 0
 }) => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [type, setType] = useState<'cash_in' | 'cash_out'>('cash_in');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -93,7 +95,7 @@ const CashMovementModal: React.FC<CashMovementModalProps> = ({
       onSuccess();
       onClose();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to record movement');
+      toast.error(error.response?.data?.message || 'Failed to record movement');
     } finally {
       setIsProcessing(false);
     }

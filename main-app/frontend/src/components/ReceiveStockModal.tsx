@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Package } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface POItem {
   po_item_id: number;
@@ -20,6 +21,7 @@ interface ReceiveStockModalProps {
 }
 
 const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: ReceiveStockModalProps) => {
+  const toast = useToast();
   const [items, setItems] = useState<POItem[]>([]);
   const [receivedQuantities, setReceivedQuantities] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
       setReceivedQuantities(initialQuantities);
     } catch (error) {
       console.error('Error fetching PO items:', error);
-      alert('Failed to fetch PO items');
+      toast.error('Failed to fetch PO items');
     } finally {
       setFetchingItems(false);
     }
@@ -67,7 +69,7 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
     });
 
     if (invalidItems.length > 0) {
-      alert('Please enter valid received quantities for all items');
+      toast.error('Please enter valid received quantities for all items');
       return;
     }
 
@@ -82,12 +84,12 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
       };
 
       await api.post(`/purchase-orders/${poId}/receive`, receiveData);
-      alert('Stock received successfully! Inventory has been updated.');
+      toast.success('Stock received successfully! Inventory has been updated.');
       onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error receiving stock:', error);
-      alert(error.response?.data?.message || 'Failed to receive stock');
+      toast.error(error.response?.data?.message || 'Failed to receive stock');
     } finally {
       setLoading(false);
     }

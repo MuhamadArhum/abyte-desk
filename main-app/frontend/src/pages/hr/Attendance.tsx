@@ -4,6 +4,7 @@ import DateRangeFilter from '../../components/DateRangeFilter';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import MarkAttendanceModal from '../../components/MarkAttendanceModal';
 import EditAttendanceModal from '../../components/EditAttendanceModal';
@@ -38,6 +39,7 @@ const exportToCSV = (data: any[], filename: string, columns: { key: string; head
 
 const Attendance = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const { user } = useAuth();
   const userRole = user?.role_name || user?.role;
   const isAdmin = userRole === 'Admin';
@@ -97,7 +99,8 @@ const Attendance = () => {
   };
 
   const handleDelete = async (record: any) => {
-    if (!window.confirm(`Delete attendance for ${record.full_name} on ${new Date(record.attendance_date).toLocaleDateString()}?`)) return;
+    const ok = await confirm({ title: 'Delete Attendance', message: `Delete attendance for ${record.full_name} on ${new Date(record.attendance_date).toLocaleDateString()}?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/attendance/${record.attendance_id}`);
       toast.success('Attendance record deleted');

@@ -2,6 +2,8 @@
 import { ArrowLeftRight, Plus, Search, X, Check, Ban, Clock, CheckCircle, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface Transfer {
   transfer_id: number;
@@ -38,6 +40,8 @@ const STATUS_BADGES: Record<string, string> = {
 };
 
 const StockTransfers = () => {
+  const confirm = useConfirm();
+  const { error } = useToast();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -138,24 +142,26 @@ const StockTransfers = () => {
   };
 
   const handleApprove = async (id: number) => {
-    if (!window.confirm('Approve this transfer? Stock will be moved between stores.')) return;
+    const ok = await confirm({ title: 'Approve Transfer', message: 'Approve this transfer? Stock will be moved between stores.', type: 'warning' });
+    if (!ok) return;
     try {
       await api.put(`/stock-transfers/${id}/approve`);
       fetchTransfers();
       fetchStats();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to approve');
+      error(err.response?.data?.message || 'Failed to approve');
     }
   };
 
   const handleCancel = async (id: number) => {
-    if (!window.confirm('Cancel this transfer?')) return;
+    const ok = await confirm({ title: 'Cancel Transfer', message: 'Cancel this transfer?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.put(`/stock-transfers/${id}/cancel`);
       fetchTransfers();
       fetchStats();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to cancel');
+      error(err.response?.data?.message || 'Failed to cancel');
     }
   };
 

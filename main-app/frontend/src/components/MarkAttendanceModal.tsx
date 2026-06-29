@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, CheckCircle } from 'lucide-react';
 import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 
 interface MarkAttendanceModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface MarkAttendanceModalProps {
 
 const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModalProps) => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
   const [staff, setStaff] = useState<any[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
@@ -97,7 +99,8 @@ const MarkAttendanceModal = ({ isOpen, onClose, onSuccess }: MarkAttendanceModal
       return;
     }
 
-    if (!window.confirm(`Mark all ${staff.length} active staff members as ${bulkStatus}?`)) return;
+    const ok = await confirm({ title: 'Bulk Mark Attendance', message: `Mark all ${staff.length} active staff members as ${bulkStatus}?`, type: 'warning' });
+    if (!ok) return;
 
     setLoading(true);
     try {

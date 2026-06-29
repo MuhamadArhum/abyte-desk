@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import { Wallet, Plus, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, History, Loader2 } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
 import CashMovementModal from '../../components/CashMovementModal';
 import RegisterCloseModal from '../../components/RegisterCloseModal';
@@ -40,6 +41,7 @@ interface Register {
 const CashRegister = () => {
   const { currencySymbol: currency } = useSettings();
   const { user } = useAuth();
+  const toast = useToast();
   const [register, setRegister] = useState<Register | null>(null);
   const [loading, setLoading] = useState(true);
   const [openingBalance, setOpeningBalance] = useState('');
@@ -71,7 +73,7 @@ const CashRegister = () => {
   const handleOpen = async () => {
     const balance = parseFloat(openingBalance);
     if (isNaN(balance) || balance < 0) {
-      alert('Please enter a valid opening balance');
+      toast.error('Please enter a valid opening balance');
       return;
     }
     setIsOpening(true);
@@ -80,7 +82,7 @@ const CashRegister = () => {
       setOpeningBalance('');
       fetchRegister();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to open register');
+      toast.error(error.response?.data?.message || 'Failed to open register');
     } finally {
       setIsOpening(false);
     }

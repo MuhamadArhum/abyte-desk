@@ -4,6 +4,7 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { SettingsProvider } from './context/SettingsContext';
+import { ConfirmProvider } from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Eagerly loaded — always needed on startup
@@ -181,6 +182,7 @@ function App() {
     <AuthProvider>
       <SettingsProvider>
         <ToastProvider>
+          <ConfirmProvider>
           <CartProvider>
             <Router>
               <ErrorBoundary>
@@ -324,6 +326,7 @@ function App() {
               <PWAInstallPrompt />
             </Suspense>
           </CartProvider>
+          </ConfirmProvider>
         </ToastProvider>
       </SettingsProvider>
     </AuthProvider>

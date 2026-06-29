@@ -9,7 +9,7 @@ import {
   DollarSign, ShoppingBag, ShoppingCart, AlertTriangle, TrendingUp,
   TrendingDown, Plus, Package, CreditCard, ArrowRight,
   Clock, CheckCircle, Box, RefreshCw, Truck, UserCheck, UserX,
-  Bell, Activity
+  Bell, Activity, AlertCircle
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -109,6 +109,7 @@ const Dashboard = () => {
   const [attendance, setAttendance]         = useState<AttendanceSummary>({ total: 0, present: 0, absent: 0, unmarked: 0, half_day: 0, leave: 0 });
   const [loading, setLoading]               = useState(true);
   const [refreshing, setRefreshing]         = useState(false);
+  const [fetchError, setFetchError]         = useState<string | null>(null);
   const [chartPeriod, setChartPeriod]       = useState<'week' | 'month' | 'year'>('week');
   const today = new Date().toISOString().split('T')[0];
 
@@ -116,6 +117,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
+    setFetchError(null);
     try {
       const daysBack = chartPeriod === 'month' ? 30 : chartPeriod === 'year' ? 365 : 7;
       const startDate = new Date(Date.now() - daysBack * 86400000).toISOString().split('T')[0];
@@ -166,6 +168,7 @@ const Dashboard = () => {
       })));
     } catch (e) {
       console.error('Dashboard fetch error', e);
+      setFetchError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false); setRefreshing(false);
     }
@@ -217,6 +220,25 @@ const Dashboard = () => {
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </motion.button>
       </div>
+
+      {/* Error State */}
+      {fetchError && !loading && (
+        <div className="bg-white border border-red-200 rounded-2xl p-6 flex items-center gap-4 shadow-sm">
+          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertCircle size={20} className="text-red-500" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-gray-800 text-sm">Something went wrong</p>
+            <p className="text-gray-500 text-sm mt-0.5">{fetchError}</p>
+          </div>
+          <button
+            onClick={() => fetchDashboardData()}
+            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition flex-shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Main Stat Cards */}
       {loading ? (

@@ -12,6 +12,8 @@ import RegisterCloseModal from '../../components/RegisterCloseModal';
 import ProductVariantModal from '../../components/ProductVariantModal';
 import api from '../../utils/api';
 import { printKOT } from '../../printing/agentPrinter';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 // ── TableSearchInput ─────────────────────────────────────────
 const TableSearchInput = ({
@@ -244,6 +246,8 @@ const POS = () => {
     appliedBundles, setAppliedBundles, bundleDiscount
   } = useCart();
   const { user, canDo, hasPermission } = useAuth();
+  const toast = useToast();
+  const confirm = useConfirm();
 
   // ── Permission flags ──────────────────────────────────────────────────────
   const canCreateSale      = canDo('sales.pos', 'create');
@@ -489,7 +493,7 @@ const POS = () => {
       setAssignedUserId(saleData.user_id || null);
     } catch (err) {
       console.error('Failed to load edit order', err);
-      alert('Failed to load order for editing');
+      toast.error('Failed to load order for editing');
     }
   };
 
@@ -508,7 +512,7 @@ const POS = () => {
   const handleOpenRegister = async () => {
     const balance = parseFloat(openingBalance);
     if (isNaN(balance) || balance < 0) {
-      alert('Please enter a valid opening balance');
+      toast.error('Please enter a valid opening balance');
       return;
     }
     setOpeningRegister(true);
@@ -517,20 +521,21 @@ const POS = () => {
       setRegister(res.data);
       setOpeningBalance('');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to open register');
+      toast.error(error.response?.data?.message || 'Failed to open register');
     } finally {
       setOpeningRegister(false);
     }
   };
 
   const handleForceReset = async () => {
-    if (!confirm('Force-close any stuck open register? This is for Admin use only when a register is stuck.')) return;
+    const ok = await confirm({ title: 'Force-Reset Register', message: 'Force-close any stuck open register? This is for Admin use only when a register is stuck.', type: 'danger' });
+    if (!ok) return;
     try {
       const res = await api.post('/register/force-reset');
-      alert(res.data.message);
+      toast.success(res.data.message);
       checkRegister();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to force-reset register');
+      toast.error(error.response?.data?.message || 'Failed to force-reset register');
     }
   };
 
@@ -617,7 +622,7 @@ const POS = () => {
           if (mapped.stock_quantity > 0) {
             handleAddProduct(mapped);
           } else {
-            alert('Product Out of Stock!');
+            toast.error('Product Out of Stock!');
           }
         }
       } catch (err) {
@@ -759,7 +764,7 @@ const POS = () => {
         await api.put(`/sales/${editingSaleId}/assign-user`, { user_id: userId });
         setAssignedUserId(userId);
       } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to assign user');
+        toast.error(err.response?.data?.message || 'Failed to assign user');
       } finally {
         setUserAssigning(false);
       }
@@ -792,9 +797,9 @@ const POS = () => {
       resetDelivery();
       const walkin = customers.find(c => c.customer_id === 1);
       setSelectedCustomer(walkin || null);
-      alert('Order updated successfully');
+      toast.success('Order updated successfully');
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save order');
+      toast.error(err.response?.data?.message || 'Failed to save order');
     }
   };
 
@@ -839,15 +844,15 @@ const POS = () => {
       }
     } catch (error) {
       console.error('Failed to hold order', error);
-      alert('Failed to hold order');
+      toast.error('Failed to hold order');
     }
   };
 
   const handleSendToDelivery = async () => {
     if (cart.length === 0) return;
-    if (!deliveryInfo.delivery_phone.trim()) { alert('Please enter phone number'); return; }
-    if (!delivName.trim()) { alert('Please enter customer name'); return; }
-    if (!deliveryInfo.delivery_address.trim()) { alert('Please enter delivery address'); return; }
+    if (!deliveryInfo.delivery_phone.trim()) { toast.error('Please enter phone number'); return; }
+    if (!delivName.trim()) { toast.error('Please enter customer name'); return; }
+    if (!deliveryInfo.delivery_address.trim()) { toast.error('Please enter delivery address'); return; }
 
     let customerId: number;
 
@@ -865,7 +870,7 @@ const POS = () => {
         customerId = custRes.data.customer_id;
         fetchCustomers();
       } catch (e: any) {
-        alert(e.response?.data?.message || 'Failed to create customer');
+        toast.error(e.response?.data?.message || 'Failed to create customer');
         return;
       }
     }
@@ -910,7 +915,7 @@ const POS = () => {
       setDeliveryConfirm(delRes.data.delivery_number);
       setTimeout(() => setDeliveryConfirm(null), 6000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create delivery order');
+      toast.error(err.response?.data?.message || 'Failed to create delivery order');
     }
   };
 
@@ -940,7 +945,7 @@ const POS = () => {
       setQuotationSuccess(res.data.quotation_number);
       setTimeout(() => setQuotationSuccess(null), 6000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save quotation');
+      toast.error(err.response?.data?.message || 'Failed to save quotation');
     } finally {
       setQuotationSaving(false);
     }

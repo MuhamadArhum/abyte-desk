@@ -2,6 +2,7 @@
 import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 interface BackupEntry {
   backup_id: number;
@@ -34,6 +35,7 @@ const timeAgo = (dateStr: string): string => {
 };
 
 const Backup = () => {
+  const confirm = useConfirm();
   const [backups, setBackups] = useState<BackupEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -95,9 +97,8 @@ const Backup = () => {
   };
 
   const handleRestore = async (filename: string) => {
-    if (!window.confirm(`WARNING: Restoring will overwrite the current database with "${filename}".\n\nA backup of the current state will be created first.\n\nAre you sure you want to continue?`)) {
-      return;
-    }
+    const ok = await confirm({ title: 'Restore Backup', message: `WARNING: Restoring will overwrite the current database with "${filename}".\n\nA backup of the current state will be created first.\n\nAre you sure you want to continue?`, type: 'danger' });
+    if (!ok) return;
     setRestoring(filename);
     setMessage({ type: '', text: '' });
     try {
@@ -115,7 +116,8 @@ const Backup = () => {
   };
 
   const handleDelete = async (filename: string) => {
-    if (!window.confirm(`Delete backup "${filename}"? This cannot be undone.`)) return;
+    const ok = await confirm({ title: 'Delete Backup', message: `Delete backup "${filename}"? This cannot be undone.`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/backup/${filename}`);
       setMessage({ type: 'success', text: 'Backup deleted' });

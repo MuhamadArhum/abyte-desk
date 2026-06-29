@@ -2,11 +2,13 @@
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, MinusCircle, Download, UserCheck } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const DailyAttendance = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [date, setDate] = useState(localToday());
   const [data, setData] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ total: 0, present: 0, absent: 0, half_day: 0, leave: 0, holiday: 0, unmarked: 0 });
@@ -58,7 +60,8 @@ const DailyAttendance = () => {
   const markAllPresent = async () => {
     const unmarked = data.filter(r => !r.status);
     if (unmarked.length === 0) { toast.info('No unmarked staff'); return; }
-    if (!window.confirm(`Mark ${unmarked.length} staff as present?`)) return;
+    const ok = await confirm({ title: 'Mark All Present', message: `Mark ${unmarked.length} staff as present?`, type: 'warning' });
+    if (!ok) return;
 
     try {
       await api.post('/staff/attendance/bulk', {

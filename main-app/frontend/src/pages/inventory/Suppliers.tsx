@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, DollarSign, Truck } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import AddSupplierModal from '../../components/AddSupplierModal';
 import SupplierPaymentModal from '../../components/SupplierPaymentModal';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
+import EmptyState from '../../components/EmptyState';
 
 interface Supplier {
   supplier_id: number;
@@ -20,6 +23,8 @@ interface Supplier {
 }
 
 const Suppliers = () => {
+  const confirm = useConfirm();
+  const { error, success } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -61,13 +66,14 @@ const Suppliers = () => {
   }, [fetchSuppliers]);
 
   const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`Are you sure you want to deactivate supplier "${name}"?`)) return;
+    const ok = await confirm({ title: 'Deactivate Supplier', message: `Are you sure you want to deactivate supplier "${name}"?`, type: 'danger' });
+    if (!ok) return;
 
     try {
       await api.delete(`/suppliers/${id}`);
       fetchSuppliers();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to deactivate supplier');
+    } catch (err: any) {
+      error(err.response?.data?.message || 'Failed to deactivate supplier');
     }
   };
 
@@ -229,9 +235,11 @@ const Suppliers = () => {
           </table>
 
           {suppliers.length === 0 && !loading && (
-            <div className="text-center py-12 text-gray-500">
-              No suppliers found
-            </div>
+            <EmptyState
+              icon={Truck}
+              title="No suppliers found"
+              description="Try adjusting your search or add a new supplier"
+            />
           )}
         </div>
 

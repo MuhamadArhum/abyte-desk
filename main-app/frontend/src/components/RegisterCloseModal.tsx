@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { X, Lock, Loader2, AlertTriangle, CheckCircle, DollarSign, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, Calculator, Receipt } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from './Toast';
 
 interface RegisterCloseModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
   register
 }) => {
   const { currencySymbol: currency } = useSettings();
+  const toast = useToast();
   const [closingBalance, setClosingBalance] = useState('');
   const [closeNote, setCloseNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,7 +62,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
 
   const handleClose = async () => {
     if (!closingBalance || parseFloat(closingBalance) < 0) {
-      alert('Please enter a valid closing balance');
+      toast.error('Please enter a valid closing balance');
       return;
     }
 
@@ -83,7 +85,7 @@ const RegisterCloseModal: React.FC<RegisterCloseModalProps> = ({
       setShowConfirmation(false);
       onSuccess();
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to close register');
+      toast.error(error.response?.data?.message || 'Failed to close register');
     } finally {
       setIsProcessing(false);
     }

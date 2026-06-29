@@ -3,6 +3,7 @@ import { Star, Plus, Pencil, Trash2, Filter } from 'lucide-react';
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { localToday } from '../../utils/dateUtils';
 import { SkeletonTable } from '../../components/Skeleton';
 import ModalWrapper from '../../components/ModalWrapper';
@@ -121,6 +122,7 @@ const AppraisalModal = ({ appraisal, staffList, onClose, onSuccess }: any) => {
 
 const Appraisals = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [appraisals, setAppraisals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
@@ -145,7 +147,8 @@ const Appraisals = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this appraisal?')) return;
+    const ok = await confirm({ title: 'Delete Appraisal', message: 'Delete this appraisal?', type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/staff/appraisals/${id}`); toast.success('Deleted'); fetchAppraisals(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };

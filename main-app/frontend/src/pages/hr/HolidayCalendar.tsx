@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, Edit, Trash2, Filter } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { SkeletonTable } from '../../components/Skeleton';
 
 const HolidayModal = ({ isOpen, onClose, onSuccess, holiday }: any) => {
@@ -101,6 +102,7 @@ const HolidayModal = ({ isOpen, onClose, onSuccess, holiday }: any) => {
 
 const HolidayCalendar = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -123,7 +125,8 @@ const HolidayCalendar = () => {
   };
 
   const handleDelete = async (holiday: any) => {
-    if (!window.confirm(`Delete holiday "${holiday.holiday_name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Holiday', message: `Delete holiday "${holiday.holiday_name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/holidays/${holiday.holiday_id}`);
       toast.success('Holiday deleted');

@@ -3,6 +3,7 @@ import { Building2, Plus, Pencil, Trash2, Users, Briefcase } from 'lucide-react'
 import { motion } from 'framer-motion';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { SkeletonCards } from '../../components/Skeleton';
 import ModalWrapper from '../../components/ModalWrapper';
 
@@ -139,6 +140,7 @@ const DesigModal = ({ desig, departments, onClose, onSuccess }: { desig: any | n
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const Departments = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<'departments' | 'designations'>('departments');
 
   const [depts, setDepts]           = useState<any[]>([]);
@@ -173,7 +175,8 @@ const Departments = () => {
   };
 
   const handleDeleteDept = async (dept: any) => {
-    if (!window.confirm(`Delete department "${dept.name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Department', message: `Delete department "${dept.name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/departments/${dept.department_id}`);
       toast.success('Department deleted');
@@ -182,7 +185,8 @@ const Departments = () => {
   };
 
   const handleDeleteDesig = async (desig: any) => {
-    if (!window.confirm(`Delete designation "${desig.name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Designation', message: `Delete designation "${desig.name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/staff/designations/${desig.designation_id}`);
       toast.success('Designation deleted');

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Edit2, Trash2, Shield, Eye, EyeOff, Search, RefreshCw, Store } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 interface AppUser {
   user_id:     number;
@@ -34,6 +36,8 @@ const ROLE_COLORS: Record<string, string> = {
 const emptyForm = { username: '', name: '', email: '', password: '', role_id: '', branch_id: '' };
 
 export default function Users() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [users, setUsers]       = useState<AppUser[]>([]);
   const [roles, setRoles]       = useState<Role[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -144,12 +148,13 @@ export default function Users() {
   };
 
   const handleDelete = async (u: AppUser) => {
-    if (!confirm(`Delete user "${u.name}" (${u.username})? This cannot be undone.`)) return;
+    const ok = await confirm({ title: 'Delete User', message: `Delete user "${u.name}" (${u.username})? This cannot be undone.`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/users/${u.user_id}`);
       fetchData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete user.');
+      toast.error(err.response?.data?.message || 'Failed to delete user.');
     }
   };
 
