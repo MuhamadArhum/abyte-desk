@@ -75,8 +75,9 @@ async function isBlacklisted(token) {
     );
     return rows.length > 0;
   } catch (err) {
-    logger.warn('[TokenBlacklist] DB check failed, assuming not blacklisted', { error: err.message });
-    return false;
+    logger.warn('[TokenBlacklist] DB check failed, treating as blacklisted for safety', { error: err.message });
+    // Fail-closed: on DB error deny the request to prevent revoked tokens from slipping through
+    return true;
   }
 }
 

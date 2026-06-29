@@ -36,6 +36,10 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
+    if (rows[0].is_active === 0) {
+      return res.status(401).json({ message: 'Account has been deactivated. Please contact your administrator.' });
+    }
+
     req.user      = rows[0]; // includes branch_id
     req.tenantDb  = tenantDb;
     req.tenantId  = decoded.tenant_id;

@@ -44,8 +44,19 @@ const PLAN_MODULES = {
 // Must be used AFTER authenticate middleware.
 const requireModule = (moduleName) => {
   return (req, res, next) => {
-    // Single-client mode or no tenant context — allow all
-    if (!req.modules || req.modules.length === 0) return next();
+    // Single-client mode (no tenant context) — allow all
+    if (!req.tenantId) return next();
+
+    // Tenant exists but no modules configured — deny (fail-closed)
+    if (!req.modules || req.modules.length === 0) {
+      const mod = MODULES[moduleName];
+      return res.status(403).json({
+        message: `This feature requires the "${mod?.name || moduleName}" module.`,
+        module: moduleName,
+        price: mod?.price || null,
+        upgrade_required: true,
+      });
+    }
 
     const enabled = req.modules;
     if (Array.isArray(enabled) && enabled.includes(moduleName)) {

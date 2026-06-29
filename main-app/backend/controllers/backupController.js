@@ -84,11 +84,18 @@ exports.downloadBackup = async (req, res) => {
   try {
     const { filename } = req.params;
 
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    // Validate filename format first
+    if (!/^[\w\-]+\.sql$/.test(filename)) {
       return res.status(400).json({ message: 'Invalid filename' });
     }
 
-    const filepath = path.join(backupService.getBackupDir(), filename);
+    // Resolve and verify the final path stays inside BACKUP_DIR
+    const backupDir = path.resolve(backupService.getBackupDir());
+    const filepath  = path.resolve(path.join(backupDir, filename));
+    if (!filepath.startsWith(backupDir + path.sep) && filepath !== backupDir) {
+      return res.status(400).json({ message: 'Invalid filename' });
+    }
+
     res.download(filepath, filename, (err) => {
       if (err) {
         if (!res.headersSent) {
