@@ -1,5 +1,5 @@
 // =============================================================
-// types/index.ts - Shared TypeScript types for AByte POS
+// types/index.ts - Shared TypeScript types for Abyte ERP
 // Replace 'any' usages with these concrete types.
 // =============================================================
 

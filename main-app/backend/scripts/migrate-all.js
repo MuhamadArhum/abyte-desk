@@ -31,7 +31,7 @@ const c = {
 
 async function main() {
   console.log(`\n${c.bold}${c.cyan}══════════════════════════════════════${c.reset}`);
-  console.log(`${c.bold}  AByte POS — Run Migrations on All DBs${c.reset}`);
+  console.log(`${c.bold}  Abyte ERP — Run Migrations on All DBs${c.reset}`);
   console.log(`${c.cyan}══════════════════════════════════════${c.reset}\n`);
 
   // Step 1: Get all tenants from master DB

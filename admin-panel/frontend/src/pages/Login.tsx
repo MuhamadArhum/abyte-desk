@@ -105,7 +105,7 @@ export default function Login() {
             <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-md bg-white">
               <img src="/logo.png" alt="AByte" className="w-full h-full object-contain" />
             </div>
-            <span className="text-slate-800 font-bold text-lg">AByte POS</span>
+            <span className="text-slate-800 font-bold text-lg">Abyte ERP</span>
           </div>
 
           {/* Heading */}

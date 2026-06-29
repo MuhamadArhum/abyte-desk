@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  AByte POS — Main App Deploy Script
+#  Abyte ERP — Main App Deploy Script
 #  Usage: cd /var/www/AByte-POS && bash main-app/deploy.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -32,7 +32,7 @@ elapsed() {
 
 # ══════════════════════════════════════════════════════════════
 echo -e "\n${CYAN}${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}${BOLD}║      AByte POS — Main App Deploy         ║${NC}"
+echo -e "${CYAN}${BOLD}║      Abyte ERP — Main App Deploy         ║${NC}"
 echo -e "${CYAN}${BOLD}║      $(date '+%Y-%m-%d  %H:%M:%S')                 ║${NC}"
 echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════╝${NC}"
 

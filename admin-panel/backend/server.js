@@ -51,5 +51,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  logger.info(`AByte Admin Panel backend started on port ${PORT}`);
+  logger.info(`Abyte ERP Admin Panel backend started on port ${PORT}`);
 });

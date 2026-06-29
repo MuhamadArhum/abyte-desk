@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  AByte POS — Admin Panel Deploy Script
+#  Abyte ERP — Admin Panel Deploy Script
 #  Usage: cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 # ═══════════════════════════════════════════════════════════════
 
@@ -32,7 +32,7 @@ elapsed() {
 
 # ══════════════════════════════════════════════════════════════
 echo -e "\n${YELLOW}${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${YELLOW}${BOLD}║      AByte POS — Admin Panel Deploy      ║${NC}"
+echo -e "${YELLOW}${BOLD}║      Abyte ERP — Admin Panel Deploy      ║${NC}"
 echo -e "${YELLOW}${BOLD}║      $(date '+%Y-%m-%d  %H:%M:%S')                 ║${NC}"
 echo -e "${YELLOW}${BOLD}╚══════════════════════════════════════════╝${NC}"
 

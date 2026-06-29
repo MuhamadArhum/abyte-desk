@@ -166,7 +166,9 @@
       "Bash(sed 's/^\\\\.//')",
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(npx jest *)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(PORT=5050 node server.js)"
     ]
   }
 }

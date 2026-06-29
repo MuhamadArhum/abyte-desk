@@ -1,7 +1,7 @@
 {
   "name": "abyte-printer-agent",
   "version": "3.0.0",
-  "description": "Local printer bridge for AByte POS",
+  "description": "Local printer bridge for Abyte ERP",
   "main": "agent.js",
   "scripts": {
     "start": "node agent.js",

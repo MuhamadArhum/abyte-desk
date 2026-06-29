@@ -17,8 +17,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'AByte POS Enterprise',
-        short_name: 'AByte POS',
+        name: 'Abyte ERP',
+        short_name: 'Abyte ERP',
         description: 'Enterprise Point of Sale System',
         theme_color: '#059669',
         background_color: '#ffffff',

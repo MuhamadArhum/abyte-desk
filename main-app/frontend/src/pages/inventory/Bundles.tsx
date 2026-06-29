@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit, Trash2, Package, Calendar, ToggleLeft, ToggleRight, X, Search, ChevronDown, ChevronUp, Percent, DollarSign, Gift } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { useToast } from '../../components/Toast';
 
 interface BundleItem {
   bundle_item_id?: number;
@@ -55,6 +57,8 @@ const emptyForm = {
 };
 
 const Bundles = () => {
+  const confirm = useConfirm();
+  const { error, success } = useToast();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -167,12 +171,14 @@ const Bundles = () => {
   };
 
   const handleDelete = async (bundleId: number, name: string) => {
-    if (!confirm(`Delete bundle "${name}"?`)) return;
+    const ok = await confirm({ title: 'Delete Bundle', message: `Delete bundle "${name}"?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/bundles/${bundleId}`);
+      success('Bundle deleted');
       fetchBundles();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete bundle');
+      error(err.response?.data?.message || 'Failed to delete bundle');
     }
   };
 

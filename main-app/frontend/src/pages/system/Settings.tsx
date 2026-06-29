@@ -1069,7 +1069,7 @@ const Settings = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-gray-800">AByte Printer Agent</p>
+                      <p className="font-bold text-gray-800">Abyte ERP Printer Agent</p>
                       <code className="px-2 py-0.5 bg-white border border-gray-200 text-gray-600 text-xs rounded-md">{AGENT_URL.replace('http://', '')}</code>
                       {agentStatus === 'available'   && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">● RUNNING</span>}
                       {agentStatus === 'unavailable' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">○ NOT RUNNING</span>}
