@@ -9,10 +9,11 @@ import { useToast } from '../../components/Toast';
 import { localToday } from '../../utils/dateUtils';
 
 const AccountSelector = ({
-  value, onChange, accounts, onAfterSelect, placeholder = 'Select account…',
+  value, onChange, accounts, onAfterSelect, placeholder = 'Select account…', btnRef,
 }: {
   value: string; onChange: (id: string) => void;
   accounts: any[]; onAfterSelect?: () => void; placeholder?: string;
+  btnRef?: React.RefObject<HTMLButtonElement>;
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -42,7 +43,7 @@ const AccountSelector = ({
 
   return (
     <div ref={ref} className="relative w-full">
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-left transition">
         <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
           {selected ? `${selected.account_code} — ${selected.account_name}` : placeholder}
@@ -96,33 +97,54 @@ const AccountSelector = ({
 type Line = { voucher_id: number; voucher_number: string; account_id: string; account_name: string; narration: string; amount: number };
 type Entry = { account_id: string; narration: string; amount: string };
 
-const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => void }) => {
+const CRVForm = ({ onBack, onRefresh, editVoucherNumber }: { onBack: () => void; onRefresh: () => void; editVoucherNumber?: string }) => {
   const toast = useToast();
   const [accounts, setAccounts]           = useState<any[]>([]);
   const [date, setDate]                   = useState(localToday());
-  const [voucherNum, setVoucherNum]       = useState('');
+  const [voucherNum, setVoucherNum]       = useState(editVoucherNumber || '');
   const [mainAccountId, setMainAccountId] = useState('');
   const [savedLines, setSavedLines]       = useState<Line[]>([]);
   const [entry, setEntry]                 = useState<Entry>({ account_id: '', narration: '', amount: '' });
   const [saving, setSaving]               = useState(false);
   const [editingId, setEditingId]         = useState<number | null>(null);
 
-  const narrationRef = useRef<HTMLInputElement>(null);
-  const amountRef    = useRef<HTMLInputElement>(null);
+  const narrationRef  = useRef<HTMLInputElement>(null);
+  const amountRef     = useRef<HTMLInputElement>(null);
+  const incAccBtnRef  = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
       .then(r => setAccounts((r.data.data || []).filter((a: any) => a.is_active && a.level === 4)))
       .catch(() => toast.error('Failed to load accounts'));
-    api.get('/accounting/receipt-vouchers/next-number')
-      .then(r => setVoucherNum(r.data.voucher_number))
-      .catch(() => {});
-    api.get('/settings')
-      .then(r => { if (r.data.crv_default_account_id) setMainAccountId(String(r.data.crv_default_account_id)); })
-      .catch(() => {});
+
+    if (editVoucherNumber) {
+      api.get(`/accounting/receipt-vouchers/lines/${editVoucherNumber}`).then(r => {
+        const rows = r.data.data || [];
+        if (rows.length) {
+          setDate(rows[0].voucher_date?.split('T')[0] || localToday());
+          setMainAccountId(rows[0].main_account_id ? String(rows[0].main_account_id) : '');
+          setSavedLines(rows.map((row: any) => ({
+            voucher_id: row.voucher_id, voucher_number: row.voucher_number,
+            account_id: String(row.account_id), account_name: row.account_name,
+            narration: row.description || '', amount: Number(row.amount),
+          })));
+        }
+      }).catch(() => toast.error('Failed to load voucher'));
+    } else {
+      api.get('/accounting/receipt-vouchers/next-number')
+        .then(r => setVoucherNum(r.data.voucher_number))
+        .catch(() => {});
+      api.get('/settings')
+        .then(r => { if (r.data.crv_default_account_id) setMainAccountId(String(r.data.crv_default_account_id)); })
+        .catch(() => {});
+    }
   }, []);
 
-  const resetEntry = () => { setEntry({ account_id: '', narration: '', amount: '' }); setEditingId(null); };
+  const resetEntry = () => {
+    setEntry({ account_id: '', narration: '', amount: '' });
+    setEditingId(null);
+    setTimeout(() => incAccBtnRef.current?.focus(), 50);
+  };
 
   const saveEntry = async () => {
     if (!mainAccountId) { toast.error('Select the receiving account first'); return; }
@@ -168,23 +190,19 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
   return (
     <div className="p-6">
       {/* Back header */}
-      <div className="mb-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => { onRefresh(); onBack(); }}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
-            <ArrowLeft size={16} /> Back to List
-          </button>
-          {voucherNum && (
-            <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full text-xs font-mono font-semibold">
-              {voucherNum}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Calendar size={13} className="text-gray-400" />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
-        </div>
+      <div className="mb-5 flex items-center gap-3">
+        <button onClick={() => { onRefresh(); onBack(); }}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
+          <ArrowLeft size={16} /> Back to List
+        </button>
+        {voucherNum && (
+          <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full text-xs font-mono font-semibold">
+            {voucherNum}
+          </span>
+        )}
+        {editVoucherNumber && (
+          <span className="px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-full text-xs font-semibold">Editing</span>
+        )}
       </div>
 
       {/* Main form card */}
@@ -201,7 +219,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
           </div>
         </div>
 
-        {/* Receiving account section */}
+        {/* Receiving account + Date in one row */}
         <div className="px-6 py-4 border-b border-gray-100">
           <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
             <div className="flex flex-wrap items-center gap-3">
@@ -209,17 +227,22 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                 <Building2 size={14} className="text-emerald-500" />
                 <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Receiving Account (Cash/Bank)</label>
               </div>
-              <div className="flex-1 min-w-[220px]">
+              <div className="flex-1 min-w-[200px]">
                 <AccountSelector
                   value={mainAccountId} onChange={setMainAccountId}
                   accounts={accounts} placeholder="Select Cash / Bank account…"
                 />
               </div>
               {mainAcct && (
-                <span className="text-xs text-emerald-600 font-semibold bg-white border border-emerald-200 px-2.5 py-1 rounded-lg">
+                <span className="text-xs text-emerald-600 font-semibold bg-white border border-emerald-200 px-2.5 py-1 rounded-lg shrink-0">
                   Bal: {Number(mainAcct.current_balance || 0).toLocaleString('en-PK')}
                 </span>
               )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Calendar size={13} className="text-emerald-400" />
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="border border-emerald-200 bg-white rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
+              </div>
             </div>
           </div>
         </div>
@@ -242,6 +265,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                 onChange={id => setEntry(v => ({ ...v, account_id: id }))}
                 onAfterSelect={() => narrationRef.current?.focus()}
                 accounts={accounts} placeholder="Select account…"
+                btnRef={incAccBtnRef}
               />
             </div>
             <div>
@@ -347,6 +371,7 @@ const CRVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
 const ReceiptVouchers = () => {
   const toast = useToast();
   const [view, setView]                 = useState<'list' | 'new'>('list');
+  const [editVoucherNum, setEditVoucherNum] = useState<string | undefined>(undefined);
   const [vouchers, setVouchers]         = useState<any[]>([]);
   const [loading, setLoading]           = useState(false);
   const [hasLoaded, setHasLoaded]       = useState(false);
@@ -387,7 +412,13 @@ const ReceiptVouchers = () => {
     a.click(); URL.revokeObjectURL(a.href);
   };
 
-  if (view === 'new') return <CRVForm onBack={() => setView('list')} onRefresh={fetchVouchers} />;
+  if (view === 'new') return (
+    <CRVForm
+      onBack={() => { setEditVoucherNum(undefined); setView('list'); }}
+      onRefresh={fetchVouchers}
+      editVoucherNumber={editVoucherNum}
+    />
+  );
 
   const totalAmt = vouchers.reduce((s, v) => s + Number(v.total_amount), 0);
 
@@ -479,7 +510,7 @@ const ReceiptVouchers = () => {
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Narration</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-gray-500 uppercase">Lines</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Total</th>
-                    <th className="w-12 px-4 py-3" />
+                    <th className="w-20 px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -499,11 +530,17 @@ const ReceiptVouchers = () => {
                       <td className="px-4 py-3 text-right font-bold font-mono text-emerald-700">
                         {Number(v.total_amount).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleDelete(v.voucher_number)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-                          <Trash2 size={13} />
-                        </button>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => { setEditVoucherNum(v.voucher_number); setView('new'); }}
+                            className="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition" title="Edit">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => handleDelete(v.voucher_number)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
