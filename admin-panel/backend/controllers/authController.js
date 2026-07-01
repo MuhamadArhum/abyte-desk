@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { query } = require('../config/database');
 const logger    = require('../config/logger');
+const { logAction } = require('../middleware/auditLogger');
 
 // POST /api/auth/login
 exports.login = async (req, res) => {
@@ -71,6 +72,7 @@ exports.updateProfile = async (req, res) => {
     params.push(req.admin.admin_id);
     await query(`UPDATE super_admins SET ${fields.join(', ')} WHERE admin_id = ?`, params);
     const rows = await query('SELECT admin_id, name, email FROM super_admins WHERE admin_id = ?', [req.admin.admin_id]);
+    logAction(req.admin?.admin_id, 'UPDATE_PROFILE', 'super_admin', req.admin?.admin_id, req.admin?.email, { name, email }, req.ip);
     res.json({ message: 'Profile updated', admin: rows[0] });
   } catch (err) {
     logger.error('updateProfile error', { error: err.message });
@@ -87,6 +89,7 @@ exports.changePassword = async (req, res) => {
     }
     const hash = await bcrypt.hash(new_password, 10);
     await query('UPDATE super_admins SET password_hash = ? WHERE admin_id = ?', [hash, req.admin.admin_id]);
+    logAction(req.admin?.admin_id, 'CHANGE_PASSWORD', 'super_admin', req.admin?.admin_id, req.admin?.email, null, req.ip);
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
     logger.error('Change password error', { error: err.message });

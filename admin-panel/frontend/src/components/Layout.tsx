@@ -1,23 +1,153 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu, Activity, TrendingUp } from 'lucide-react';
+import {
+  LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu,
+  Activity, TrendingUp, ClipboardList, FileText, LifeBuoy, Bell, X,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
 
 const navItems = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { to: '/clients',  label: 'Clients',   icon: Users },
   { to: '/revenue',  label: 'Revenue',   icon: TrendingUp },
   { to: '/activity', label: 'Activity',  icon: Activity },
+  { to: '/invoices', label: 'Invoices',  icon: FileText },
+  { to: '/tickets',  label: 'Tickets',   icon: LifeBuoy },
+  { to: '/audit',    label: 'Audit Log', icon: ClipboardList },
   { to: '/settings', label: 'Settings',  icon: Settings },
 ];
 
 const breadcrumbMap: Record<string, string> = {
-  '/':         'Dashboard',
-  '/clients':  'Clients',
-  '/revenue':  'Revenue',
-  '/activity': 'Activity',
-  '/settings': 'Settings',
+  '/':          'Dashboard',
+  '/clients':   'Clients',
+  '/revenue':   'Revenue',
+  '/activity':  'Activity',
+  '/invoices':  'Invoices',
+  '/tickets':   'Tickets',
+  '/audit':     'Audit Log',
+  '/settings':  'Settings',
 };
+
+interface LoginActivity {
+  tenant_name: string;
+  user_name: string;
+  ip_address: string;
+  created_at: string;
+}
+
+function timeAgo(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  if (mins < 1)   return 'just now';
+  if (mins < 60)  return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function NotificationBell() {
+  const [open, setOpen]         = useState(false);
+  const [activity, setActivity] = useState<LoginActivity[]>([]);
+  const [loading, setLoading]   = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const fetchActivity = () => {
+    setLoading(true);
+    api.get('/tenants/recent-activity')
+      .then(r => setActivity(r.data.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  // Poll every 60 seconds
+  useEffect(() => {
+    fetchActivity();
+    const interval = setInterval(fetchActivity, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleOpen = () => {
+    setOpen(o => !o);
+    if (!open) fetchActivity();
+  };
+
+  const oneHourAgo = Date.now() - 3600000;
+  const hasRecent  = activity.some(a => new Date(a.created_at).getTime() > oneHourAgo);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={handleOpen}
+        className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+        title="Recent login activity"
+      >
+        <Bell size={17} />
+        {hasRecent && (
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Bell size={13} className="text-emerald-600" />
+              <span className="text-xs font-bold text-slate-700">Recent Logins</span>
+              <span className="text-[10px] text-slate-400">(last 24h)</span>
+            </div>
+            <button onClick={() => setOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
+              <X size={13} />
+            </button>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto">
+            {loading ? (
+              <div className="py-6 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : activity.length === 0 ? (
+              <div className="py-8 text-center text-slate-400">
+                <Bell size={24} className="mx-auto mb-2 text-slate-200" />
+                <p className="text-xs">No logins in last 24 hours</p>
+              </div>
+            ) : (
+              activity.slice(0, 10).map((item, i) => {
+                const isRecent = new Date(item.created_at).getTime() > oneHourAgo;
+                return (
+                  <div key={i} className={`flex items-start gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 ${isRecent ? 'bg-emerald-50/40' : ''}`}>
+                    <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center text-[10px] font-bold text-emerald-700 flex-shrink-0 mt-0.5">
+                      {(item.user_name || '?')[0]?.toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{item.user_name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{item.tenant_name}</p>
+                      <p className="text-[10px] text-slate-300 mt-0.5">{item.ip_address} · {timeAgo(item.created_at)}</p>
+                    </div>
+                    {isRecent && (
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { admin, logout } = useAuth();
@@ -52,7 +182,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 relative z-10">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 relative z-10 overflow-y-auto">
         {navItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -175,7 +305,10 @@ export default function Layout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
+            {/* Notification Bell */}
+            <NotificationBell />
+
             <div className="hidden sm:flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />

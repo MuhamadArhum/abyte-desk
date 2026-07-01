@@ -3,16 +3,25 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, ShoppingCart, Database, Clock,
   User, Globe, Package, Building2, Plus, Pencil, Trash2, X,
-  Eye, EyeOff, UserPlus, Shield,
+  Eye, EyeOff, UserPlus, Shield, Calendar, LifeBuoy, AlertTriangle,
 } from 'lucide-react';
 import api from '../api/axios';
 import EditModulesModal from '../components/EditModulesModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
+import { useToast } from '../context/ToastContext';
 
 interface TenantDetail {
   tenant_id: number; tenant_code: string; tenant_name: string;
   admin_email: string; is_active: number; db_name: string;
   company_name: string; modules_enabled: string[]; created_at: string;
+  subscription_ends_at: string | null;
+  subscription_status: 'trial' | 'active' | 'expired' | 'suspended' | null;
+}
+interface Ticket {
+  ticket_id: number; subject: string; message: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  admin_notes: string | null; created_at: string;
 }
 interface UserRow {
   user_id: number; username: string; name: string; email: string;
@@ -360,6 +369,7 @@ const ROLE_COLORS: Record<string, string> = {
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [data, setData]                   = useState<DetailData | null>(null);
   const [loading, setLoading]             = useState(true);
   const [showModules, setShowModules]     = useState(false);
@@ -372,6 +382,16 @@ export default function ClientDetail() {
   const [editUser, setEditUser]           = useState<UserRow | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
+  // Subscription form
+  const [subForm, setSubForm] = useState({ ends_at: '', status: '' });
+  const [savingSub, setSavingSub] = useState(false);
+
+  // Tickets
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketForm, setTicketForm] = useState({ subject: '', message: '', priority: 'medium' });
+  const [savingTicket, setSavingTicket] = useState(false);
+
   const loadBranches = () =>
     api.get(`/tenants/${id}/branches`)
       .then(r => setBranches(r.data.data || []))
@@ -382,13 +402,27 @@ export default function ClientDetail() {
       .then(r => setUsers(r.data.data || []))
       .catch(() => setUsers([]));
 
+  const loadTickets = () =>
+    api.get(`/tickets/tenant/${id}`)
+      .then(r => setTickets(r.data.data || []))
+      .catch(() => setTickets([]));
+
   const load = () => {
     setLoading(true);
     api.get(`/tenants/${id}/details`)
-      .then(r => setData(r.data))
+      .then(r => {
+        setData(r.data);
+        // Prefill subscription form
+        const t = r.data.tenant;
+        setSubForm({
+          ends_at: t.subscription_ends_at ? t.subscription_ends_at.split('T')[0] : '',
+          status:  t.subscription_status || 'trial',
+        });
+      })
       .finally(() => setLoading(false));
     loadBranches();
     loadUsers();
+    loadTickets();
   };
 
   const handleDeleteBranch = async (branch: Branch) => {
@@ -411,6 +445,44 @@ export default function ClientDetail() {
       alert(err.response?.data?.message || 'Failed to delete user');
     } finally {
       setDeletingUserId(null);
+    }
+  };
+
+  const saveSubscription = async () => {
+    setSavingSub(true);
+    try {
+      await api.put(`/tenants/${id}`, {
+        subscription_ends_at: subForm.ends_at || null,
+        subscription_status:  subForm.status || 'trial',
+      });
+      toast('success', 'Subscription updated');
+      load();
+    } catch {
+      toast('error', 'Failed to update subscription');
+    } finally {
+      setSavingSub(false);
+    }
+  };
+
+  const createTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketForm.subject || !ticketForm.message) return;
+    setSavingTicket(true);
+    try {
+      await api.post('/tickets', {
+        tenant_id: Number(id),
+        subject:   ticketForm.subject,
+        message:   ticketForm.message,
+        priority:  ticketForm.priority,
+      });
+      toast('success', 'Ticket created');
+      setShowTicketForm(false);
+      setTicketForm({ subject: '', message: '', priority: 'medium' });
+      loadTickets();
+    } catch {
+      toast('error', 'Failed to create ticket');
+    } finally {
+      setSavingTicket(false);
     }
   };
 
@@ -564,6 +636,58 @@ export default function ClientDetail() {
                   <span className="text-slate-700 font-medium font-mono text-xs">{value}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Subscription */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
+                <Calendar size={13} className="text-amber-600" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-700">Subscription</h3>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Status</label>
+                <select
+                  value={subForm.status}
+                  onChange={e => setSubForm(f => ({ ...f, status: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="trial">Trial</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Ends At</label>
+                <input
+                  type="date"
+                  value={subForm.ends_at}
+                  onChange={e => setSubForm(f => ({ ...f, ends_at: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              {subForm.ends_at && (() => {
+                const days = Math.ceil((new Date(subForm.ends_at).getTime() - Date.now()) / 86400000);
+                return (
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
+                    days < 0 ? 'bg-red-50 text-red-600' : days <= 7 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                  }`}>
+                    <AlertTriangle size={12} />
+                    {days < 0 ? `Expired ${Math.abs(days)}d ago` : days === 0 ? 'Expires today' : `Expires in ${days} days`}
+                  </div>
+                );
+              })()}
+              <button
+                onClick={saveSubscription}
+                disabled={savingSub}
+                className="w-full px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+              >
+                {savingSub ? 'Saving…' : 'Save Subscription'}
+              </button>
             </div>
           </div>
         </div>
@@ -768,6 +892,107 @@ export default function ClientDetail() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Support Tickets */}
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <LifeBuoy size={14} className="text-emerald-600" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Support Tickets <span className="text-slate-400 font-normal">({tickets.length})</span></h3>
+          </div>
+          <button
+            onClick={() => setShowTicketForm(f => !f)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-xl hover:bg-emerald-600 transition shadow-sm shadow-emerald-200"
+          >
+            <Plus size={13} />
+            New Ticket
+          </button>
+        </div>
+
+        {showTicketForm && (
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+            <form onSubmit={createTicket} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <input
+                    value={ticketForm.subject}
+                    onChange={e => setTicketForm(f => ({ ...f, subject: e.target.value }))}
+                    required
+                    placeholder="Subject *"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <textarea
+                    value={ticketForm.message}
+                    onChange={e => setTicketForm(f => ({ ...f, message: e.target.value }))}
+                    required
+                    placeholder="Message *"
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white resize-none"
+                  />
+                </div>
+                <select
+                  value={ticketForm.priority}
+                  onChange={e => setTicketForm(f => ({ ...f, priority: e.target.value }))}
+                  className="px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={savingTicket} className="flex-1 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60">
+                    {savingTicket ? 'Saving…' : 'Create'}
+                  </button>
+                  <button type="button" onClick={() => setShowTicketForm(false)} className="px-3 py-2 text-xs text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-100 transition">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {tickets.length === 0 ? (
+          <div className="py-10 text-center text-slate-400 text-sm">No support tickets</div>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {tickets.map(tk => (
+              <div key={tk.ticket_id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-slate-50/60">
+                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                  tk.status === 'open' ? 'bg-red-500' :
+                  tk.status === 'in_progress' ? 'bg-amber-500' :
+                  tk.status === 'resolved' ? 'bg-emerald-500' : 'bg-slate-300'
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-800">{tk.subject}</p>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                      tk.priority === 'urgent' ? 'bg-red-50 text-red-600' :
+                      tk.priority === 'high' ? 'bg-amber-50 text-amber-600' :
+                      'bg-slate-50 text-slate-500'
+                    }`}>{tk.priority}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5 truncate">{tk.message}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-lg font-bold capitalize ${
+                    tk.status === 'open' ? 'bg-red-50 text-red-700' :
+                    tk.status === 'in_progress' ? 'bg-amber-50 text-amber-700' :
+                    tk.status === 'resolved' ? 'bg-emerald-50 text-emerald-700' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>{tk.status.replace('_', ' ')}</span>
+                  <p className="text-[10px] text-slate-300 mt-1">{timeAgo(tk.created_at)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

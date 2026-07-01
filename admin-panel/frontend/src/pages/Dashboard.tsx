@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, UserX, TrendingUp, Building2, ChevronRight, Zap } from 'lucide-react';
+import { Users, UserCheck, UserX, TrendingUp, Building2, ChevronRight, Zap, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
-interface Stats { total: number; active: number; inactive: number; monthly_revenue: number; }
+interface Stats {
+  total: number; active: number; inactive: number; monthly_revenue: number;
+  expiring_soon: number; expired: number;
+}
 interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
   company_name: string; is_active: number; modules_enabled: string | string[];
@@ -151,6 +154,46 @@ export default function Dashboard() {
           )
         }
       </div>
+
+      {/* Expiring Soon Warning */}
+      {!loading && stats && ((stats.expiring_soon ?? 0) > 0 || (stats.expired ?? 0) > 0) && (
+        <div className="flex flex-wrap gap-3">
+          {(stats.expiring_soon ?? 0) > 0 && (
+            <div
+              onClick={() => navigate('/clients')}
+              className="flex-1 min-w-[220px] flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3.5 cursor-pointer hover:bg-amber-100 transition-colors group"
+            >
+              <div className="w-9 h-9 bg-amber-100 border border-amber-200 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <AlertTriangle size={17} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-800">
+                  {stats.expiring_soon} subscription{stats.expiring_soon !== 1 ? 's' : ''} expiring soon
+                </p>
+                <p className="text-xs text-amber-600">Within 30 days — click to view clients</p>
+              </div>
+              <ChevronRight size={16} className="ml-auto text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          )}
+          {(stats.expired ?? 0) > 0 && (
+            <div
+              onClick={() => navigate('/clients')}
+              className="flex-1 min-w-[220px] flex items-center gap-4 bg-red-50 border border-red-200 rounded-2xl px-5 py-3.5 cursor-pointer hover:bg-red-100 transition-colors group"
+            >
+              <div className="w-9 h-9 bg-red-100 border border-red-200 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <AlertTriangle size={17} className="text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-red-800">
+                  {stats.expired} subscription{stats.expired !== 1 ? 's' : ''} expired
+                </p>
+                <p className="text-xs text-red-600">Action required — click to manage</p>
+              </div>
+              <ChevronRight size={16} className="ml-auto text-red-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Middle row */}
       {!loading && stats && (

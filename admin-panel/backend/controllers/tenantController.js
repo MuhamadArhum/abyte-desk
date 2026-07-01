@@ -3,6 +3,7 @@ const fs      = require('fs');
 const path    = require('path');
 const { query, getConnection, tenantQuery, getTenantConnection } = require('../config/database');
 const logger  = require('../config/logger');
+const { logAction } = require('../middleware/auditLogger');
 
 const MODULES = {
   sales:     { name: 'Sale',        price: 2250 },
@@ -30,7 +31,8 @@ function priceOf(mod, prices) {
 exports.getAll = async (req, res) => {
   try {
     const tenants = await query(`
-      SELECT t.*, tc.company_name, tc.logo_url, tc.modules_enabled
+      SELECT t.*, tc.company_name, tc.logo_url, tc.modules_enabled,
+             t.subscription_ends_at, t.subscription_status
       FROM tenants t
       LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
       ORDER BY t.created_at DESC
@@ -153,6 +155,8 @@ exports.create = async (req, res) => {
     const prices = await getModulePrices();
     const monthly = modules.reduce((sum, m) => sum + priceOf(m, prices), 0);
 
+    logAction(req.admin?.admin_id, 'CREATE_TENANT', 'tenant', tenantId, tenant_name, { tenant_code, modules }, req.ip);
+
     res.status(201).json({
       message: 'Client created successfully',
       tenant: { tenant_id: tenantId, tenant_code, tenant_name, db_name: dbName, modules, monthly_price: monthly },
@@ -167,21 +171,50 @@ exports.create = async (req, res) => {
   }
 };
 
-// PUT /api/tenants/:id — Update modules, status
+// PUT /api/tenants/:id — Update modules, status, subscription
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { tenant_name, is_active, modules } = req.body;
+    const { tenant_name, is_active, modules, subscription_ends_at, subscription_status } = req.body;
+
+    const tenantFields = [];
+    const tenantParams = [];
 
     if (tenant_name !== undefined) {
-      await query('UPDATE tenants SET tenant_name = ? WHERE tenant_id = ?', [tenant_name, id]);
+      tenantFields.push('tenant_name = ?');
+      tenantParams.push(tenant_name);
     }
     if (is_active !== undefined) {
-      await query('UPDATE tenants SET is_active = ? WHERE tenant_id = ?', [is_active ? 1 : 0, id]);
+      tenantFields.push('is_active = ?');
+      tenantParams.push(is_active ? 1 : 0);
     }
+    if (subscription_ends_at !== undefined) {
+      tenantFields.push('subscription_ends_at = ?');
+      tenantParams.push(subscription_ends_at || null);
+    }
+    if (subscription_status !== undefined) {
+      tenantFields.push('subscription_status = ?');
+      tenantParams.push(subscription_status);
+    }
+
+    if (tenantFields.length > 0) {
+      tenantParams.push(id);
+      await query(`UPDATE tenants SET ${tenantFields.join(', ')} WHERE tenant_id = ?`, tenantParams);
+    }
+
     if (modules !== undefined) {
       await query('UPDATE tenant_configs SET modules_enabled = ? WHERE tenant_id = ?', [JSON.stringify(modules), id]);
     }
+
+    // Build audit detail
+    const changes = {};
+    if (tenant_name !== undefined) changes.tenant_name = tenant_name;
+    if (is_active !== undefined) changes.is_active = is_active;
+    if (modules !== undefined) changes.modules = modules;
+    if (subscription_ends_at !== undefined) changes.subscription_ends_at = subscription_ends_at;
+    if (subscription_status !== undefined) changes.subscription_status = subscription_status;
+
+    logAction(req.admin?.admin_id, 'UPDATE_TENANT', 'tenant', Number(id), null, changes, req.ip);
 
     res.json({ message: 'Client updated' });
   } catch (err) {
@@ -205,6 +238,8 @@ exports.resetPassword = async (req, res) => {
     const hash = await bcrypt.hash(new_password, 10);
     await tenantQuery(db_name, `UPDATE \`${db_name}\`.users SET password_hash = ? WHERE email = ?`, [hash, admin_email]);
 
+    logAction(req.admin?.admin_id, 'RESET_PASSWORD', 'tenant', Number(req.params.id), admin_email, null, req.ip);
+
     res.json({ message: 'Password reset successfully' });
   } catch (err) {
     logger.error('Reset password error', { error: err.message });
@@ -227,7 +262,18 @@ exports.getStats = async (req, res) => {
       mods.forEach(m => { monthlyRevenue += priceOf(m, prices); });
     });
 
-    res.json({ total, active, inactive: total - active, monthly_revenue: monthlyRevenue });
+    const [{ expiring_soon }] = await query(
+      `SELECT COUNT(*) AS expiring_soon FROM tenants
+       WHERE subscription_ends_at IS NOT NULL
+         AND subscription_ends_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+         AND subscription_ends_at > CURDATE()`
+    );
+    const [{ expired }] = await query(
+      `SELECT COUNT(*) AS expired FROM tenants
+       WHERE subscription_ends_at IS NOT NULL AND subscription_ends_at <= CURDATE()`
+    );
+
+    res.json({ total, active, inactive: total - active, monthly_revenue: monthlyRevenue, expiring_soon, expired });
   } catch (err) {
     logger.error('getStats error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
@@ -752,6 +798,97 @@ exports.getTenantActivity = async (req, res) => {
     });
   } catch (err) {
     logger.error('getTenantActivity error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/tenants/bulk — Bulk activate/deactivate
+exports.bulkUpdate = async (req, res) => {
+  try {
+    const { ids, action } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'ids array required' });
+    }
+    if (!['activate', 'deactivate'].includes(action)) {
+      return res.status(400).json({ message: 'action must be activate or deactivate' });
+    }
+
+    const is_active = action === 'activate' ? 1 : 0;
+    const placeholders = ids.map(() => '?').join(',');
+    await query(
+      `UPDATE tenants SET is_active = ? WHERE tenant_id IN (${placeholders})`,
+      [is_active, ...ids]
+    );
+
+    logAction(req.admin?.admin_id, `BULK_${action.toUpperCase()}`, 'tenants', null, null, { ids, count: ids.length }, req.ip);
+
+    res.json({ message: `${ids.length} client(s) ${action}d` });
+  } catch (err) {
+    logger.error('bulkUpdate error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/tenants/recent-activity — Last 20 login events across all tenant DBs
+exports.getRecentActivity = async (req, res) => {
+  try {
+    const tenants = await query(
+      `SELECT t.tenant_id, t.db_name, COALESCE(tc.company_name, t.tenant_name) AS tenant_name
+       FROM tenants t
+       LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+       WHERE t.is_active = 1`
+    );
+
+    const allLogins = [];
+
+    await Promise.all(tenants.map(async (t) => {
+      try {
+        const logs = await tenantQuery(t.db_name,
+          `SELECT user_name, ip_address, created_at
+           FROM \`${t.db_name}\`.audit_logs
+           WHERE action = 'USER_LOGIN' AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+           ORDER BY created_at DESC LIMIT 5`
+        );
+        if (logs && logs.length > 0) {
+          logs.forEach(l => {
+            allLogins.push({
+              tenant_name: t.tenant_name,
+              user_name:   l.user_name,
+              ip_address:  l.ip_address,
+              created_at:  l.created_at,
+            });
+          });
+        }
+      } catch { /* skip tenant if query fails */ }
+    }));
+
+    // Sort by created_at desc, take top 20
+    allLogins.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const recent = allLogins.slice(0, 20);
+
+    res.json({ data: recent });
+  } catch (err) {
+    logger.error('getRecentActivity error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/tenants/expiring — Tenants with subscription_ends_at within 30 days
+exports.getExpiring = async (req, res) => {
+  try {
+    const rows = await query(
+      `SELECT t.tenant_id, t.tenant_name, t.is_active, t.subscription_ends_at, t.subscription_status,
+              COALESCE(tc.company_name, t.tenant_name) AS display_name,
+              DATEDIFF(t.subscription_ends_at, CURDATE()) AS days_remaining
+       FROM tenants t
+       LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+       WHERE t.subscription_ends_at IS NOT NULL
+         AND t.subscription_ends_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+       ORDER BY t.subscription_ends_at ASC`
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    logger.error('getExpiring error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

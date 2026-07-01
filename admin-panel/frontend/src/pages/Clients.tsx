@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, AlertTriangle, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -11,6 +11,8 @@ interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
   admin_email: string; is_active: number; modules_enabled: string | string[];
   company_name: string; db_name: string;
+  subscription_ends_at: string | null;
+  subscription_status: 'trial' | 'active' | 'expired' | 'suspended' | null;
 }
 
 interface ResetTarget  { id: number; name: string; }
@@ -32,12 +34,26 @@ const moduleStyles: Record<string, { bg: string; text: string; label: string }> 
   hr:        { bg: 'bg-orange-50', text: 'text-orange-600', label: 'HR' },
 };
 
+function subStatusBadge(status: string | null) {
+  if (status === 'active')    return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+  if (status === 'trial')     return 'bg-amber-50 text-amber-700 border border-amber-200';
+  if (status === 'expired')   return 'bg-red-50 text-red-600 border border-red-200';
+  if (status === 'suspended') return 'bg-slate-100 text-slate-500 border border-slate-200';
+  return 'bg-slate-50 text-slate-400 border border-slate-200';
+}
+
+function daysRemaining(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diff / 86400000);
+}
+
 function SkeletonRow() {
   return (
     <tr className="animate-pulse border-b border-slate-100">
-      {[140, 160, 120, 90, 70, 80].map((w, i) => (
-        <td key={i} className="px-5 py-4">
-          <div className={`h-4 bg-slate-100 rounded`} style={{ width: w }} />
+      {[30, 140, 160, 120, 90, 90, 80].map((w, i) => (
+        <td key={i} className="px-4 py-4">
+          <div className="h-4 bg-slate-100 rounded" style={{ width: w }} />
         </td>
       ))}
     </tr>
@@ -54,6 +70,10 @@ export default function Clients() {
   const [moduleTarget, setModuleTarget] = useState<ModuleTarget | null>(null);
   const [search, setSearch]       = useState('');
   const [toggling, setToggling]   = useState<number | null>(null);
+
+  // Bulk selection
+  const [selected, setSelected]   = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -91,6 +111,36 @@ export default function Clients() {
       c.tenant_code.toLowerCase().includes(q)
     );
   });
+
+  // Bulk selection helpers
+  const allSelected = filtered.length > 0 && filtered.every(c => selected.has(c.tenant_id));
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map(c => c.tenant_id)));
+    }
+  };
+  const toggleOne = (id: number) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  };
+
+  const bulkAction = async (action: 'activate' | 'deactivate') => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await api.post('/tenants/bulk', { ids: [...selected], action });
+      toast('success', `${selected.size} client(s) ${action}d`);
+      setSelected(new Set());
+      load();
+    } catch {
+      toast('error', 'Bulk action failed');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -139,14 +189,51 @@ export default function Clients() {
         />
       </div>
 
+      {/* Bulk Action Bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-slate-800 text-white rounded-2xl px-5 py-3 shadow-lg">
+          <span className="text-sm font-semibold">{selected.size} client{selected.size !== 1 ? 's' : ''} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => bulkAction('activate')}
+              disabled={bulkLoading}
+              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+            >
+              Activate
+            </button>
+            <button
+              onClick={() => bulkAction('deactivate')}
+              disabled={bulkLoading}
+              className="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+            >
+              Deactivate
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-semibold rounded-xl transition"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                {['Client', 'Email', 'Modules', 'Monthly', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <th className="px-4 py-3.5 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded border-slate-300 accent-emerald-500"
+                  />
+                </th>
+                {['Client', 'Email', 'Modules', 'Monthly', 'Subscription', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     {h}
                   </th>
                 ))}
@@ -156,14 +243,29 @@ export default function Clients() {
               {loading
                 ? Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
                 : filtered.map((c, idx) => {
-                    const mods = getModules(c.modules_enabled);
+                    const mods    = getModules(c.modules_enabled);
                     const monthly = getMonthly(mods);
                     const isToggling = toggling === c.tenant_id;
+                    const days = daysRemaining(c.subscription_ends_at);
+                    const isSelected = selected.has(c.tenant_id);
 
                     return (
-                      <tr key={c.tenant_id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
+                      <tr
+                        key={c.tenant_id}
+                        className={`border-b border-slate-50 hover:bg-slate-50/60 transition-colors ${isSelected ? 'bg-emerald-50/30' : ''}`}
+                      >
+                        {/* Checkbox */}
+                        <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleOne(c.tenant_id)}
+                            className="w-4 h-4 rounded border-slate-300 accent-emerald-500"
+                          />
+                        </td>
+
                         {/* Client */}
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
                             <div className={`w-9 h-9 bg-gradient-to-br ${avatarGradients[idx % avatarGradients.length]} rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm`}>
                               {(c.company_name || c.tenant_name).charAt(0).toUpperCase()}
@@ -178,10 +280,10 @@ export default function Clients() {
                         </td>
 
                         {/* Email */}
-                        <td className="px-5 py-4 text-slate-600">{c.admin_email}</td>
+                        <td className="px-4 py-4 text-slate-600 text-xs">{c.admin_email}</td>
 
                         {/* Modules */}
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-4">
                           <div className="flex flex-wrap gap-1">
                             {mods.length === 0
                               ? <span className="text-slate-300 text-xs">—</span>
@@ -198,13 +300,30 @@ export default function Clients() {
                         </td>
 
                         {/* Monthly */}
-                        <td className="px-5 py-4">
-                          <span className="font-semibold text-slate-700">Rs. {monthly.toLocaleString()}</span>
+                        <td className="px-4 py-4">
+                          <span className="font-semibold text-slate-700 text-xs">Rs. {monthly.toLocaleString()}</span>
                           <span className="text-slate-400 text-xs">/mo</span>
                         </td>
 
+                        {/* Subscription */}
+                        <td className="px-4 py-4">
+                          <div className="space-y-1">
+                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize ${subStatusBadge(c.subscription_status)}`}>
+                              {c.subscription_status || 'trial'}
+                            </span>
+                            {days !== null && (
+                              <div className="flex items-center gap-1">
+                                <Calendar size={10} className={days < 0 ? 'text-red-400' : days <= 7 ? 'text-amber-500' : 'text-slate-400'} />
+                                <span className={`text-[10px] font-medium ${days < 0 ? 'text-red-500' : days <= 7 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                  {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'expires today' : `${days}d left`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
                         {/* Status */}
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                             c.is_active
                               ? 'bg-emerald-50 text-emerald-700'
@@ -216,21 +335,21 @@ export default function Clients() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-4">
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => navigate(`/clients/${c.tenant_id}`)}
                               title="View Details"
-                              className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition"
+                              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
                             >
-                              <Eye size={17} />
+                              <Eye size={15} />
                             </button>
                             <button
                               onClick={() => setModuleTarget({ id: c.tenant_id, name: c.company_name || c.tenant_name, modules: mods })}
                               title="Manage Modules"
-                              className="p-2 rounded-xl hover:bg-purple-50 text-slate-400 hover:text-purple-600 transition"
+                              className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
                             >
-                              <Package size={17} />
+                              <Package size={15} />
                             </button>
                             <button
                               onClick={() => toggleStatus(c.tenant_id, c.is_active)}
@@ -244,7 +363,7 @@ export default function Clients() {
                             >
                               {isToggling
                                 ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
-                                : c.is_active ? <XCircle size={17} /> : <CheckCircle size={17} />
+                                : c.is_active ? <XCircle size={15} /> : <CheckCircle size={15} />
                               }
                             </button>
                             <button
@@ -252,7 +371,7 @@ export default function Clients() {
                               title="Reset Password"
                               className="p-2 rounded-xl hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition"
                             >
-                              <Key size={17} />
+                              <Key size={15} />
                             </button>
                           </div>
                         </td>
@@ -264,7 +383,7 @@ export default function Clients() {
               {/* Empty state */}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={8}>
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
                         <Users size={28} className="text-gray-300" />
