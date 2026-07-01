@@ -24,7 +24,7 @@ interface Supplier {
 
 const Suppliers = () => {
   const confirm = useConfirm();
-  const { error, success } = useToast();
+  const { error } = useToast();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);

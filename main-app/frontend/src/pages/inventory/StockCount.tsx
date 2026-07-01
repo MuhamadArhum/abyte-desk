@@ -27,7 +27,7 @@ const STATUS_OPTIONS = [
 
 const StockCount = () => {
   const confirm = useConfirm();
-  const { error, success } = useToast();
+  const { error } = useToast();
   const [items, setItems] = useState<StockCountItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

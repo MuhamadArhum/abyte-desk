@@ -55,7 +55,7 @@ const ProductVariants = () => {
     initial_stock: '0',
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Stock adjust modal
   const [stockVariant, setStockVariant] = useState<ProductVariant | null>(null);
@@ -126,7 +126,7 @@ const ProductVariants = () => {
     if (!selectedProduct) { error('Select a product first'); return; }
     setEditVariant(null);
     setForm({ variant_name: '', sku: '', barcode: '', price_adjustment: '0', initial_stock: '0' });
-    setError('');
+    setFormError('');
     setIsModalOpen(true);
   };
 
@@ -139,14 +139,14 @@ const ProductVariants = () => {
       price_adjustment: variant.price_adjustment.toString(),
       initial_stock: '0',
     });
-    setError('');
+    setFormError('');
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.variant_name.trim()) { setError('Variant name is required'); return; }
+    if (!form.variant_name.trim()) { setFormError('Variant name is required'); return; }
     setSaving(true);
-    setError('');
+    setFormError('');
     try {
       const payload = {
         product_id: selectedProduct!.product_id,
@@ -165,7 +165,7 @@ const ProductVariants = () => {
       setIsModalOpen(false);
       fetchVariants(selectedProduct!.product_id);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save variant');
+      setFormError(err.response?.data?.message || 'Failed to save variant');
     } finally {
       setSaving(false);
     }
@@ -441,7 +441,7 @@ const ProductVariants = () => {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
+              {formError && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{formError}</div>}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Variant Name *</label>

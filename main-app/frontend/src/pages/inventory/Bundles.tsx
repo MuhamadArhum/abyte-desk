@@ -74,7 +74,7 @@ const Bundles = () => {
   const [editBundle, setEditBundle] = useState<Bundle | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Products for item picker
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,7 +109,7 @@ const Bundles = () => {
   const openCreate = () => {
     setEditBundle(null);
     setForm({ ...emptyForm });
-    setError('');
+    setFormError('');
     setProductSearch('');
     setIsModalOpen(true);
   };
@@ -131,17 +131,17 @@ const Bundles = () => {
         variant_name: i.variant_name,
       })),
     });
-    setError('');
+    setFormError('');
     setProductSearch('');
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.bundle_name.trim()) { setError('Bundle name is required'); return; }
-    if (!form.discount_value || parseFloat(form.discount_value) <= 0) { setError('Discount value must be > 0'); return; }
-    if (form.items.length === 0) { setError('Add at least one product to the bundle'); return; }
+    if (!form.bundle_name.trim()) { setFormError('Bundle name is required'); return; }
+    if (!form.discount_value || parseFloat(form.discount_value) <= 0) { setFormError('Discount value must be > 0'); return; }
+    if (form.items.length === 0) { setFormError('Add at least one product to the bundle'); return; }
     setSaving(true);
-    setError('');
+    setFormError('');
     try {
       const payload = {
         bundle_name: form.bundle_name.trim(),
@@ -164,7 +164,7 @@ const Bundles = () => {
       setIsModalOpen(false);
       fetchBundles();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save bundle');
+      setFormError(err.response?.data?.message || 'Failed to save bundle');
     } finally {
       setSaving(false);
     }
@@ -436,8 +436,8 @@ const Bundles = () => {
             </div>
 
             <div className="p-6 space-y-5">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{formError}</div>
               )}
 
               {/* Name & Description */}
