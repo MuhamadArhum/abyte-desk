@@ -33,11 +33,13 @@ router.delete('/bank-accounts/:id', requirePermission('accounts.bank-accounts'),
 router.get('/payment-vouchers/next-number', accountingController.getNextPaymentVoucherNumber);
 router.get('/payment-vouchers', accountingController.getPaymentVouchers);
 router.post('/payment-vouchers', requirePermission('accounts.payment-vouchers'), accountingController.createPaymentVoucher);
+router.delete('/payment-vouchers/group/:voucher_number', requirePermission('accounts.payment-vouchers'), accountingController.deletePaymentVoucherGroup);
 router.delete('/payment-vouchers/:id', requirePermission('accounts.payment-vouchers'), accountingController.deletePaymentVoucher);
 
 router.get('/receipt-vouchers/next-number', accountingController.getNextReceiptVoucherNumber);
 router.get('/receipt-vouchers', accountingController.getReceiptVouchers);
 router.post('/receipt-vouchers', requirePermission('accounts.receipt-vouchers'), accountingController.createReceiptVoucher);
+router.delete('/receipt-vouchers/group/:voucher_number', requirePermission('accounts.receipt-vouchers'), accountingController.deleteReceiptVoucherGroup);
 router.delete('/receipt-vouchers/:id', requirePermission('accounts.receipt-vouchers'), accountingController.deleteReceiptVoucher);
 
 router.get('/reports/trial-balance', accountingController.getTrialBalance);

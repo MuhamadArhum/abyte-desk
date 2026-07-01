@@ -325,16 +325,16 @@ const PaymentVouchers = () => {
 
   useEffect(() => { if (hasLoaded) fetchVouchers(); }, [pagination.page]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete this voucher entry?')) return;
-    try { await api.delete(`/accounting/payment-vouchers/${id}`); toast.success('Deleted'); fetchVouchers(); }
+  const handleDelete = async (voucher_number: string) => {
+    if (!confirm(`Delete all entries of ${voucher_number}?`)) return;
+    try { await api.delete(`/accounting/payment-vouchers/group/${voucher_number}`); toast.success('Deleted'); fetchVouchers(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Delete failed'); }
   };
 
   const exportCSV = () => {
     const rows = [
-      ['Voucher #', 'Date', 'Account', 'Description', 'Amount'],
-      ...vouchers.map(v => [v.voucher_number, new Date(v.voucher_date).toLocaleDateString(), v.account_name || '', v.description || v.payment_to || '', Number(v.amount).toFixed(2)])
+      ['Voucher #', 'Date', 'Cash/Bank Account', 'Narration', 'Lines', 'Total Amount'],
+      ...vouchers.map(v => [v.voucher_number, new Date(v.voucher_date).toLocaleDateString(), v.main_account_name || '', v.description || '', v.line_count, Number(v.total_amount).toFixed(2)])
     ];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const a = document.createElement('a');
@@ -345,7 +345,7 @@ const PaymentVouchers = () => {
 
   if (view === 'new') return <CPVForm onBack={() => setView('list')} onRefresh={fetchVouchers} />;
 
-  const totalAmt = vouchers.reduce((s, v) => s + Number(v.amount), 0);
+  const totalAmt = vouchers.reduce((s, v) => s + Number(v.total_amount), 0);
   const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2 });
 
   return (
@@ -425,29 +425,33 @@ const PaymentVouchers = () => {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Voucher #</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cash/Bank</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Narration</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Lines</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                     <th className="px-4 py-3 w-12" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {vouchers.map(v => (
-                    <tr key={v.voucher_id} className="hover:bg-gray-50 transition">
+                    <tr key={v.voucher_number} className="hover:bg-gray-50 transition">
                       <td className="px-4 py-3 font-mono font-semibold text-emerald-600 text-xs">{v.voucher_number}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
                         {new Date(v.voucher_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-4 py-3 text-gray-800 font-medium">{v.account_name}</td>
-                      <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">{v.description || v.payment_to || <span className="text-gray-300">—</span>}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{fmt(Number(v.amount))}</td>
+                      <td className="px-4 py-3 text-gray-700 font-medium text-xs">{v.main_account_name || <span className="text-gray-300">—</span>}</td>
+                      <td className="px-4 py-3 text-gray-500 max-w-[180px] truncate text-xs">{v.description || <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => handleDelete(v.voucher_id)}
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">{v.line_count}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-700 font-mono">{fmt(Number(v.total_amount))}</td>
+                      <td className="px-4 py-3 text-center">
+                        <button onClick={() => handleDelete(v.voucher_number)}
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
                           <Trash2 size={13} />
                         </button>
@@ -457,8 +461,8 @@ const PaymentVouchers = () => {
                 </tbody>
                 <tfoot>
                   <tr className="bg-gray-50 border-t border-gray-200">
-                    <td colSpan={4} className="px-4 py-3 text-sm font-medium text-gray-500">Total (this page)</td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-700">{fmt(totalAmt)}</td>
+                    <td colSpan={5} className="px-4 py-3 text-sm font-medium text-gray-500">Total (this page)</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 font-mono">{fmt(totalAmt)}</td>
                     <td />
                   </tr>
                 </tfoot>

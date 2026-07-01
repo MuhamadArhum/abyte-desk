@@ -1008,14 +1008,21 @@ exports.getPaymentVouchers = async (req, res) => {
     const { from_date, to_date, payment_type } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = `SELECT pv.*, a.account_name, u.name as created_by_name,
-               ba.bank_name, ba.account_number
+    let sql = `SELECT
+                 pv.voucher_number,
+                 pv.voucher_date,
+                 MAX(pv.main_account_id) as main_account_id,
+                 MAX(ma.account_name) as main_account_name,
+                 MAX(pv.description) as description,
+                 SUM(pv.amount) as total_amount,
+                 COUNT(*) as line_count,
+                 MIN(u.name) as created_by_name,
+                 MIN(pv.created_at) as created_at
                FROM payment_vouchers pv
-               JOIN accounts a ON pv.account_id = a.account_id
                JOIN users u ON pv.created_by = u.user_id
-               LEFT JOIN bank_accounts ba ON pv.bank_account_id = ba.bank_account_id
+               LEFT JOIN accounts ma ON pv.main_account_id = ma.account_id
                WHERE 1=1`;
-    let countSql = 'SELECT COUNT(*) as total FROM payment_vouchers WHERE 1=1';
+    let countSql = 'SELECT COUNT(DISTINCT voucher_number) as total FROM payment_vouchers WHERE 1=1';
     const params = [], countParams = [];
 
     if (from_date && to_date) {
@@ -1026,7 +1033,7 @@ exports.getPaymentVouchers = async (req, res) => {
     }
     if (payment_type) { sql += ' AND pv.payment_type = ?'; countSql += ' AND payment_type = ?'; params.push(payment_type); countParams.push(payment_type); }
 
-    sql += ' ORDER BY pv.voucher_date DESC, pv.created_at DESC LIMIT ? OFFSET ?';
+    sql += ' GROUP BY pv.voucher_number, pv.voucher_date ORDER BY pv.voucher_date DESC, MIN(pv.created_at) DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [vouchers, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
@@ -1164,14 +1171,21 @@ exports.getReceiptVouchers = async (req, res) => {
     const { from_date, to_date, receipt_type } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
-    let sql = `SELECT rv.*, a.account_name, u.name as created_by_name,
-               ba.bank_name, ba.account_number
+    let sql = `SELECT
+                 rv.voucher_number,
+                 rv.voucher_date,
+                 MAX(rv.main_account_id) as main_account_id,
+                 MAX(ma.account_name) as main_account_name,
+                 MAX(rv.description) as description,
+                 SUM(rv.amount) as total_amount,
+                 COUNT(*) as line_count,
+                 MIN(u.name) as created_by_name,
+                 MIN(rv.created_at) as created_at
                FROM receipt_vouchers rv
-               JOIN accounts a ON rv.account_id = a.account_id
                JOIN users u ON rv.created_by = u.user_id
-               LEFT JOIN bank_accounts ba ON rv.bank_account_id = ba.bank_account_id
+               LEFT JOIN accounts ma ON rv.main_account_id = ma.account_id
                WHERE 1=1`;
-    let countSql = 'SELECT COUNT(*) as total FROM receipt_vouchers WHERE 1=1';
+    let countSql = 'SELECT COUNT(DISTINCT voucher_number) as total FROM receipt_vouchers WHERE 1=1';
     const params = [], countParams = [];
 
     if (from_date && to_date) {
@@ -1182,7 +1196,7 @@ exports.getReceiptVouchers = async (req, res) => {
     }
     if (receipt_type) { sql += ' AND rv.receipt_type = ?'; countSql += ' AND receipt_type = ?'; params.push(receipt_type); countParams.push(receipt_type); }
 
-    sql += ' ORDER BY rv.voucher_date DESC, rv.created_at DESC LIMIT ? OFFSET ?';
+    sql += ' GROUP BY rv.voucher_number, rv.voucher_date ORDER BY rv.voucher_date DESC, MIN(rv.created_at) DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const [vouchers, [{total}]] = await Promise.all([query(sql, params), query(countSql, countParams)]);
@@ -1190,6 +1204,60 @@ exports.getReceiptVouchers = async (req, res) => {
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deletePaymentVoucherGroup = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { voucher_number } = req.params;
+    const rows = await conn.query('SELECT * FROM payment_vouchers WHERE voucher_number = ?', [voucher_number]);
+    if (!rows.length) return res.status(404).json({ message: 'Voucher not found' });
+
+    await conn.beginTransaction();
+    for (const voucher of rows) {
+      if (voucher.journal_entry_id) {
+        const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+        const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+        if (je && je.status === 'posted' && lines.length > 0) {
+          const accIds = [...new Set(lines.map(l => l.account_id))];
+          const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
+          const typeMap = {};
+          for (const a of accRows) typeMap[a.account_id] = a.account_type;
+          for (const line of lines) {
+            const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
+            const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
+            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+          }
+        }
+        await conn.query('UPDATE payment_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [voucher.voucher_id]);
+        await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+        await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+      } else {
+        const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
+        if (acc) {
+          const debitInc = ['asset', 'expense'].includes(acc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+        }
+        if (voucher.main_account_id) {
+          const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.main_account_id]);
+          if (mainAcc) {
+            const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.main_account_id]);
+          }
+        }
+      }
+    }
+    await conn.query('DELETE FROM payment_vouchers WHERE voucher_number = ?', [voucher_number]);
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'PAYMENT_VOUCHER_DELETED', 'payment_vouchers', 0, { voucher_number }, req.ip);
+    res.json({ message: 'Payment voucher deleted' });
+  } catch (err) {
+    await conn.rollback();
+    logger.error('deletePaymentVoucherGroup error:', err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -1307,6 +1375,60 @@ exports.deleteReceiptVoucher = async (req, res) => {
   } catch (err) {
     await conn.rollback();
     logger.error('deleteReceiptVoucher error:', err);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
+  }
+};
+
+exports.deleteReceiptVoucherGroup = async (req, res) => {
+  const conn = await getConnection();
+  try {
+    const { voucher_number } = req.params;
+    const rows = await conn.query('SELECT * FROM receipt_vouchers WHERE voucher_number = ?', [voucher_number]);
+    if (!rows.length) return res.status(404).json({ message: 'Voucher not found' });
+
+    await conn.beginTransaction();
+    for (const voucher of rows) {
+      if (voucher.journal_entry_id) {
+        const lines = await conn.query('SELECT * FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+        const [je] = await conn.query('SELECT status FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+        if (je && je.status === 'posted' && lines.length > 0) {
+          const accIds = [...new Set(lines.map(l => l.account_id))];
+          const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
+          const typeMap = {};
+          for (const a of accRows) typeMap[a.account_id] = a.account_type;
+          for (const line of lines) {
+            const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
+            const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
+            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+          }
+        }
+        await conn.query('UPDATE receipt_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [voucher.voucher_id]);
+        await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
+        await conn.query('DELETE FROM journal_entries WHERE entry_id = ?', [voucher.journal_entry_id]);
+      } else {
+        const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
+        if (acc) {
+          const debitInc = ['asset', 'expense'].includes(acc.account_type);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+        }
+        if (voucher.main_account_id) {
+          const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.main_account_id]);
+          if (mainAcc) {
+            const mainDebitInc = ['asset', 'expense'].includes(mainAcc.account_type);
+            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.main_account_id]);
+          }
+        }
+      }
+    }
+    await conn.query('DELETE FROM receipt_vouchers WHERE voucher_number = ?', [voucher_number]);
+    await conn.commit();
+    await logAction(req.user.user_id, req.user.name, 'RECEIPT_VOUCHER_DELETED', 'receipt_vouchers', 0, { voucher_number }, req.ip);
+    res.json({ message: 'Receipt voucher deleted' });
+  } catch (err) {
+    await conn.rollback();
+    logger.error('deleteReceiptVoucherGroup error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
     conn.release();
