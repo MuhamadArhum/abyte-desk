@@ -179,7 +179,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="p-6">
 
       {/* Top bar: Back + Balance badge */}
       <div className="mb-5 flex items-center justify-between">
