@@ -13,7 +13,7 @@ const AccountSelector = ({
 }: {
   value: string; onChange: (id: string) => void;
   accounts: any[]; onAfterSelect?: () => void; placeholder?: string;
-  btnRef?: React.RefObject<HTMLButtonElement>;
+  btnRef?: React.RefObject<HTMLButtonElement | null>;
 }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
