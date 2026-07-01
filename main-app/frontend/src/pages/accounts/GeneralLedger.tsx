@@ -246,7 +246,7 @@ const GeneralLedger = () => {
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
             <p className="text-xs text-gray-500 mb-1">Opening Balance</p>
-            <p className={`font-bold text-lg ${openingBalance >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+            <p className={`font-bold text-lg ${openingBalance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
               {fmt(openingBalance)}
             </p>
             <p className="text-xs text-gray-400">{openingBalance >= 0 ? 'Debit' : 'Credit'}</p>
@@ -256,12 +256,12 @@ const GeneralLedger = () => {
             <div className="flex items-center gap-3 mt-1">
               <div>
                 <p className="text-xs text-gray-400">Dr</p>
-                <p className="font-semibold text-blue-700">{fmt(totalDebit)}</p>
+                <p className="font-semibold text-emerald-700">{fmt(totalDebit)}</p>
               </div>
               <div className="w-px h-8 bg-gray-200" />
               <div>
                 <p className="text-xs text-gray-400">Cr</p>
-                <p className="font-semibold text-orange-600">{fmt(totalCredit)}</p>
+                <p className="font-semibold text-gray-600">{fmt(totalCredit)}</p>
               </div>
             </div>
           </div>
@@ -312,19 +312,19 @@ const GeneralLedger = () => {
                 </thead>
                 <tbody>
                   {/* Opening Balance Row */}
-                  <tr className="bg-blue-50 border-b border-blue-100">
-                    <td className="px-4 py-3 text-xs text-blue-600 font-medium" colSpan={3}>
+                  <tr className="bg-emerald-50 border-b border-emerald-100">
+                    <td className="px-4 py-3 text-xs text-emerald-600 font-medium" colSpan={3}>
                       Opening Balance — {fromDate}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-blue-700 font-semibold">
+                    <td className="px-4 py-3 text-right text-sm text-emerald-700 font-semibold">
                       {openingBalance > 0 ? fmt(openingBalance) : ''}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-orange-600 font-semibold">
+                    <td className="px-4 py-3 text-right text-sm text-gray-600 font-semibold">
                       {openingBalance < 0 ? fmt(openingBalance) : ''}
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-gray-800">
                       {fmt(openingBalance)}
-                      <span className={`ml-1 text-xs font-normal ${openingBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                      <span className={`ml-1 text-xs font-normal ${openingBalance >= 0 ? 'text-emerald-600' : 'text-gray-600'}`}>
                         {openingBalance >= 0 ? 'Dr' : 'Cr'}
                       </span>
                     </td>
@@ -336,15 +336,15 @@ const GeneralLedger = () => {
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{fmtDate(row.entry_date)}</td>
                       <td className="px-4 py-3 font-mono text-xs text-emerald-700 font-semibold">{row.entry_number}</td>
                       <td className="px-4 py-3 text-gray-700">{row.description || <span className="text-gray-300 italic">—</span>}</td>
-                      <td className="px-4 py-3 text-right font-medium text-blue-700">
+                      <td className="px-4 py-3 text-right font-medium text-emerald-700">
                         {Number(row.debit) > 0 ? fmt(Number(row.debit)) : ''}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-orange-600">
+                      <td className="px-4 py-3 text-right font-medium text-gray-600">
                         {Number(row.credit) > 0 ? fmt(Number(row.credit)) : ''}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-800">
                         {fmt(runningBalance)}
-                        <span className={`ml-1 text-xs font-normal ${runningBalance >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
+                        <span className={`ml-1 text-xs font-normal ${runningBalance >= 0 ? 'text-emerald-500' : 'text-gray-500'}`}>
                           {runningBalance >= 0 ? 'Dr' : 'Cr'}
                         </span>
                       </td>
@@ -354,18 +354,18 @@ const GeneralLedger = () => {
                   {/* Totals Row */}
                   <tr className="bg-gray-100 border-t-2 border-gray-300 font-bold">
                     <td colSpan={3} className="px-4 py-3 text-gray-700 text-right">Period Total</td>
-                    <td className="px-4 py-3 text-right text-blue-700">{fmt(totalDebit)}</td>
-                    <td className="px-4 py-3 text-right text-orange-600">{fmt(totalCredit)}</td>
+                    <td className="px-4 py-3 text-right text-emerald-700">{fmt(totalDebit)}</td>
+                    <td className="px-4 py-3 text-right text-gray-600">{fmt(totalCredit)}</td>
                     <td className="px-4 py-3"></td>
                   </tr>
 
                   {/* Closing Balance Row */}
                   <tr className={`font-bold border-t border-gray-200 ${closingBalance >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
                     <td colSpan={3} className="px-4 py-3 text-gray-700 text-right">Closing Balance — {toDate}</td>
-                    <td className="px-4 py-3 text-right text-blue-700">
+                    <td className="px-4 py-3 text-right text-emerald-700">
                       {closingBalance >= 0 ? fmt(closingBalance) : ''}
                     </td>
-                    <td className="px-4 py-3 text-right text-orange-600">
+                    <td className="px-4 py-3 text-right text-gray-600">
                       {closingBalance < 0 ? fmt(closingBalance) : ''}
                     </td>
                     <td className={`px-4 py-3 text-right text-base ${closingBalance >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>

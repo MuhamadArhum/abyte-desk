@@ -29,9 +29,9 @@ interface Account {
 const TYPE_CONFIG: Record<string, { label: string; Icon: any; color: string; bg: string; border: string; badge: string; btnClass: string }> = {
   asset:     { label: 'Assets',          Icon: Building2,   color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-300', badge: 'bg-emerald-100 text-emerald-700', btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
   liability: { label: 'Liabilities',     Icon: CreditCard,  color: 'text-red-700',     bg: 'bg-red-50',      border: 'border-red-300',     badge: 'bg-red-100 text-red-700',         btnClass: 'bg-red-600 hover:bg-red-700' },
-  equity:    { label: 'Equity',          Icon: Landmark,    color: 'text-purple-700',  bg: 'bg-purple-50',   border: 'border-purple-300',  badge: 'bg-purple-100 text-purple-700',   btnClass: 'bg-purple-600 hover:bg-purple-700' },
-  revenue:   { label: 'Revenue/Income',  Icon: TrendingUp,  color: 'text-emerald-700',   bg: 'bg-emerald-50',    border: 'border-green-300',   badge: 'bg-emerald-100 text-emerald-700',     btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
-  expense:   { label: 'Expenses',        Icon: TrendingDown,color: 'text-orange-700',  bg: 'bg-orange-50',   border: 'border-orange-300',  badge: 'bg-orange-100 text-orange-700',   btnClass: 'bg-orange-600 hover:bg-orange-700' },
+  equity:    { label: 'Equity',          Icon: Landmark,    color: 'text-gray-700',    bg: 'bg-gray-50',     border: 'border-gray-300',    badge: 'bg-gray-100 text-gray-700',       btnClass: 'bg-gray-600 hover:bg-gray-700' },
+  revenue:   { label: 'Revenue/Income',  Icon: TrendingUp,  color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-300', badge: 'bg-emerald-100 text-emerald-700', btnClass: 'bg-emerald-600 hover:bg-emerald-700' },
+  expense:   { label: 'Expenses',        Icon: TrendingDown,color: 'text-gray-700',    bg: 'bg-gray-50',     border: 'border-gray-300',    badge: 'bg-gray-100 text-gray-700',       btnClass: 'bg-gray-600 hover:bg-gray-700' },
 };
 
 const INDENT = [0, 0, 20, 40, 60]; // px indent per level

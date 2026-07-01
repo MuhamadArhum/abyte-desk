@@ -146,7 +146,7 @@ const Reports = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
               <div className="p-5">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Assets</p>
-                <p className="text-2xl font-bold text-blue-700">{fmt(bs?.total_assets || 0)}</p>
+                <p className="text-2xl font-bold text-emerald-700">{fmt(bs?.total_assets || 0)}</p>
               </div>
               <div className="p-5">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Total Liabilities</p>

@@ -76,19 +76,19 @@ const Analytics = () => {
 
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-3">
-                <div className={`p-2 rounded-lg ${summary.net_profit >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
-                  <DollarSign size={18} className={summary.net_profit >= 0 ? 'text-blue-600' : 'text-orange-500'} />
+                <div className={`p-2 rounded-lg ${summary.net_profit >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                  <DollarSign size={18} className={summary.net_profit >= 0 ? 'text-emerald-600' : 'text-red-500'} />
                 </div>
                 <span className="text-sm text-gray-500">Net Profit</span>
               </div>
-              <p className={`text-2xl font-bold ${summary.net_profit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+              <p className={`text-2xl font-bold ${summary.net_profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                 {summary.net_profit < 0 ? '-' : ''}{fmt(Math.abs(summary.net_profit))}
               </p>
             </div>
 
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 bg-purple-50 rounded-lg"><FileText size={18} className="text-purple-600" /></div>
+                <div className="p-2 bg-emerald-50 rounded-lg"><FileText size={18} className="text-emerald-600" /></div>
                 <span className="text-sm text-gray-500">Journal Vouchers</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">{jv.posted + jv.draft}</p>
@@ -173,7 +173,7 @@ const Analytics = () => {
           {/* Voucher Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-              <div className="p-3 bg-orange-50 rounded-xl"><CreditCard size={22} className="text-orange-500" /></div>
+              <div className="p-3 bg-emerald-50 rounded-xl"><CreditCard size={22} className="text-emerald-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Cash Payment Vouchers (CPV)</p>
                 <p className="text-xl font-bold text-gray-900">{fmt(vouchers.cpv_amount)}</p>
@@ -181,7 +181,7 @@ const Analytics = () => {
               </div>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-              <div className="p-3 bg-teal-50 rounded-xl"><Receipt size={22} className="text-teal-600" /></div>
+              <div className="p-3 bg-emerald-50 rounded-xl"><Receipt size={22} className="text-emerald-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Cash Receipt Vouchers (CRV)</p>
                 <p className="text-xl font-bold text-gray-900">{fmt(vouchers.crv_amount)}</p>

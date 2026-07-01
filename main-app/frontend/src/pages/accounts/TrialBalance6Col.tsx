@@ -549,26 +549,26 @@ const TrialBalance6Col = () => {
                     </td>
 
                     {/* Opening Balance */}
-                    <td className="px-3 py-2.5 text-right text-blue-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
                       {fmt(row.agg_opening_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-orange-600 font-medium w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium w-32 whitespace-nowrap">
                       {fmt(row.agg_opening_cr)}
                     </td>
 
                     {/* Current (Period) */}
-                    <td className="px-3 py-2.5 text-right text-blue-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
                       {fmt(row.agg_period_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-orange-600 font-medium w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium w-32 whitespace-nowrap">
                       {fmt(row.agg_period_cr)}
                     </td>
 
                     {/* Closing Balance */}
-                    <td className="px-3 py-2.5 text-right text-blue-700 font-semibold border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-semibold border-l border-gray-100 w-32 whitespace-nowrap">
                       {fmt(row.agg_closing_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-orange-600 font-semibold w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-semibold w-32 whitespace-nowrap">
                       {fmt(row.agg_closing_cr)}
                     </td>
                   </tr>

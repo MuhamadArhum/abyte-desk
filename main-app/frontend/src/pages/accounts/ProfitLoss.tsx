@@ -194,14 +194,14 @@ const ProfitLoss = () => {
               <p className="text-xs text-gray-400 mt-0.5">{fmt(Math.abs(data.net_profit))}</p>
             </div>
 
-            <div className="bg-white rounded-xl border border-indigo-100 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-emerald-100 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <Percent size={16} className="text-indigo-600" />
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <Percent size={16} className="text-emerald-600" />
                 </div>
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Margin</span>
               </div>
-              <p className={`text-2xl font-bold font-mono ${margin >= 0 ? 'text-indigo-700' : 'text-red-600'}`}>
+              <p className={`text-2xl font-bold font-mono ${margin >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                 {margin.toFixed(1)}%
               </p>
               <p className="text-xs text-gray-400 mt-0.5">Expense ratio: {expenseRatio.toFixed(1)}%</p>

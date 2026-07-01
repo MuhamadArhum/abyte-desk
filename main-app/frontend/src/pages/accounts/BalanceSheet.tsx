@@ -78,9 +78,9 @@ function TreeRow({ node, section }: { node: BSNode; section: 'asset' | 'liabilit
   const indentPx = (node.level - 1) * 20;
 
   const colorMap = {
-    asset:     { row: 'hover:bg-blue-50/40',   subtotal: 'bg-blue-50 text-blue-800',   border: 'border-blue-200' },
-    liability: { row: 'hover:bg-rose-50/40',   subtotal: 'bg-rose-50 text-rose-800',   border: 'border-rose-200' },
-    equity:    { row: 'hover:bg-purple-50/40', subtotal: 'bg-purple-50 text-purple-800', border: 'border-purple-200' },
+    asset:     { row: 'hover:bg-emerald-50/40', subtotal: 'bg-emerald-50 text-emerald-800', border: 'border-emerald-200' },
+    liability: { row: 'hover:bg-red-50/40',     subtotal: 'bg-red-50 text-red-800',         border: 'border-red-200' },
+    equity:    { row: 'hover:bg-gray-50/40',    subtotal: 'bg-gray-50 text-gray-700',        border: 'border-gray-200' },
   };
   const c = colorMap[section];
 
@@ -141,14 +141,14 @@ function SectionCard({
   extra?: React.ReactNode;
 }) {
   const headerColors = {
-    asset:     'from-blue-600 to-blue-700',
-    liability: 'from-rose-600 to-rose-700',
-    equity:    'from-purple-600 to-purple-700',
+    asset:     'from-emerald-600 to-emerald-700',
+    liability: 'from-red-600 to-red-700',
+    equity:    'from-gray-600 to-gray-700',
   };
   const totalColors = {
-    asset:     'bg-blue-600 text-white',
-    liability: 'bg-rose-600 text-white',
-    equity:    'bg-purple-600 text-white',
+    asset:     'bg-emerald-600 text-white',
+    liability: 'bg-red-600 text-white',
+    equity:    'bg-gray-600 text-white',
   };
 
   return (
@@ -281,10 +281,10 @@ const BalanceSheet = () => {
     <div className="p-4 sm:p-6 space-y-4 min-h-full bg-gray-50/50">
       {/* ── Page Header ── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500" />
+        <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shadow-sm">
               <FileBarChart className="text-white" size={20} />
             </div>
             <div>
@@ -367,17 +367,17 @@ const BalanceSheet = () => {
             </div>
             {/* Summary chips */}
             <div className="hidden md:flex items-center gap-3">
-              <div className="text-center px-4 py-1.5 bg-blue-100 rounded-lg">
-                <p className="text-xs text-blue-600 font-semibold uppercase">Assets</p>
-                <p className="text-sm font-bold text-blue-800 tabular-nums">{fmt(data.total_assets)}</p>
+              <div className="text-center px-4 py-1.5 bg-emerald-100 rounded-lg">
+                <p className="text-xs text-emerald-600 font-semibold uppercase">Assets</p>
+                <p className="text-sm font-bold text-emerald-800 tabular-nums">{fmt(data.total_assets)}</p>
               </div>
-              <div className="text-center px-4 py-1.5 bg-rose-100 rounded-lg">
-                <p className="text-xs text-rose-600 font-semibold uppercase">Liabilities</p>
-                <p className="text-sm font-bold text-rose-800 tabular-nums">{fmt(data.total_liabilities)}</p>
+              <div className="text-center px-4 py-1.5 bg-red-100 rounded-lg">
+                <p className="text-xs text-red-600 font-semibold uppercase">Liabilities</p>
+                <p className="text-sm font-bold text-red-800 tabular-nums">{fmt(data.total_liabilities)}</p>
               </div>
-              <div className="text-center px-4 py-1.5 bg-purple-100 rounded-lg">
-                <p className="text-xs text-purple-600 font-semibold uppercase">Equity</p>
-                <p className="text-sm font-bold text-purple-800 tabular-nums">{fmt(data.total_equity)}</p>
+              <div className="text-center px-4 py-1.5 bg-gray-100 rounded-lg">
+                <p className="text-xs text-gray-600 font-semibold uppercase">Equity</p>
+                <p className="text-sm font-bold text-gray-700 tabular-nums">{fmt(data.total_equity)}</p>
               </div>
             </div>
           </div>
@@ -411,9 +411,9 @@ const BalanceSheet = () => {
                 totalLabel="Total Equity"
                 section="equity"
                 extra={
-                  <tr className="bg-purple-50/60 border-t border-purple-100">
+                  <tr className="bg-gray-50/60 border-t border-gray-100">
                     <td className="py-2 px-3 pl-5">
-                      <span className="text-sm font-semibold text-purple-700 flex items-center gap-1.5">
+                      <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
                         {data.net_profit >= 0
                           ? <TrendingUp size={14} className="text-emerald-500" />
                           : <TrendingDown size={14} className="text-red-500" />}

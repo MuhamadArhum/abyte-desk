@@ -12,11 +12,11 @@ import { localToday } from '../../utils/dateUtils';
 import ReportPasswordGate from '../../components/ReportPasswordGate';
 
 const TYPE_TAG: Record<string, { bg: string; text: string; label: string }> = {
-  asset:     { bg: 'bg-sky-100',     text: 'text-sky-700',     label: 'Asset'  },
-  liability: { bg: 'bg-rose-100',    text: 'text-rose-700',    label: 'Liab'   },
-  equity:    { bg: 'bg-violet-100',  text: 'text-violet-700',  label: 'Equity' },
+  asset:     { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Asset'  },
+  liability: { bg: 'bg-gray-100',    text: 'text-gray-600',    label: 'Liab'   },
+  equity:    { bg: 'bg-gray-100',    text: 'text-gray-600',    label: 'Equity' },
   revenue:   { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Rev'    },
-  expense:   { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Exp'    },
+  expense:   { bg: 'bg-gray-100',    text: 'text-gray-600',    label: 'Exp'    },
 };
 
 const AccountSelector = ({
@@ -232,15 +232,15 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
 
             {/* Dr / Cr toggle */}
             <div className={`flex rounded-lg overflow-hidden border text-xs font-bold shrink-0 ${
-              inputDrCr === 'Dr' ? 'border-sky-400' : inputDrCr === 'Cr' ? 'border-rose-400' : 'border-gray-300'}`}>
+              inputDrCr ? 'border-emerald-400' : 'border-gray-300'}`}>
               <button ref={drBtnRef} type="button"
                 onClick={() => setInputDrCr('Dr')}
-                className={`px-5 py-2 transition-all ${inputDrCr === 'Dr' ? 'bg-sky-500 text-white' : 'bg-white text-gray-400 hover:text-sky-500'}`}>
+                className={`px-5 py-2 transition-all ${inputDrCr === 'Dr' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-400 hover:text-emerald-500'}`}>
                 Dr
               </button>
               <button type="button"
                 onClick={() => setInputDrCr('Cr')}
-                className={`px-5 py-2 transition-all border-l ${inputDrCr === 'Cr' ? 'bg-rose-500 text-white border-rose-400' : 'bg-white text-gray-400 hover:text-rose-500 border-gray-300'}`}>
+                className={`px-5 py-2 transition-all border-l ${inputDrCr === 'Cr' ? 'bg-gray-600 text-white border-gray-500' : 'bg-white text-gray-400 hover:text-gray-600 border-gray-300'}`}>
                 Cr
               </button>
             </div>
@@ -282,8 +282,8 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
                 ${!amountEnabled
                   ? 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed'
                   : inputDrCr === 'Dr'
-                    ? 'border-sky-300 bg-sky-50 text-sky-700 focus:ring-2 focus:ring-sky-300'
-                    : 'border-rose-300 bg-rose-50 text-rose-600 focus:ring-2 focus:ring-rose-300'}`}
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 focus:ring-2 focus:ring-emerald-300'
+                    : 'border-gray-300 bg-gray-50 text-gray-700 focus:ring-2 focus:ring-gray-300'}`}
               placeholder="0.00"
             />
 
@@ -324,13 +324,13 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
                     const tag = acc ? TYPE_TAG[acc.account_type] : null;
                     return (
                       <div key={i}
-                        className={`grid gap-3 px-4 py-2.5 border-b border-gray-100 items-center text-sm transition-colors ${isDr ? 'hover:bg-sky-50/30' : 'hover:bg-rose-50/20'}`}
+                        className={`grid gap-3 px-4 py-2.5 border-b border-gray-100 items-center text-sm transition-colors hover:bg-gray-50`}
                         style={{ gridTemplateColumns: '28px 64px 1fr 1fr 130px 32px' }}>
                         <span className="text-center text-xs font-mono font-bold text-gray-300 select-none">
                           {String(i + 1).padStart(2, '0')}
                         </span>
                         <div className="flex justify-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${isDr ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-600'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${isDr ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                             {line.dr_cr}
                           </span>
                         </div>
@@ -339,7 +339,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
                           <span className="truncate text-gray-700 font-medium text-xs">{acc?.account_name || '—'}</span>
                         </div>
                         <span className="text-gray-400 text-xs truncate">{line.narration || <span className="text-gray-200">—</span>}</span>
-                        <span className={`text-right font-bold font-mono text-xs ${isDr ? 'text-sky-700' : 'text-rose-600'}`}>
+                        <span className={`text-right font-bold font-mono text-xs ${isDr ? 'text-emerald-700' : 'text-gray-600'}`}>
                           {fmt(Number(line.amount))}
                         </span>
                         <button type="button" onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}
@@ -378,18 +378,18 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
         {/* Totals strip + Post button */}
         <div className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="bg-sky-50 border border-sky-100 rounded-lg px-4 py-2.5 flex items-center gap-2">
-              <TrendingUp size={14} className="text-sky-500" />
+            <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-2.5 flex items-center gap-2">
+              <TrendingUp size={14} className="text-emerald-500" />
               <div>
-                <p className="text-[10px] text-sky-500 font-bold uppercase tracking-wide">Total Dr</p>
-                <p className="text-sm font-bold text-sky-700 font-mono leading-none mt-0.5">{fmt(totDr)}</p>
+                <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wide">Total Dr</p>
+                <p className="text-sm font-bold text-emerald-700 font-mono leading-none mt-0.5">{fmt(totDr)}</p>
               </div>
             </div>
-            <div className="bg-rose-50 border border-rose-100 rounded-lg px-4 py-2.5 flex items-center gap-2">
-              <TrendingDown size={14} className="text-rose-500" />
+            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 flex items-center gap-2">
+              <TrendingDown size={14} className="text-gray-500" />
               <div>
-                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wide">Total Cr</p>
-                <p className="text-sm font-bold text-rose-600 font-mono leading-none mt-0.5">{fmt(totCr)}</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Total Cr</p>
+                <p className="text-sm font-bold text-gray-700 font-mono leading-none mt-0.5">{fmt(totCr)}</p>
               </div>
             </div>
           </div>
@@ -599,13 +599,13 @@ const JournalEntries = () => {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entries</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total}</p>
           </div>
-          <div className="bg-sky-50 rounded-xl border border-sky-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-xs font-semibold text-sky-500 uppercase tracking-wide">Total Debit</p>
-            <p className="text-xl font-bold text-sky-700 mt-1 font-mono">{fmt(totalDr)}</p>
+          <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wide">Total Debit</p>
+            <p className="text-xl font-bold text-emerald-700 mt-1 font-mono">{fmt(totalDr)}</p>
           </div>
-          <div className="bg-rose-50 rounded-xl border border-rose-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-xs font-semibold text-rose-400 uppercase tracking-wide">Total Credit</p>
-            <p className="text-xl font-bold text-rose-600 mt-1 font-mono">{fmt(totalCr)}</p>
+          <div className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Credit</p>
+            <p className="text-xl font-bold text-gray-700 mt-1 font-mono">{fmt(totalCr)}</p>
           </div>
         </div>
       )}
@@ -644,8 +644,8 @@ const JournalEntries = () => {
                       {new Date(e.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate text-xs">{e.description || <span className="text-gray-300">—</span>}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-sky-700 text-xs">{fmt(e.total_debit)}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-rose-500 text-xs">{fmt(e.total_credit)}</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700 text-xs">{fmt(e.total_debit)}</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-gray-600 text-xs">{fmt(e.total_credit)}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold border capitalize ${
                         e.status === 'posted'  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'

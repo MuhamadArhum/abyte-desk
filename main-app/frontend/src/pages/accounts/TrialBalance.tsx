@@ -17,11 +17,11 @@ interface TrialBalanceRow {
 const fmt = (n: number) => new Intl.NumberFormat('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const typeColor: Record<string, string> = {
-  asset:     'bg-blue-100 text-blue-700',
-  liability: 'bg-rose-100 text-rose-700',
-  equity:    'bg-purple-100 text-purple-700',
+  asset:     'bg-emerald-100 text-emerald-700',
+  liability: 'bg-red-100 text-red-700',
+  equity:    'bg-gray-100 text-gray-600',
   revenue:   'bg-emerald-100 text-emerald-700',
-  expense:   'bg-amber-100 text-amber-700',
+  expense:   'bg-gray-100 text-gray-600',
 };
 
 const TrialBalance = () => {
@@ -89,7 +89,7 @@ const TrialBalance = () => {
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -195,8 +195,8 @@ const TrialBalance = () => {
                     <th className="text-left px-4 py-3 font-semibold w-28">Code</th>
                     <th className="text-left px-4 py-3 font-semibold">Account Name</th>
                     <th className="text-center px-3 py-3 font-semibold w-24">Type</th>
-                    <th className="text-right px-4 py-3 font-semibold w-36 text-indigo-500">Debit</th>
-                    <th className="text-right px-4 py-3 font-semibold w-36 text-rose-400">Credit</th>
+                    <th className="text-right px-4 py-3 font-semibold w-36 text-emerald-600">Debit</th>
+                    <th className="text-right px-4 py-3 font-semibold w-36 text-gray-500">Credit</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -209,10 +209,10 @@ const TrialBalance = () => {
                           {row.account_type?.slice(0, 3)}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-indigo-700">
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-emerald-700">
                         {row.debit > 0 ? fmt(row.debit) : <span className="text-gray-200">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-rose-500">
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold text-gray-600">
                         {row.credit > 0 ? fmt(row.credit) : <span className="text-gray-200">—</span>}
                       </td>
                     </tr>
