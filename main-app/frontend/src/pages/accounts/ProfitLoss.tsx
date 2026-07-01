@@ -97,7 +97,7 @@ const ProfitLoss = () => {
 
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="h-1 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -166,29 +166,29 @@ const ProfitLoss = () => {
               <p className="text-xs text-gray-400 mt-0.5">{fmt(data.total_revenue)}</p>
             </div>
 
-            <div className="bg-white rounded-xl border border-rose-100 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-red-100 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-rose-100 rounded-lg flex items-center justify-center">
-                  <TrendingDown size={16} className="text-rose-500" />
+                <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                  <TrendingDown size={16} className="text-red-500" />
                 </div>
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Expenses</span>
               </div>
-              <p className="text-2xl font-bold text-rose-600 font-mono">{fmtShort(data.total_expenses)}</p>
+              <p className="text-2xl font-bold text-red-600 font-mono">{fmtShort(data.total_expenses)}</p>
               <p className="text-xs text-gray-400 mt-0.5">{fmt(data.total_expenses)}</p>
             </div>
 
-            <div className={`bg-white rounded-xl border shadow-sm p-4 ${data.net_profit >= 0 ? 'border-green-100' : 'border-red-100'}`}>
+            <div className={`bg-white rounded-xl border shadow-sm p-4 ${data.net_profit >= 0 ? 'border-emerald-100' : 'border-red-100'}`}>
               <div className="flex items-center gap-2 mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${data.net_profit >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${data.net_profit >= 0 ? 'bg-emerald-100' : 'bg-red-100'}`}>
                   {data.net_profit >= 0
-                    ? <TrendingUp size={16} className="text-green-600" />
+                    ? <TrendingUp size={16} className="text-emerald-600" />
                     : <TrendingDown size={16} className="text-red-500" />}
                 </div>
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                   Net {data.net_profit >= 0 ? 'Profit' : 'Loss'}
                 </span>
               </div>
-              <p className={`text-2xl font-bold font-mono ${data.net_profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+              <p className={`text-2xl font-bold font-mono ${data.net_profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                 {fmtShort(Math.abs(data.net_profit))}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">{fmt(Math.abs(data.net_profit))}</p>
@@ -210,7 +210,7 @@ const ProfitLoss = () => {
 
           {/* Revenue Table */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-5 py-3 flex items-center justify-between">
               <h2 className="text-white font-bold text-sm uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp size={16} /> Revenue
               </h2>
@@ -264,11 +264,11 @@ const ProfitLoss = () => {
 
           {/* Expenses Table */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-rose-500 to-red-600 px-5 py-3 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 px-5 py-3 flex items-center justify-between">
               <h2 className="text-white font-bold text-sm uppercase tracking-widest flex items-center gap-2">
                 <TrendingDown size={16} /> Expenses
               </h2>
-              <span className="text-rose-100 text-sm font-mono font-semibold">{fmt(data.total_expenses)}</span>
+              <span className="text-red-100 text-sm font-mono font-semibold">{fmt(data.total_expenses)}</span>
             </div>
             {data.expenses.length === 0 ? (
               <div className="py-8 text-center text-gray-400 text-sm italic">No expense accounts for this period</div>
@@ -286,7 +286,7 @@ const ProfitLoss = () => {
                     {data.expenses.map((item, i) => {
                       const pct = data.total_revenue > 0 ? (item.amount / data.total_revenue) * 100 : 0;
                       return (
-                        <tr key={item.account_code} className={`border-b border-gray-50 hover:bg-rose-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                        <tr key={item.account_code} className={`border-b border-gray-50 hover:bg-red-50/30 transition ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                           <td className="px-5 py-3">
                             <span className="font-medium text-gray-900">{item.account_name}</span>
                             <span className="text-xs text-gray-400 ml-2 font-mono">{item.account_code}</span>
@@ -295,9 +295,9 @@ const ProfitLoss = () => {
                           <td className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
-                                <div className="h-full bg-rose-400 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div className="h-full bg-red-400 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
                               </div>
-                              <span className="text-xs font-semibold text-rose-500 w-12 text-right">{pct.toFixed(1)}%</span>
+                              <span className="text-xs font-semibold text-red-500 w-12 text-right">{pct.toFixed(1)}%</span>
                             </div>
                           </td>
                         </tr>
@@ -305,7 +305,7 @@ const ProfitLoss = () => {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-rose-500 text-white">
+                    <tr className="bg-red-600 text-white">
                       <td className="px-5 py-3 font-bold text-sm">Total Expenses</td>
                       <td className="px-5 py-3 text-right font-bold font-mono text-base">{fmt(data.total_expenses)}</td>
                       <td className="px-5 py-3 text-right font-bold text-sm">{expenseRatio.toFixed(1)}%</td>
@@ -317,7 +317,7 @@ const ProfitLoss = () => {
           </div>
 
           {/* Net Profit/Loss Bar */}
-          <div className={`rounded-xl px-6 py-5 flex items-center justify-between shadow-lg ${data.net_profit >= 0 ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gradient-to-r from-red-600 to-rose-600'} text-white`}>
+          <div className={`rounded-xl px-6 py-5 flex items-center justify-between shadow-lg ${data.net_profit >= 0 ? 'bg-gradient-to-r from-emerald-600 to-emerald-700' : 'bg-gradient-to-r from-red-600 to-red-700'} text-white`}>
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${data.net_profit >= 0 ? 'bg-white/20' : 'bg-white/20'}`}>
                 {data.net_profit >= 0
