@@ -36,7 +36,7 @@ const AccountSelector = ({
   return (
     <div ref={ref} className="relative w-full">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400 text-left transition">
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-left transition">
         <span className={selected ? 'text-gray-900 font-medium truncate' : 'text-gray-400'}>
           {selected ? `${selected.account_code} — ${selected.account_name}` : placeholder}
         </span>
@@ -63,7 +63,7 @@ const AccountSelector = ({
               : filtered.map((a, idx) => (
                 <li key={a.account_id}>
                   <button type="button" onClick={() => pick(String(a.account_id))}
-                    className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition ${idx === hi ? 'bg-orange-50 text-orange-700' : 'hover:bg-gray-50'}`}>
+                    className={`w-full text-left px-3 py-2 flex items-center gap-2 text-sm transition ${idx === hi ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'}`}>
                     <span className="font-mono text-xs text-gray-400 shrink-0">{a.account_code}</span>
                     <span className="text-gray-800 truncate">{a.account_name}</span>
                   </button>
@@ -150,7 +150,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
             <ArrowLeft size={16} /> Back to List
           </button>
           {voucherNum && (
-            <span className="px-2.5 py-1 bg-orange-50 border border-orange-200 text-orange-600 rounded-full text-xs font-mono font-semibold">
+            <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-full text-xs font-mono font-semibold">
               {voucherNum}
             </span>
           )}
@@ -158,7 +158,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
         <div className="flex items-center gap-1.5">
           <Calendar size={13} className="text-gray-400" />
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
       </div>
 
@@ -167,8 +167,8 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
 
         {/* Card title bar */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center">
-            <ArrowUpRight size={18} className="text-orange-500" />
+          <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <ArrowUpRight size={18} className="text-emerald-500" />
           </div>
           <div>
             <h2 className="text-base font-semibold text-gray-900">Cash Payment Voucher</h2>
@@ -178,18 +178,18 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
 
         {/* Paying account section */}
         <div className="px-6 py-4 border-b border-gray-100">
-          <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl">
+          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5 shrink-0">
-                <Building2 size={14} className="text-orange-500" />
-                <label className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Paying Account (Cash/Bank)</label>
+                <Building2 size={14} className="text-emerald-500" />
+                <label className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Paying Account (Cash/Bank)</label>
               </div>
               <div className="flex-1 min-w-[220px]">
                 <AccountSelector value={mainAccountId} onChange={setMainAccountId} accounts={accounts}
                   placeholder="Select Cash / Bank account…" />
               </div>
               {mainAcct && (
-                <span className="text-xs text-orange-600 font-semibold bg-white border border-orange-200 px-2.5 py-1 rounded-lg">
+                <span className="text-xs text-emerald-600 font-semibold bg-white border border-emerald-200 px-2.5 py-1 rounded-lg">
                   Bal: {Number(mainAcct.current_balance || 0).toLocaleString('en-PK')}
                 </span>
               )}
@@ -221,7 +221,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                 onChange={e => setEntry(v => ({ ...v, narration: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
                 placeholder="e.g. Supplier name, utility bill…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount (Rs.)</label>
@@ -229,10 +229,10 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                 onChange={e => setEntry(v => ({ ...v, amount: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') addEntry(); }}
                 placeholder="0.00"
-                className="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm text-right font-semibold text-orange-700 outline-none focus:ring-2 focus:ring-orange-400 bg-orange-50" />
+                className="w-full border border-emerald-300 rounded-lg px-3 py-2 text-sm text-right font-semibold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-400 bg-emerald-50" />
             </div>
             <button onClick={addEntry} disabled={saving}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap">
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 whitespace-nowrap">
               {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 : editingId !== null ? <Check size={14} /> : <Plus size={14} />}
               {editingId !== null ? 'Update' : 'Add'}
@@ -258,11 +258,11 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                     className={editingId === line.voucher_id ? 'bg-amber-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50'}>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{line.account_name}</td>
                     <td className="px-4 py-2.5 text-gray-500">{line.narration || <span className="text-gray-300">—</span>}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-orange-700">{fmt(line.amount)}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-emerald-700">{fmt(line.amount)}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => { setEditingId(line.voucher_id); setEntry({ account_id: line.account_id, narration: line.narration, amount: String(line.amount) }); }}
-                          className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition"><Pencil size={13} /></button>
+                          className="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition"><Pencil size={13} /></button>
                         <button onClick={() => deleteLine(line.voucher_id)}
                           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={13} /></button>
                       </div>
@@ -275,7 +275,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
                   <td colSpan={2} className="px-4 py-2.5 text-sm font-medium text-gray-500">
                     {lines.length} entr{lines.length === 1 ? 'y' : 'ies'}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-bold text-orange-700">{fmt(total)}</td>
+                  <td className="px-4 py-2.5 text-right font-bold text-emerald-700">{fmt(total)}</td>
                   <td />
                 </tr>
               </tfoot>
@@ -294,7 +294,7 @@ const CPVForm = ({ onBack, onRefresh }: { onBack: () => void; onRefresh: () => v
       {/* Done button */}
       <div className="flex justify-end">
         <button onClick={() => { onRefresh(); onBack(); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition">
+          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition">
           <Check size={15} /> Done
         </button>
       </div>
@@ -355,7 +355,7 @@ const PaymentVouchers = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <ArrowUpRight size={20} className="text-orange-500" /> Cash Payment Vouchers
+            <ArrowUpRight size={20} className="text-emerald-500" /> Cash Payment Vouchers
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Track all outgoing payments</p>
         </div>
@@ -365,7 +365,7 @@ const PaymentVouchers = () => {
             <Download size={14} /> Export CSV
           </button>
           <button onClick={() => setView('new')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition">
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition">
             <Plus size={16} /> New CPV
           </button>
         </div>
@@ -377,16 +377,16 @@ const PaymentVouchers = () => {
           <span className="text-xs text-gray-500 font-medium">From</span>
           <input type="date" value={filters.from_date}
             onChange={e => setFilters(f => ({ ...f, from_date: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-500 font-medium">To</span>
           <input type="date" value={filters.to_date}
             onChange={e => setFilters(f => ({ ...f, to_date: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <button onClick={() => { setPagination(p => ({ ...p, page: 1 })); fetchVouchers(); }} disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition disabled:opacity-60">
+          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition disabled:opacity-60">
           <Search size={13} /> {loading ? 'Loading…' : 'Search'}
         </button>
         {hasLoaded && <span className="ml-auto text-xs text-gray-400">{pagination.total} vouchers found</span>}
@@ -399,9 +399,9 @@ const PaymentVouchers = () => {
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Vouchers</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total}</p>
           </div>
-          <div className="bg-orange-50 rounded-xl border border-orange-100 shadow-sm px-4 py-3 text-center">
-            <p className="text-xs text-orange-600 font-medium uppercase tracking-wide">Total Payments</p>
-            <p className="text-xl font-bold text-orange-700 mt-1 font-mono">{fmt(totalAmt)}</p>
+          <div className="bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm px-4 py-3 text-center">
+            <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total Payments</p>
+            <p className="text-xl font-bold text-emerald-700 mt-1 font-mono">{fmt(totalAmt)}</p>
           </div>
         </div>
       )}
@@ -411,11 +411,11 @@ const PaymentVouchers = () => {
         {!hasLoaded ? (
           <div className="text-center py-16 text-gray-400">
             <ArrowUpRight size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="font-medium text-gray-500">Select date range and click <strong className="text-orange-500">Search</strong></p>
+            <p className="font-medium text-gray-500">Select date range and click <strong className="text-emerald-500">Search</strong></p>
           </div>
         ) : loading ? (
           <div className="flex justify-center py-14">
-            <div className="animate-spin h-7 w-7 rounded-full border-2 border-orange-400 border-t-transparent" />
+            <div className="animate-spin h-7 w-7 rounded-full border-2 border-emerald-400 border-t-transparent" />
           </div>
         ) : vouchers.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -439,7 +439,7 @@ const PaymentVouchers = () => {
                 <tbody className="divide-y divide-gray-100">
                   {vouchers.map(v => (
                     <tr key={v.voucher_id} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-3 font-mono font-semibold text-orange-600 text-xs">{v.voucher_number}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-emerald-600 text-xs">{v.voucher_number}</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
                         {new Date(v.voucher_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
@@ -458,7 +458,7 @@ const PaymentVouchers = () => {
                 <tfoot>
                   <tr className="bg-gray-50 border-t border-gray-200">
                     <td colSpan={4} className="px-4 py-3 text-sm font-medium text-gray-500">Total (this page)</td>
-                    <td className="px-4 py-3 text-right font-bold text-orange-700">{fmt(totalAmt)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700">{fmt(totalAmt)}</td>
                     <td />
                   </tr>
                 </tfoot>

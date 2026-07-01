@@ -48,7 +48,7 @@ const AccountSelector = ({
   return (
     <div ref={ref} className="relative w-full">
       <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-left transition">
+        className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-left transition">
         {sel ? (
           <span className="flex items-center gap-2 flex-1 min-w-0">
             {tag && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${tag.bg} ${tag.text}`}>{tag.label}</span>}
@@ -86,7 +86,7 @@ const AccountSelector = ({
                     <li key={a.account_id}>
                       <button type="button" onClick={() => pick(String(a.account_id))}
                         className={`w-full text-left px-3 py-2 flex items-center gap-2.5 text-sm transition
-                          ${i === hi ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-gray-50 text-gray-700'}`}>
+                          ${i === hi ? 'bg-emerald-100 text-emerald-700' : 'hover:bg-gray-50 text-gray-700'}`}>
                         {t && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${t.bg} ${t.text}`}>{t.label}</span>}
                         <span className="font-mono text-xs opacity-60 shrink-0">{a.account_code}</span>
                         <span className="truncate flex-1 font-medium">{a.account_name}</span>
@@ -201,8 +201,8 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
 
         {/* Card header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-            <BookOpen size={18} className="text-indigo-600" />
+          <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+            <BookOpen size={18} className="text-emerald-600" />
           </div>
           <div className="flex-1">
             <h2 className="text-base font-semibold text-gray-900">New Journal Voucher</h2>
@@ -215,19 +215,19 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
           <div className="flex items-center gap-2 shrink-0">
             <Calendar size={14} className="text-gray-400" />
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
           </div>
           <div className="flex-1 flex items-center gap-2">
             <FileText size={14} className="text-gray-400 shrink-0" />
             <input type="text" value={narration} onChange={e => setNarration(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-300"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400 placeholder-gray-300"
               placeholder="Narration / description for this voucher…" />
           </div>
         </div>
 
         {/* ── Active Input Row ── */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-indigo-50/40">
-          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-3">Add Entry Line</p>
+        <div className="px-6 py-4 border-b border-gray-100 bg-emerald-50/40">
+          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-3">Add Entry Line</p>
           <div className="flex items-center gap-3 flex-wrap">
 
             {/* Dr / Cr toggle */}
@@ -264,7 +264,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
               onChange={e => setInputNarration(e.target.value)}
               disabled={!amountEnabled}
               onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
-              className="flex-[1.5] min-w-[140px] px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 bg-white placeholder-gray-300 disabled:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200 disabled:cursor-not-allowed transition"
+              className="flex-[1.5] min-w-[140px] px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-400 bg-white placeholder-gray-300 disabled:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200 disabled:cursor-not-allowed transition"
               placeholder="Particulars…"
             />
 
@@ -290,12 +290,12 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
             {/* Add button */}
             <button type="button" onClick={addLine}
               disabled={!amountEnabled || !inputAccount || !inputAmount || Number(inputAmount) <= 0}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed">
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed">
               <Plus size={14} /> Add
             </button>
           </div>
-          <p className="text-[10px] text-indigo-300 mt-2 ml-0.5">
-            Select Dr or Cr → choose account → enter amount → press <kbd className="bg-white border border-indigo-200 text-indigo-400 px-1 py-0.5 rounded text-[10px] font-mono">Enter</kbd> or click Add
+          <p className="text-[10px] text-emerald-300 mt-2 ml-0.5">
+            Select Dr or Cr → choose account → enter amount → press <kbd className="bg-white border border-emerald-200 text-emerald-400 px-1 py-0.5 rounded text-[10px] font-mono">Enter</kbd> or click Add
           </p>
         </div>
 
@@ -394,7 +394,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
             </div>
           </div>
           <button type="button" onClick={save} disabled={saving || !balanced}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
             {saving
               ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : <Send size={14} />}
@@ -553,12 +553,12 @@ const JournalEntries = () => {
       <div className="mb-5 flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <BookOpen size={20} className="text-indigo-600" /> Journal Vouchers
+            <BookOpen size={20} className="text-emerald-600" /> Journal Vouchers
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Double-entry bookkeeping ledger</p>
         </div>
         <button onClick={() => setView('new')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
+          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
           <Plus size={14} /> New Journal Voucher
         </button>
       </div>
@@ -566,7 +566,7 @@ const JournalEntries = () => {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4 flex flex-wrap items-center gap-3">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none text-gray-700 focus:ring-2 focus:ring-indigo-400 bg-white font-medium">
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none text-gray-700 focus:ring-2 focus:ring-emerald-400 bg-white font-medium">
           <option value="all">All Status</option>
           <option value="draft">Draft</option>
           <option value="posted">Posted</option>
@@ -574,15 +574,15 @@ const JournalEntries = () => {
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-400 font-medium">From</span>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-400 font-medium">To</span>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-400" />
         </div>
         <button onClick={() => { setPagination(p => ({ ...p, page: 1 })); load(); }} disabled={loading}
-          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-60">
+          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-60">
           <Search size={13} /> {loading ? 'Loading…' : 'Search'}
         </button>
         <button onClick={() => { setStatusFilter('all'); setFromDate(localToday); setToDate(localToday); setEntries([]); setHasLoaded(false); }}
@@ -615,7 +615,7 @@ const JournalEntries = () => {
         {!hasLoaded ? (
           <div className="text-center py-16">
             <BookOpen size={44} className="mx-auto mb-3 text-gray-200" />
-            <p className="font-medium text-gray-400">Select filters and click <span className="text-indigo-600">Search</span></p>
+            <p className="font-medium text-gray-400">Select filters and click <span className="text-emerald-600">Search</span></p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -634,12 +634,12 @@ const JournalEntries = () => {
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr><td colSpan={7} className="py-12 text-center">
-                    <div className="animate-spin h-7 w-7 rounded-full border-2 border-gray-200 border-t-indigo-600 mx-auto" />
+                    <div className="animate-spin h-7 w-7 rounded-full border-2 border-gray-200 border-t-emerald-600 mx-auto" />
                   </td></tr>
                 ) : entries.length > 0 ? entries.map((e, i) => (
                   <tr key={e.entry_id}
                     className={`hover:bg-gray-50 transition ${i % 2 ? 'bg-gray-50/40' : 'bg-white'}`}>
-                    <td className="px-4 py-3 font-mono font-bold text-indigo-600 text-xs">{e.entry_number}</td>
+                    <td className="px-4 py-3 font-mono font-bold text-emerald-600 text-xs">{e.entry_number}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap font-medium text-xs">
                       {new Date(e.entry_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
