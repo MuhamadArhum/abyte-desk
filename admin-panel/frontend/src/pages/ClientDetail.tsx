@@ -227,7 +227,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-            <UserPlus size={18} className="text-blue-600" />
+            <UserPlus size={18} className="text-emerald-600" />
             {user ? 'Edit User' : 'Add New User'}
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
@@ -242,7 +242,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
               <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
               <input type="text" value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 placeholder="Muhammad Ahmed" />
             </div>
             <div>
@@ -252,7 +252,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
               <input type="text" value={form.username}
                 onChange={e => setForm({ ...form, username: e.target.value })}
                 disabled={!!user}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-50 disabled:text-slate-400"
                 placeholder="ahmed123" />
             </div>
           </div>
@@ -261,7 +261,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
             <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
             <input type="email" value={form.email}
               onChange={e => setForm({ ...form, email: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
               placeholder="ahmed@example.com" />
           </div>
 
@@ -272,7 +272,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
             <div className="relative">
               <input type={showPass ? 'text' : 'password'} value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
-                className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                 placeholder={user ? 'New password (optional)' : 'Min 8 characters'} />
               <button type="button" onClick={() => setShowPass(!showPass)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -286,7 +286,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
               <label className="block text-xs font-medium text-slate-600 mb-1">Role *</label>
               <select value={form.role_name}
                 onChange={e => setForm({ ...form, role_name: e.target.value, branch_id: e.target.value === 'Admin' ? '' : form.branch_id })}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
                 <option value="Admin">Admin</option>
                 <option value="Manager">Manager</option>
                 <option value="Cashier">Cashier</option>
@@ -300,7 +300,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
               <select value={form.branch_id}
                 onChange={e => setForm({ ...form, branch_id: e.target.value })}
                 disabled={isAdmin}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-slate-50 disabled:text-slate-400">
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-50 disabled:text-slate-400">
                 <option value="">— No Branch —</option>
                 {branches.map(b => (
                   <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
@@ -321,7 +321,7 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:bg-slate-300 transition-colors font-medium">
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:bg-slate-300 transition-colors font-medium">
               {saving ? 'Saving...' : user ? 'Update User' : 'Create User'}
             </button>
           </div>
@@ -440,10 +440,10 @@ export default function ClientDetail() {
   const mods = Array.isArray(tenant.modules_enabled) ? tenant.modules_enabled : [];
 
   const stats = [
-    { label: 'Users',       value: users.length,                          icon: Users,       color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Users',       value: users.length,                          icon: Users,       color: 'text-slate-600',  bg: 'bg-slate-100' },
     { label: 'Total Sales', value: sales_count.toLocaleString(),          icon: ShoppingCart,color: 'text-emerald-600',bg: 'bg-emerald-50' },
-    { label: 'Revenue',     value: `Rs. ${total_revenue.toLocaleString()}`,icon: Package,    color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'DB Size',     value: `${db_size_mb} MB`,                    icon: Database,    color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Revenue',     value: `Rs. ${total_revenue.toLocaleString()}`,icon: Package,    color: 'text-emerald-600',bg: 'bg-emerald-50' },
+    { label: 'DB Size',     value: `${db_size_mb} MB`,                    icon: Database,    color: 'text-slate-600',  bg: 'bg-slate-100' },
   ];
 
   return (
@@ -495,7 +495,7 @@ export default function ClientDetail() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map(({ label, value, icon: Icon, color, bg }, i) => (
           i === 2 ? (
-            <div key={label} className="relative bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-5 overflow-hidden shadow-lg shadow-purple-200 group hover:-translate-y-0.5 transition-transform duration-200">
+            <div key={label} className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 overflow-hidden shadow-lg shadow-emerald-200 group hover:-translate-y-0.5 transition-transform duration-200">
               <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full blur-2xl pointer-events-none" />
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                 <Icon size={18} className="text-white" />
@@ -686,14 +686,14 @@ export default function ClientDetail() {
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Users size={14} className="text-blue-600" />
+            <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Users size={14} className="text-emerald-600" />
             </div>
             <h3 className="text-sm font-bold text-slate-700">Users <span className="text-slate-400 font-normal">({users.length})</span></h3>
           </div>
           <button
             onClick={() => { setEditUser(null); setShowUserModal(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-xl hover:bg-blue-600 transition shadow-sm shadow-blue-200">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs font-semibold rounded-xl hover:bg-emerald-600 transition shadow-sm shadow-emerald-200">
             <UserPlus size={13} />
             Add User
           </button>

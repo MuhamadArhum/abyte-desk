@@ -80,19 +80,19 @@ export default function Revenue() {
       label: 'Annual Projection',
       value: `Rs. ${data.annual_projection.toLocaleString()}`,
       sub:   'Based on current MRR',
-      icon:  DollarSign, bg: 'bg-purple-50', color: 'text-purple-600',
+      icon:  DollarSign, bg: 'bg-slate-100', color: 'text-slate-600',
     },
     {
       label: 'Active Clients',
       value: `${data.active_clients} / ${data.total_clients}`,
       sub:   'Active / Total',
-      icon:  Users, bg: 'bg-blue-50', color: 'text-blue-600',
+      icon:  Users, bg: 'bg-slate-100', color: 'text-slate-600',
     },
     {
       label: 'Avg per Client',
       value: `Rs. ${data.avg_per_client.toLocaleString()}`,
       sub:   'Per active client',
-      icon:  Calendar, bg: 'bg-orange-50', color: 'text-orange-600',
+      icon:  Calendar, bg: 'bg-slate-100', color: 'text-slate-600',
     },
   ] : [];
 
@@ -101,8 +101,8 @@ export default function Revenue() {
 
       {/* Header */}
       <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-50/60 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-6 -left-6 w-28 h-28 bg-purple-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-emerald-400/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-800">Revenue</h2>
@@ -198,7 +198,7 @@ export default function Revenue() {
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="new_clients" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="new_clients" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             )}
           </ResponsiveContainer>

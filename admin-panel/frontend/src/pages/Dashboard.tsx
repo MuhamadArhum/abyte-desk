@@ -110,9 +110,9 @@ export default function Dashboard() {
           : (
             <>
               {/* Total Clients */}
-              <div className="bg-white rounded-2xl border border-blue-100 p-5 hover:shadow-md transition-shadow duration-200 group">
-                <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                  <Users size={20} className="text-blue-600" />
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow duration-200 group">
+                <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                  <Users size={20} className="text-slate-600" />
                 </div>
                 <p className="text-2xl font-bold text-slate-800 mb-0.5">{stats?.total ?? 0}</p>
                 <p className="text-slate-500 text-sm">Total Clients</p>

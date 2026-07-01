@@ -89,14 +89,14 @@ export default function ActivityPage() {
     <div className="p-6 space-y-4">
       {/* Header */}
       <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-50/60 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -top-6 -left-6 w-28 h-28 bg-blue-400/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-6 -left-6 w-28 h-28 bg-emerald-400/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-800">Usage & Activity</h2>
             <p className="text-slate-400 text-sm mt-0.5">
               {loading ? '...' : (
-                <><span className="font-semibold text-blue-600">{onlineNow}</span> clients online now</>
+                <><span className="font-semibold text-emerald-600">{onlineNow}</span> clients online now</>
               )}
             </p>
           </div>
@@ -115,8 +115,8 @@ export default function ActivityPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Online Now",        value: onlineNow,             icon: Wifi,         gradient: true,          sub: 'last 30 min' },
-          { label: "Logged In Today",   value: activeToday,           icon: CheckCircle2, bg: 'bg-blue-50',   text: 'text-blue-600',   sub: 'unique clients' },
-          { label: "Total Logins Today",value: totalToday,            icon: Activity,     bg: 'bg-purple-50', text: 'text-purple-600', sub: 'all sessions' },
+          { label: "Logged In Today",   value: activeToday,           icon: CheckCircle2, bg: 'bg-slate-100', text: 'text-slate-600',  sub: 'unique clients' },
+          { label: "Total Logins Today",value: totalToday,            icon: Activity,     bg: 'bg-slate-100', text: 'text-slate-600',  sub: 'all sessions' },
           { label: "No Activity Today", value: data.length - activeToday, icon: WifiOff,  bg: 'bg-slate-100', text: 'text-slate-500',  sub: 'not logged in' },
         ].map(({ label, value, icon: Icon, bg, text, sub, gradient }: any) => (
           gradient ? (
@@ -231,7 +231,7 @@ export default function ActivityPage() {
                               {t.today_logins}
                             </span>
                             {t.today_logins > 0 && (
-                              <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-lg font-medium">
+                              <span className="text-xs bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-lg font-medium">
                                 logins
                               </span>
                             )}
@@ -241,7 +241,7 @@ export default function ActivityPage() {
                         {/* Week logins */}
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-1.5">
-                            <TrendingUp size={13} className={t.week_logins > 0 ? 'text-purple-400' : 'text-slate-200'} />
+                            <TrendingUp size={13} className={t.week_logins > 0 ? 'text-emerald-500' : 'text-slate-200'} />
                             <span className={`font-semibold ${t.week_logins > 0 ? 'text-slate-700' : 'text-slate-300'}`}>
                               {t.week_logins}
                             </span>
@@ -255,7 +255,7 @@ export default function ActivityPage() {
                               <div className="flex items-center gap-1.5">
                                 {online && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse flex-shrink-0" />}
                                 <span className={`font-medium text-xs ${
-                                  online ? 'text-emerald-600' : today ? 'text-blue-600' : 'text-slate-500'
+                                  online ? 'text-emerald-600' : today ? 'text-emerald-600' : 'text-slate-500'
                                 }`}>
                                   {online ? 'Online now' : timeAgo(ll.created_at)}
                                 </span>

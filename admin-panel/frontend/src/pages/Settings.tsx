@@ -228,8 +228,8 @@ export default function Settings() {
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Package size={14} className="text-purple-600" />
+            <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Package size={14} className="text-emerald-600" />
             </div>
             <h3 className="font-bold text-slate-700 text-sm">Module Pricing</h3>
           </div>
@@ -293,8 +293,8 @@ export default function Settings() {
       </div>
 
       {/* Info banner */}
-      <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-        <AlertCircle size={15} className="flex-shrink-0 mt-0.5 text-blue-500" />
+      <div className="flex items-start gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+        <AlertCircle size={15} className="flex-shrink-0 mt-0.5 text-slate-400" />
         <span>
           Pricing changes affect revenue calculations and new client billing.
           Existing client contracts are not automatically updated.
