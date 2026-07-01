@@ -103,16 +103,23 @@ const AccountSelector = ({
 };
 
 type Line = { dr_cr: 'Dr' | 'Cr'; account_id: string; narration: string; amount: string };
-const blank = (): Line => ({ dr_cr: 'Dr', account_id: '', narration: '', amount: '' });
 
 const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => void }) => {
   const toast = useToast();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [date, setDate] = useState(localToday());
   const [narration, setNarration] = useState('');
-  const [lines, setLines] = useState<Line[]>([blank(), blank()]);
+  const [lines, setLines] = useState<Line[]>([]);
   const [saving, setSaving] = useState(false);
-  const amtRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Active input row state
+  const [inputDrCr, setInputDrCr] = useState<'Dr' | 'Cr' | null>(null);
+  const [inputAccount, setInputAccount] = useState('');
+  const [inputNarration, setInputNarration] = useState('');
+  const [inputAmount, setInputAmount] = useState('');
+  const narrationRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const drBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     api.get('/accounting/accounts', { params: { tree: 1 } })
@@ -120,33 +127,44 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
       .catch(() => {});
   }, []);
 
-  const upd = (i: number, p: Partial<Line>) => setLines(prev => prev.map((l, idx) => idx === i ? { ...l, ...p } : l));
-
-  const toggle = (i: number, val: 'Dr' | 'Cr') => {
-    setLines(prev => {
-      const rest = prev.filter((_, idx) => idx !== i);
-      const rDr = rest.reduce((s, l) => s + (l.dr_cr === 'Dr' ? Number(l.amount || 0) : 0), 0);
-      const rCr = rest.reduce((s, l) => s + (l.dr_cr === 'Cr' ? Number(l.amount || 0) : 0), 0);
-      const diff = parseFloat(Math.abs(rDr - rCr).toFixed(2));
-      return prev.map((l, idx) => idx !== i ? l : { ...l, dr_cr: val, amount: diff > 0 && !l.amount ? String(diff) : l.amount });
-    });
-  };
-
   const totDr = lines.reduce((s, l) => s + (l.dr_cr === 'Dr' ? Number(l.amount || 0) : 0), 0);
   const totCr = lines.reduce((s, l) => s + (l.dr_cr === 'Cr' ? Number(l.amount || 0) : 0), 0);
   const diff = Math.abs(totDr - totCr);
   const balanced = lines.length >= 2 && diff < 0.01 && totDr > 0;
   const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2 });
 
+  const amountEnabled = inputDrCr !== null;
+
+  const resetInputRow = () => {
+    setInputDrCr(null);
+    setInputAccount('');
+    setInputNarration('');
+    setInputAmount('');
+    setTimeout(() => drBtnRef.current?.focus(), 0);
+  };
+
+  const addLine = () => {
+    if (!inputDrCr || !inputAccount || !inputAmount || Number(inputAmount) <= 0) {
+      toast.error('Select Dr/Cr, account, and enter amount');
+      return;
+    }
+    setLines(prev => [...prev, {
+      dr_cr: inputDrCr,
+      account_id: inputAccount,
+      narration: inputNarration,
+      amount: inputAmount,
+    }]);
+    resetInputRow();
+  };
+
   const save = async () => {
     if (!balanced) { toast.error('Debits must equal credits'); return; }
-    const valid = lines.filter(l => l.account_id && Number(l.amount) > 0);
-    if (valid.length < 2) { toast.error('At least 2 lines required'); return; }
+    if (lines.length < 2) { toast.error('At least 2 lines required'); return; }
     setSaving(true);
     try {
       await api.post('/accounting/journal-entries', {
         entry_date: date, description: narration,
-        lines: valid.map(l => ({
+        lines: lines.map(l => ({
           account_id: l.account_id,
           description: l.narration,
           debit:  l.dr_cr === 'Dr' ? Number(l.amount) : 0,
@@ -161,179 +179,220 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
   };
 
   return (
-    <div className="p-6">
-      {/* Back header */}
+    <div className="p-6 max-w-5xl mx-auto">
+
+      {/* Top bar: Back + Balance badge */}
       <div className="mb-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button onClick={() => { onSuccess(); onBack(); }}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
-            <ArrowLeft size={16} /> Back to List
-          </button>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-            balanced ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : totDr > 0 ? 'bg-red-50 text-red-600 border-red-200'
-            : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
-            {balanced ? <CheckCircle2 size={11} /> : totDr > 0 ? <AlertTriangle size={11} /> : null}
-            {balanced ? 'Balanced' : totDr > 0 ? `Diff: ${fmt(diff)}` : 'No entries'}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Calendar size={13} className="text-gray-400" />
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+        <button onClick={() => { onSuccess(); onBack(); }}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 transition">
+          <ArrowLeft size={16} /> Back to List
+        </button>
+        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+          balanced ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : lines.length > 0 ? 'bg-red-50 text-red-600 border-red-200'
+          : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
+          {balanced ? <CheckCircle2 size={11} /> : lines.length > 0 ? <AlertTriangle size={11} /> : null}
+          {balanced ? 'Balanced' : lines.length > 0 ? `Diff: ${fmt(diff)}` : 'No entries yet'}
         </div>
       </div>
 
-      {/* Main form card */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-4">
+      {/* Main card */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
 
-        {/* Card title bar */}
+        {/* Card header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
             <BookOpen size={18} className="text-indigo-600" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-base font-semibold text-gray-900">New Journal Voucher</h2>
             <p className="text-xs text-gray-500">Double-entry bookkeeping</p>
           </div>
         </div>
 
-        {/* Narration */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            <FileText size={12} className="inline mr-1" />Narration / Description
-          </label>
-          <input type="text" value={narration} onChange={e => setNarration(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="Brief description of this journal entry…" />
-        </div>
-
-        {/* Totals Strip */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 flex items-center gap-2">
-              <TrendingUp size={16} className="text-sky-500" />
-              <div>
-                <p className="text-[10px] text-sky-600 font-semibold uppercase tracking-wide">Total Debit</p>
-                <p className="text-base font-bold text-sky-700 font-mono leading-none mt-0.5">{fmt(totDr)}</p>
-              </div>
-            </div>
-            <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 flex items-center gap-2">
-              <TrendingDown size={16} className="text-rose-500" />
-              <div>
-                <p className="text-[10px] text-rose-600 font-semibold uppercase tracking-wide">Total Credit</p>
-                <p className="text-base font-bold text-rose-600 font-mono leading-none mt-0.5">{fmt(totCr)}</p>
-              </div>
-            </div>
-            <div className={`rounded-xl p-3 flex items-center gap-2 border ${
-              balanced ? 'bg-emerald-50 border-emerald-100'
-              : totDr > 0 ? 'bg-red-50 border-red-100'
-              : 'bg-gray-50 border-gray-100'}`}>
-              <div className={`w-2 h-2 rounded-full shrink-0 ${balanced ? 'bg-emerald-500' : totDr > 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`} />
-              <div>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Difference</p>
-                <p className={`text-base font-bold font-mono leading-none mt-0.5 ${balanced ? 'text-emerald-600' : totDr > 0 ? 'text-red-500' : 'text-gray-300'}`}>
-                  {balanced ? '0.00 ✓' : fmt(diff)}
-                </p>
-              </div>
-            </div>
+        {/* Date + Narration row */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-4">
+          <div className="flex items-center gap-2 shrink-0">
+            <Calendar size={14} className="text-gray-400" />
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div className="flex-1 flex items-center gap-2">
+            <FileText size={14} className="text-gray-400 shrink-0" />
+            <input type="text" value={narration} onChange={e => setNarration(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 placeholder-gray-300"
+              placeholder="Narration / description for this voucher…" />
           </div>
         </div>
 
-        {/* Lines */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="min-w-[640px]">
-                {/* Lines Header */}
-                <div className="grid bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase px-4 py-2.5 gap-2"
-                  style={{ gridTemplateColumns: '32px 90px 1fr 1fr 145px 36px' }}>
-                  <span className="text-center text-gray-400">#</span>
-                  <span className="text-center">Dr / Cr</span>
-                  <span>Account</span>
-                  <span>Particulars</span>
-                  <span className="text-right">Amount (Rs.)</span>
-                  <span />
-                </div>
+        {/* ── Active Input Row ── */}
+        <div className="px-6 py-4 border-b border-gray-100 bg-indigo-50/40">
+          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-3">Add Entry Line</p>
+          <div className="flex items-center gap-3 flex-wrap">
 
-                {/* Lines Rows */}
-                {lines.map((line, i) => {
-                  const isDr = line.dr_cr === 'Dr';
-                  return (
-                    <div key={i}
-                      className={`grid gap-2 px-4 py-3 border-b border-gray-100 items-center transition-colors
-                        ${isDr ? 'hover:bg-sky-50/30' : 'hover:bg-rose-50/20'}`}
-                      style={{ gridTemplateColumns: '32px 90px 1fr 1fr 145px 36px' }}>
+            {/* Dr / Cr toggle */}
+            <div className={`flex rounded-lg overflow-hidden border text-xs font-bold shrink-0 ${
+              inputDrCr === 'Dr' ? 'border-sky-400' : inputDrCr === 'Cr' ? 'border-rose-400' : 'border-gray-300'}`}>
+              <button ref={drBtnRef} type="button"
+                onClick={() => setInputDrCr('Dr')}
+                className={`px-5 py-2 transition-all ${inputDrCr === 'Dr' ? 'bg-sky-500 text-white' : 'bg-white text-gray-400 hover:text-sky-500'}`}>
+                Dr
+              </button>
+              <button type="button"
+                onClick={() => setInputDrCr('Cr')}
+                className={`px-5 py-2 transition-all border-l ${inputDrCr === 'Cr' ? 'bg-rose-500 text-white border-rose-400' : 'bg-white text-gray-400 hover:text-rose-500 border-gray-300'}`}>
+                Cr
+              </button>
+            </div>
 
-                      <span className="text-center text-xs font-mono font-bold text-gray-300 select-none">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
+            {/* Account selector */}
+            <div className="flex-[2] min-w-[200px]">
+              <AccountSelector
+                value={inputAccount}
+                onChange={id => setInputAccount(id)}
+                onAfterSelect={() => setTimeout(() => narrationRef.current?.focus(), 0)}
+                accounts={accounts}
+                placeholder="Select account…"
+              />
+            </div>
 
-                      <div className="flex rounded-lg overflow-hidden border text-xs font-bold"
-                        style={{ borderColor: isDr ? '#0284c7' : '#f43f5e' }}>
-                        <button type="button" onClick={() => toggle(i, 'Dr')}
-                          className={`flex-1 py-1.5 transition-all ${isDr ? 'bg-sky-500 text-white' : 'bg-white text-gray-400 hover:text-sky-500'}`}>
-                          Dr
-                        </button>
-                        <button type="button" onClick={() => toggle(i, 'Cr')}
-                          className={`flex-1 py-1.5 transition-all ${!isDr ? 'bg-rose-500 text-white' : 'bg-white text-gray-400 hover:text-rose-500'}`}>
-                          Cr
+            {/* Narration for this line */}
+            <input
+              ref={narrationRef}
+              type="text"
+              value={inputNarration}
+              onChange={e => setInputNarration(e.target.value)}
+              disabled={!amountEnabled}
+              onKeyDown={e => { if (e.key === 'Enter') amountRef.current?.focus(); }}
+              className="flex-[1.5] min-w-[140px] px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 bg-white placeholder-gray-300 disabled:bg-gray-50 disabled:text-gray-300 disabled:border-gray-200 disabled:cursor-not-allowed transition"
+              placeholder="Particulars…"
+            />
+
+            {/* Amount — enabled only after Dr/Cr selected */}
+            <input
+              ref={amountRef}
+              type="number"
+              step="0.01"
+              min="0"
+              value={inputAmount}
+              onChange={e => setInputAmount(e.target.value)}
+              disabled={!amountEnabled}
+              onKeyDown={e => { if (e.key === 'Enter') addLine(); }}
+              className={`w-36 shrink-0 px-3 py-2 text-sm border rounded-lg text-right font-bold font-mono outline-none transition
+                ${!amountEnabled
+                  ? 'border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed'
+                  : inputDrCr === 'Dr'
+                    ? 'border-sky-300 bg-sky-50 text-sky-700 focus:ring-2 focus:ring-sky-300'
+                    : 'border-rose-300 bg-rose-50 text-rose-600 focus:ring-2 focus:ring-rose-300'}`}
+              placeholder="0.00"
+            />
+
+            {/* Add button */}
+            <button type="button" onClick={addLine}
+              disabled={!amountEnabled || !inputAccount || !inputAmount || Number(inputAmount) <= 0}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-30 disabled:cursor-not-allowed">
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <p className="text-[10px] text-indigo-300 mt-2 ml-0.5">
+            Select Dr or Cr → choose account → enter amount → press <kbd className="bg-white border border-indigo-200 text-indigo-400 px-1 py-0.5 rounded text-[10px] font-mono">Enter</kbd> or click Add
+          </p>
+        </div>
+
+        {/* ── Lines Table ── */}
+        {lines.length > 0 ? (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <div className="min-w-[580px]">
+
+                  {/* Header */}
+                  <div className="grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide px-4 py-2.5 gap-3"
+                    style={{ gridTemplateColumns: '28px 64px 1fr 1fr 130px 32px' }}>
+                    <span className="text-center">#</span>
+                    <span className="text-center">Dr/Cr</span>
+                    <span>Account</span>
+                    <span>Particulars</span>
+                    <span className="text-right">Amount (Rs.)</span>
+                    <span />
+                  </div>
+
+                  {/* Rows */}
+                  {lines.map((line, i) => {
+                    const isDr = line.dr_cr === 'Dr';
+                    const acc = accounts.find(a => String(a.account_id) === String(line.account_id));
+                    const tag = acc ? TYPE_TAG[acc.account_type] : null;
+                    return (
+                      <div key={i}
+                        className={`grid gap-3 px-4 py-2.5 border-b border-gray-100 items-center text-sm transition-colors ${isDr ? 'hover:bg-sky-50/30' : 'hover:bg-rose-50/20'}`}
+                        style={{ gridTemplateColumns: '28px 64px 1fr 1fr 130px 32px' }}>
+                        <span className="text-center text-xs font-mono font-bold text-gray-300 select-none">
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <div className="flex justify-center">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${isDr ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-600'}`}>
+                            {line.dr_cr}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {tag && <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${tag.bg} ${tag.text}`}>{tag.label}</span>}
+                          <span className="truncate text-gray-700 font-medium text-xs">{acc?.account_name || '—'}</span>
+                        </div>
+                        <span className="text-gray-400 text-xs truncate">{line.narration || <span className="text-gray-200">—</span>}</span>
+                        <span className={`text-right font-bold font-mono text-xs ${isDr ? 'text-sky-700' : 'text-rose-600'}`}>
+                          {fmt(Number(line.amount))}
+                        </span>
+                        <button type="button" onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}
+                          className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition">
+                          <Trash2 size={13} />
                         </button>
                       </div>
+                    );
+                  })}
 
-                      <AccountSelector value={line.account_id}
-                        onChange={id => upd(i, { account_id: id })}
-                        onAfterSelect={() => amtRefs.current[i]?.focus()}
-                        accounts={accounts} />
-
-                      <input type="text" value={line.narration} onChange={e => upd(i, { narration: e.target.value })}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 bg-white placeholder-gray-300 text-gray-700"
-                        placeholder="Details…" />
-
-                      <input ref={el => { amtRefs.current[i] = el; }}
-                        type="number" step="0.01" min="0" value={line.amount}
-                        onChange={e => upd(i, { amount: e.target.value })}
-                        className={`w-full px-3 py-2 text-sm border rounded-lg text-right font-bold font-mono outline-none transition
-                          ${isDr ? 'border-sky-200 bg-sky-50 text-sky-700 focus:ring-2 focus:ring-sky-300'
-                                 : 'border-rose-200 bg-rose-50 text-rose-600 focus:ring-2 focus:ring-rose-300'}`}
-                        placeholder="0.00" />
-
-                      <button type="button" onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}
-                        disabled={lines.length <= 2}
-                        className="flex items-center justify-center w-8 h-8 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-20 disabled:cursor-not-allowed">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
-
-                {/* Total Row */}
-                <div className={`grid gap-2 px-4 py-3 items-center ${
-                  balanced ? 'bg-emerald-50 border-t border-emerald-200'
-                  : totDr > 0 ? 'bg-red-50 border-t border-red-200'
-                  : 'bg-gray-50 border-t border-gray-200'}`}
-                  style={{ gridTemplateColumns: '32px 90px 1fr 1fr 145px 36px' }}>
-                  <span /><span />
-                  <span className={`col-span-2 text-xs font-bold uppercase tracking-widest ${
-                    balanced ? 'text-emerald-700' : totDr > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                    {balanced ? '✓  Balanced — Ready to post' : totDr > 0 ? `Out of balance — diff: ${fmt(diff)}` : 'Grand total'}
-                  </span>
-                  <span className={`text-right font-bold font-mono ${balanced ? 'text-emerald-700' : totDr > 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                    {fmt(totDr)}
-                  </span>
-                  <span />
+                  {/* Total / Balance row */}
+                  <div className={`grid gap-3 px-4 py-3 items-center ${
+                    balanced ? 'bg-emerald-50 border-t border-emerald-200'
+                    : 'bg-red-50 border-t border-red-200'}`}
+                    style={{ gridTemplateColumns: '28px 64px 1fr 1fr 130px 32px' }}>
+                    <span /><span />
+                    <span className={`col-span-2 text-xs font-bold uppercase tracking-widest ${balanced ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {balanced ? '✓  Balanced — Ready to post' : `Out of balance — diff: ${fmt(diff)}`}
+                    </span>
+                    <span className={`text-right font-bold font-mono text-xs ${balanced ? 'text-emerald-700' : 'text-red-500'}`}>
+                      {fmt(totDr)}
+                    </span>
+                    <span />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-6 py-8 border-b border-gray-100 text-center">
+            <BookOpen size={32} className="mx-auto text-gray-200 mb-2" />
+            <p className="text-sm text-gray-300 font-medium">No entries yet — add a line above</p>
+          </div>
+        )}
 
-        {/* Add Line + Post buttons */}
-        <div className="px-6 py-4 flex items-center justify-between">
-          <button type="button" onClick={() => setLines(p => [...p, blank()])}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 hover:bg-white text-sm font-medium transition">
-            <Plus size={14} /> Add Line
-          </button>
+        {/* Totals strip + Post button */}
+        <div className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="bg-sky-50 border border-sky-100 rounded-lg px-4 py-2.5 flex items-center gap-2">
+              <TrendingUp size={14} className="text-sky-500" />
+              <div>
+                <p className="text-[10px] text-sky-500 font-bold uppercase tracking-wide">Total Dr</p>
+                <p className="text-sm font-bold text-sky-700 font-mono leading-none mt-0.5">{fmt(totDr)}</p>
+              </div>
+            </div>
+            <div className="bg-rose-50 border border-rose-100 rounded-lg px-4 py-2.5 flex items-center gap-2">
+              <TrendingDown size={14} className="text-rose-500" />
+              <div>
+                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wide">Total Cr</p>
+                <p className="text-sm font-bold text-rose-600 font-mono leading-none mt-0.5">{fmt(totCr)}</p>
+              </div>
+            </div>
+          </div>
           <button type="button" onClick={save} disabled={saving || !balanced}
             className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">
             {saving
