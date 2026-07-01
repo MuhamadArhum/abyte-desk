@@ -33,6 +33,8 @@ router.delete('/bank-accounts/:id', requirePermission('accounts.bank-accounts'),
 router.get('/payment-vouchers/next-number', accountingController.getNextPaymentVoucherNumber);
 router.get('/payment-vouchers', accountingController.getPaymentVouchers);
 router.post('/payment-vouchers', requirePermission('accounts.payment-vouchers'), accountingController.createPaymentVoucher);
+router.get('/payment-vouchers/lines/:voucher_number', accountingController.getPaymentVoucherLines);
+router.get('/receipt-vouchers/lines/:voucher_number', accountingController.getReceiptVoucherLines);
 router.delete('/payment-vouchers/group/:voucher_number', requirePermission('accounts.payment-vouchers'), accountingController.deletePaymentVoucherGroup);
 router.delete('/payment-vouchers/:id', requirePermission('accounts.payment-vouchers'), accountingController.deletePaymentVoucher);
 

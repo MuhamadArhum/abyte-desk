@@ -1,7 +1,21 @@
 
 # Main App
 cd /var/www/AByte-POS && bash main-app/deploy.sh
-
 # Admin Panel
 cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
+
+
+
+
+
+
+CPV
+1;FOrm main jab aik entry complete ho jaye to next curser Dobara Expense Account py aaa jaye 
+2; Date Selectors Ko main account ki right side py ly aao
+3; CPV main jo AIk Voucher ban raha hai usko edit bhi krna hai edit button bnao 
+
+CRV 
+1;Form main jab AIk entry complete ho jaye to Next curser income account py aa jana chaye
+2; Date Selectors Ko main account ki right side py ly aao
+3; CPV main jo AIk Voucher ban raha hai usko edit bhi krna hai edit button bnao 

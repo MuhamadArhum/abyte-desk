@@ -1164,6 +1164,38 @@ exports.deletePaymentVoucher = async (req, res) => {
   }
 };
 
+exports.getPaymentVoucherLines = async (req, res) => {
+  try {
+    const { voucher_number } = req.params;
+    const rows = await query(
+      `SELECT pv.*, a.account_name FROM payment_vouchers pv
+       JOIN accounts a ON pv.account_id = a.account_id
+       WHERE pv.voucher_number = ? ORDER BY pv.created_at ASC`,
+      [voucher_number]
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getReceiptVoucherLines = async (req, res) => {
+  try {
+    const { voucher_number } = req.params;
+    const rows = await query(
+      `SELECT rv.*, a.account_name FROM receipt_vouchers rv
+       JOIN accounts a ON rv.account_id = a.account_id
+       WHERE rv.voucher_number = ? ORDER BY rv.created_at ASC`,
+      [voucher_number]
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // ============== RECEIPT VOUCHERS ==============
 
 exports.getReceiptVouchers = async (req, res) => {
