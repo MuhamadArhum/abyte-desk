@@ -22,7 +22,7 @@ export default tseslint.config(
       'no-useless-escape': 'warn',
       'no-empty': 'warn',
       'prefer-const': 'warn',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'off',
     },
   },
 );

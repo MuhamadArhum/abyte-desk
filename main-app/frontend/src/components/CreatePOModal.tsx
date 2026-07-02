@@ -63,7 +63,6 @@ const CreatePOModal = ({ isOpen, onClose, onSuccess, editPO }: CreatePOModalProp
   }, [isOpen]);
 
   // Pre-fill form when editing
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen && isEdit && editPO) {
       setSelectedSupplier(editPO.supplier_id);

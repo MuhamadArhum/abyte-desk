@@ -243,7 +243,7 @@ export function InvoiceModal({ data, onClose }: InvoiceModalProps) {
     const content = invoiceRef.current.outerHTML;
     const styleLinks   = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(el => el.outerHTML).join('\n');
     const inlineStyles = Array.from(document.querySelectorAll('style')).map(el => `<style>${(el as HTMLStyleElement).textContent}</style>`).join('\n');
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${styleLinks}${inlineStyles}<style>@page{size:80mm auto;margin:4mm;}body{margin:0;padding:4px;background:white;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}</style></head><body>${content}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},150);});<\/script></body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">${styleLinks}${inlineStyles}<style>@page{size:80mm auto;margin:4mm;}body{margin:0;padding:4px;background:white;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}</style></head><body>${content}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},150);});</script></body></html>`;
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:none;';
     document.body.appendChild(iframe);

@@ -205,7 +205,7 @@ const Dashboard = () => {
           )}
           {isAdmin && activeBranchId === null && (
             <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
-              <Building2 size={11} />All Branches Data (Consolidated)
+              <Building2 size={11} />All Branches (Consolidated) Data
             </span>
           )}
         </motion.div>

@@ -97,7 +97,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         fetchPendingSaleDetails(pendingSale.sale_id);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Reset amountPaid when payment method changes so the updated total is shown
@@ -432,7 +431,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   };
 
   // F6 = Print Cash, F7 = Print Card — active only while success screen is shown
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!successSale || !settings) return;
     const onKey = (e: KeyboardEvent) => {

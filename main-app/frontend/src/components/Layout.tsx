@@ -240,11 +240,6 @@ function AnnouncementBanner() {
       </div>
     </div>
   );
-
-        </div>
-      </div>
-    </div>
-  );
 }
 
 const Layout = ({ children }: { children: React.ReactNode }) => {

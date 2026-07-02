@@ -27,7 +27,6 @@ const ReceiveStockModal = ({ isOpen, onClose, onSuccess, poId, poNumber }: Recei
   const [loading, setLoading] = useState(false);
   const [fetchingItems, setFetchingItems] = useState(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen && poId) {
       fetchPOItems();

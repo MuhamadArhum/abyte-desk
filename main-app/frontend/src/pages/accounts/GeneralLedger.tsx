@@ -124,13 +124,11 @@ const GeneralLedger = () => {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount, fromDate, toDate]);
 
   // Auto-load when opened from Trial Balance via URL params
   useEffect(() => {
     if (paramAccId && accounts.length > 0) fetchLedger(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts]);
 
   // Compute running balance from opening balance

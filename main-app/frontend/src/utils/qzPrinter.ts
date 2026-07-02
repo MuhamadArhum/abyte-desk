@@ -9,7 +9,6 @@
 // Download: https://qz.io/download/
 // =============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let qz: any = null;
 
 async function loadQZ(): Promise<boolean> {

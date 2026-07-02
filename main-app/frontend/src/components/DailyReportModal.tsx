@@ -58,7 +58,6 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
     setSummary(stats);
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen) fetchSales();
   }, [isOpen]);
