@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 # Cancel any in-progress deploy if a new push comes in
 concurrency:
   group: deploy-production
