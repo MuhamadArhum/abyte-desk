@@ -168,7 +168,9 @@
       "Bash(npx jest *)",
       "Bash(npx vitest *)",
       "Bash(python3 -m json.tool)",
-      "Bash(PORT=5050 node server.js)"
+      "Bash(PORT=5050 node server.js)",
+      "Bash(gh run *)",
+      "Bash(xargs wc *)"
     ]
   }
 }
