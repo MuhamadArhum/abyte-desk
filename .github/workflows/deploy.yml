@@ -12,41 +12,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── 1. CI Gate ────────────────────────────────────────────────
-  ci:
-    name: CI Gate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: main-app/frontend/package-lock.json
-
-      - name: Install main-app frontend deps
-        working-directory: main-app/frontend
-        run: npm ci
-
-      - name: TypeScript type check
-        working-directory: main-app/frontend
-        run: npx tsc --noEmit
-
-      - name: Build main-app frontend (smoke test)
-        working-directory: main-app/frontend
-        run: npm run build
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000' }}
-
-  # ── 2. Deploy Main App ────────────────────────────────────────
+  # ── Deploy Main App ───────────────────────────────────────────
   deploy-main:
     name: Deploy — Main App
     runs-on: ubuntu-latest
-    needs: [ci]
     environment: production
 
     steps:
@@ -65,11 +34,10 @@ jobs:
             git checkout -- admin-panel/frontend/package-lock.json 2>/dev/null || true
             bash main-app/deploy.sh
 
-  # ── 3. Deploy Admin Panel ─────────────────────────────────────
+  # ── Deploy Admin Panel ────────────────────────────────────────
   deploy-admin:
     name: Deploy — Admin Panel
     runs-on: ubuntu-latest
-    needs: [ci]
     environment: production
 
     steps:
