@@ -87,8 +87,13 @@ function NotificationBell() {
     if (!open) fetchActivity();
   };
 
-  const oneHourAgo = Date.now() - 3600000;
-  const hasRecent  = activity.some(a => new Date(a.created_at).getTime() > oneHourAgo);
+  const [hasRecent, setHasRecent] = useState(false);
+
+  // Compute hasRecent inside effect, not during render
+  useEffect(() => {
+    const oneHourAgo = Date.now() - 3600000;
+    setHasRecent(activity.some(a => new Date(a.created_at).getTime() > oneHourAgo));
+  }, [activity]);
 
   return (
     <div ref={ref} className="relative">
@@ -128,7 +133,7 @@ function NotificationBell() {
               </div>
             ) : (
               activity.slice(0, 10).map((item, i) => {
-                const isRecent = new Date(item.created_at).getTime() > oneHourAgo;
+                const isRecent = new Date(item.created_at).getTime() > Date.now() - 3600000;
                 return (
                   <div key={i} className={`flex items-start gap-3 px-4 py-2.5 border-b border-slate-50 last:border-0 ${isRecent ? 'bg-emerald-50/40' : ''}`}>
                     <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center text-[10px] font-bold text-emerald-700 flex-shrink-0 mt-0.5">
@@ -153,22 +158,15 @@ function NotificationBell() {
   );
 }
 
-export default function Layout({ children }: { children: ReactNode }) {
-  const { admin, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+interface SidebarProps {
+  admin: { name?: string; email?: string } | null;
+  initials: string;
+  onClose: () => void;
+  onLogout: () => void;
+}
 
-  const handleLogout = () => { logout(); navigate('/login'); };
-
-  const initials = admin?.name
-    ? admin.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : admin?.email?.[0]?.toUpperCase() ?? 'A';
-
-  const breadcrumb = breadcrumbMap[location.pathname]
-    ?? (location.pathname.startsWith('/clients/') ? 'Client Detail' : 'Page');
-
-  const SidebarContent = () => (
+function SidebarContent({ admin, initials, onClose, onLogout }: SidebarProps) {
+  return (
     <>
       {/* Logo */}
       <div className="px-4 py-5 border-b border-white/[0.08] relative z-10">
@@ -192,7 +190,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             key={to}
             to={to}
             end={to === '/'}
-            onClick={() => setSidebarOpen(false)}
+            onClick={onClose}
             className={({ isActive }) =>
               `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group overflow-hidden ${
                 isActive
@@ -235,7 +233,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           className="flex items-center gap-3 px-3 py-2 w-full text-slate-500 hover:text-red-400 hover:bg-red-500/8 rounded-lg text-sm font-medium transition-all duration-150 group"
         >
           <LogOut size={15} className="group-hover:text-red-400 transition-colors" />
@@ -248,6 +246,29 @@ export default function Layout({ children }: { children: ReactNode }) {
       </div>
     </>
   );
+}
+
+export default function Layout({ children }: { children: ReactNode }) {
+  const { admin, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = () => { logout(); navigate('/login'); };
+
+  const initials = admin?.name
+    ? admin.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : admin?.email?.[0]?.toUpperCase() ?? 'A';
+
+  const breadcrumb = breadcrumbMap[location.pathname]
+    ?? (location.pathname.startsWith('/clients/') ? 'Client Detail' : 'Page');
+
+  const sidebarProps: SidebarProps = {
+    admin,
+    initials,
+    onClose:  () => setSidebarOpen(false),
+    onLogout: handleLogout,
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50/60">
@@ -264,7 +285,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           backgroundSize: '20px 20px'
         }} />
         <div className="relative flex flex-col h-full">
-          <SidebarContent />
+          <SidebarContent {...sidebarProps} />
         </div>
       </aside>
 
@@ -278,7 +299,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           >
             <div className="absolute top-0 left-0 right-0 h-32 bg-emerald-500/6 blur-3xl pointer-events-none" />
             <div className="relative flex flex-col h-full">
-              <SidebarContent />
+              <SidebarContent {...sidebarProps} />
             </div>
           </aside>
         </div>

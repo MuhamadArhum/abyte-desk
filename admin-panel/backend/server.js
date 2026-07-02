@@ -95,6 +95,12 @@ async function runMigrations() {
       UNIQUE KEY unique_view (announcement_id, tenant_id),
       FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE
     )`,
+
+    `CREATE TABLE IF NOT EXISTS settings (
+      key_name VARCHAR(100) PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const sql of migrations) {
@@ -223,6 +229,11 @@ app.use((err, req, res, _next) => {
 });
 
 // ── Start ────────────────────────────────────────────────────
+if (!process.env.JWT_SECRET) {
+  logger.error('FATAL: JWT_SECRET environment variable is not set. Exiting.');
+  process.exit(1);
+}
+
 const PORT = process.env.PORT || 5001;
 runMigrations().then(() => {
   app.listen(PORT, () => {

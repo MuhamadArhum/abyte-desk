@@ -83,10 +83,27 @@ exports.updateProfile = async (req, res) => {
 // POST /api/auth/change-password
 exports.changePassword = async (req, res) => {
   try {
-    const { new_password } = req.body;
-    if (!new_password || new_password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    const { current_password, new_password } = req.body;
+
+    if (!current_password) {
+      return res.status(400).json({ message: 'Current password is required' });
     }
+    if (!new_password || new_password.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
+    // Verify current password
+    const rows = await query(
+      'SELECT password_hash FROM super_admins WHERE admin_id = ?',
+      [req.admin.admin_id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'Admin not found' });
+
+    const isMatch = await bcrypt.compare(current_password, rows[0].password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
     const hash = await bcrypt.hash(new_password, 10);
     await query('UPDATE super_admins SET password_hash = ? WHERE admin_id = ?', [hash, req.admin.admin_id]);
     logAction(req.admin?.admin_id, 'CHANGE_PASSWORD', 'super_admin', req.admin?.admin_id, req.admin?.email, null, req.ip);

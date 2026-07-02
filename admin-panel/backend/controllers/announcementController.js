@@ -84,10 +84,22 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, message, type, is_active, starts_at, ends_at } = req.body;
-    await query(
-      `UPDATE announcements SET title=?, message=?, type=?, is_active=?, starts_at=?, ends_at=? WHERE id=?`,
-      [title, message, type, is_active ? 1 : 0, starts_at || null, ends_at || null, id]
-    );
+    if (!title?.trim() || !message?.trim()) {
+      return res.status(400).json({ message: 'Title and message required' });
+    }
+    // Only update is_active if explicitly provided; default to keeping current value
+    const activeVal = is_active !== undefined ? (is_active ? 1 : 0) : undefined;
+    if (activeVal !== undefined) {
+      await query(
+        `UPDATE announcements SET title=?, message=?, type=?, is_active=?, starts_at=?, ends_at=? WHERE id=?`,
+        [title.trim(), message.trim(), type || 'info', activeVal, starts_at || null, ends_at || null, id]
+      );
+    } else {
+      await query(
+        `UPDATE announcements SET title=?, message=?, type=?, starts_at=?, ends_at=? WHERE id=?`,
+        [title.trim(), message.trim(), type || 'info', starts_at || null, ends_at || null, id]
+      );
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

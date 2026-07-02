@@ -6,6 +6,7 @@ import AddClientModal from '../components/AddClientModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import EditModulesModal from '../components/EditModulesModal';
 import { useToast } from '../context/ToastContext';
+import { usePrices } from '../hooks/usePrices';
 
 interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
@@ -70,6 +71,7 @@ function SkeletonRow() {
 export default function Clients() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { prices } = usePrices();
   const [clients, setClients]     = useState<Tenant[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -108,7 +110,7 @@ export default function Clients() {
   };
 
   const getMonthly = (modules: string[]) =>
-    modules.reduce((sum, m) => sum + (['accounts', 'hr'].includes(m) ? 2999 : 2250), 0);
+    modules.reduce((sum, m) => sum + (prices[m as keyof typeof prices] ?? 0), 0);
 
   const filtered = clients.filter(c => {
     const q = search.toLowerCase();
@@ -130,7 +132,7 @@ export default function Clients() {
   };
   const toggleOne = (id: number) => {
     const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) { next.delete(id); } else { next.add(id); }
     setSelected(next);
   };
 

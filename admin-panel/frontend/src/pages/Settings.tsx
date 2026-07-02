@@ -1,4 +1,4 @@
-import { useState, type FormEvent, useEffect } from 'react';
+import React, { useState, type FormEvent, useEffect } from 'react';
 import { Lock, User, AlertCircle, Eye, EyeOff, Save, Package, Loader2, Shield, TrendingUp, Info, ChevronRight } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,7 @@ const MODULE_META: Record<string, { label: string; desc: string; color: string; 
 };
 
 function SectionHeader({ icon: Icon, title, desc, iconBg = 'bg-emerald-100', iconColor = 'text-emerald-600' }: {
-  icon: any; title: string; desc?: string; iconBg?: string; iconColor?: string;
+  icon: React.ElementType; title: string; desc?: string; iconBg?: string; iconColor?: string;
 }) {
   return (
     <div className="flex items-center gap-3 mb-5">
@@ -37,11 +37,13 @@ export default function Settings() {
   const [email, setEmail]       = useState(admin?.email || '');
   const [profileSaving, setProfileSaving] = useState(false);
 
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm]   = useState('');
-  const [showPw, setShowPw]     = useState(false);
-  const [showCf, setShowCf]     = useState(false);
-  const [pwSaving, setPwSaving] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [password, setPassword]   = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showPw, setShowPw]       = useState(false);
+  const [showCf, setShowCf]       = useState(false);
+  const [pwSaving, setPwSaving]   = useState(false);
 
   const [editPrices, setEditPrices] = useState({ sales: 0, inventory: 0, accounts: 0, hr: 0 });
   const [priceSaving, setPriceSaving] = useState(false);
@@ -60,22 +62,29 @@ export default function Settings() {
     try {
       await updateProfile({ name: name.trim(), email: email.trim() });
       toast('success', 'Profile updated successfully');
-    } catch (err: any) {
-      toast('error', err.response?.data?.message || 'Failed to update profile');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to update profile');
     } finally { setProfileSaving(false); }
   };
 
   const handlePassword = async (e: FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) { toast('error', 'Passwords do not match'); return; }
-    if (password.length < 6)  { toast('error', 'Password must be at least 6 characters'); return; }
+    if (!currentPw)              { toast('error', 'Enter your current password'); return; }
+    if (password !== confirm)    { toast('error', 'Passwords do not match'); return; }
+    if (password.length < 8)     { toast('error', 'New password must be at least 8 characters'); return; }
     setPwSaving(true);
     try {
-      await api.post('/auth/change-password', { new_password: password });
+      await api.post('/auth/change-password', { current_password: currentPw, new_password: password });
       toast('success', 'Password changed successfully');
-      setPassword(''); setConfirm('');
-    } catch (err: any) {
-      toast('error', err.response?.data?.message || 'Failed to update password');
+      setCurrentPw(''); setPassword(''); setConfirm('');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to update password');
     } finally { setPwSaving(false); }
   };
 
@@ -89,8 +98,11 @@ export default function Settings() {
       await api.put('/settings/prices', { prices: editPrices });
       toast('success', 'Module prices updated');
       reloadPrices();
-    } catch (err: any) {
-      toast('error', err.response?.data?.message || 'Failed to update prices');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to update prices');
     } finally { setPriceSaving(false); }
   };
 
@@ -166,11 +178,27 @@ export default function Settings() {
           <SectionHeader icon={Lock} title="Change Password" desc="Use a strong password" iconBg="bg-slate-100" iconColor="text-slate-500" />
           <form onSubmit={handlePassword} className="space-y-3">
             <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showCurrentPw ? 'text' : 'password'}
+                  placeholder="Enter current password"
+                  className={`${inputCls} pr-10`}
+                  value={currentPw}
+                  onChange={e => setCurrentPw(e.target.value)}
+                  required
+                />
+                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showCurrentPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">New Password</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
-                  placeholder="Min 6 characters"
+                  placeholder="Min 8 characters"
                   className={`${inputCls} pr-10`}
                   value={password}
                   onChange={e => setPassword(e.target.value)}

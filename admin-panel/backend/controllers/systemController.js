@@ -3,75 +3,95 @@ const { exec } = require('child_process');
 const { query }  = require('../config/database');
 const logger     = require('../config/logger');
 
-exports.getHealth = async (req, res) => {
-  try {
-    // ── RAM ──────────────────────────────────────────────────
-    const totalMem = os.totalmem();
-    const freeMem  = os.freemem();
-    const usedMem  = totalMem - freeMem;
+const isWindows = os.platform() === 'win32';
 
-    // ── CPU (1-min load avg normalised to %) ─────────────────
-    const loadAvg    = os.loadavg()[0];
-    const cpuCount   = os.cpus().length;
-    const cpuPercent = Math.min(Math.round((loadAvg / cpuCount) * 100), 100);
+// CPU % — platform-aware
+function getCpuPercent() {
+  if (!isWindows) {
+    const load = os.loadavg()[0];
+    const cores = os.cpus().length;
+    return Promise.resolve(Math.min(Math.round((load / cores) * 100), 100));
+  }
+  return new Promise(resolve => {
+    exec('wmic cpu get loadpercentage /value', (err, stdout) => {
+      if (err) return resolve(0);
+      const match = stdout.match(/LoadPercentage=(\d+)/i);
+      resolve(match ? parseInt(match[1], 10) : 0);
+    });
+  });
+}
 
-    // ── Disk via df ──────────────────────────────────────────
-    let disk = { used_gb: 0, total_gb: 0, percent: 0 };
-    await new Promise(resolve => {
+// Disk — platform-aware (C: on Windows, / on Linux)
+function getDisk() {
+  if (!isWindows) {
+    return new Promise(resolve => {
       exec("df -k / 2>/dev/null | tail -1 | awk '{print $2,$3}'", (err, stdout) => {
-        if (!err && stdout.trim()) {
-          const [total, used] = stdout.trim().split(' ').map(Number);
-          if (total > 0) {
-            disk = {
-              total_gb: +(total / 1024 / 1024).toFixed(1),
-              used_gb:  +(used  / 1024 / 1024).toFixed(1),
-              percent:  Math.round((used / total) * 100),
-            };
-          }
-        }
-        resolve(null);
+        if (err || !stdout.trim()) return resolve({ used_gb: 0, total_gb: 0, disk_percent: 0 });
+        const [total, used] = stdout.trim().split(' ').map(Number);
+        if (!total) return resolve({ used_gb: 0, total_gb: 0, disk_percent: 0 });
+        resolve({
+          total_gb:     +(total / 1024 / 1024).toFixed(1),
+          used_gb:      +(used  / 1024 / 1024).toFixed(1),
+          disk_percent: Math.round((used / total) * 100),
+        });
       });
     });
+  }
+  return new Promise(resolve => {
+    exec('wmic logicaldisk where "DeviceID=\'C:\'" get size,freespace /value', (err, stdout) => {
+      if (err) return resolve({ used_gb: 0, total_gb: 0, disk_percent: 0 });
+      const freeMatch  = stdout.match(/FreeSpace=(\d+)/i);
+      const sizeMatch  = stdout.match(/Size=(\d+)/i);
+      if (!freeMatch || !sizeMatch) return resolve({ used_gb: 0, total_gb: 0, disk_percent: 0 });
+      const total = parseInt(sizeMatch[1], 10);
+      const free  = parseInt(freeMatch[1], 10);
+      const used  = total - free;
+      resolve({
+        total_gb:     +(total / 1024 / 1024 / 1024).toFixed(1),
+        used_gb:      +(used  / 1024 / 1024 / 1024).toFixed(1),
+        disk_percent: Math.round((used / total) * 100),
+      });
+    });
+  });
+}
 
-    // ── DB connections ───────────────────────────────────────
+exports.getHealth = async (req, res) => {
+  try {
+    const totalMem   = os.totalmem();
+    const freeMem    = os.freemem();
+    const usedMem    = totalMem - freeMem;
+    const ramPercent = Math.round((usedMem / totalMem) * 100);
+
+    const [cpuPercent, disk] = await Promise.all([getCpuPercent(), getDisk()]);
+
     let dbConnections = 0;
     try {
       const rows = await query("SHOW STATUS LIKE 'Threads_connected'");
       dbConnections = parseInt(rows[0]?.Value || '0', 10);
     } catch {}
 
-    // ── Tenant counts ────────────────────────────────────────
     const [{ active_tenants }] = await query(
       `SELECT COUNT(*) AS active_tenants FROM tenants WHERE is_active = 1`
     );
-
-    // ── Open tickets & unread ────────────────────────────────
     const [{ open_tickets }] = await query(
       `SELECT COUNT(*) AS open_tickets FROM support_tickets WHERE status IN ('open','in_progress')`
     );
-
-    // ── Unpaid invoice total ─────────────────────────────────
     const [{ unpaid_amount }] = await query(
       `SELECT COALESCE(SUM(amount), 0) AS unpaid_amount FROM invoices WHERE status != 'paid'`
     );
 
     res.json({
-      cpu: {
-        percent: cpuPercent,
-        load_1m: +loadAvg.toFixed(2),
-        cores:   cpuCount,
-      },
-      ram: {
-        total_mb: Math.round(totalMem / 1024 / 1024),
-        used_mb:  Math.round(usedMem  / 1024 / 1024),
-        free_mb:  Math.round(freeMem  / 1024 / 1024),
-        percent:  Math.round((usedMem / totalMem) * 100),
-      },
-      disk,
+      cpu_percent:  cpuPercent,
+      ram_percent:  ramPercent,
+      ram_used_gb:  +(usedMem  / 1024 / 1024 / 1024).toFixed(1),
+      ram_total_gb: +(totalMem / 1024 / 1024 / 1024).toFixed(1),
+      disk_percent: disk.disk_percent,
+      disk_used_gb: disk.used_gb,
+      disk_total_gb: disk.total_gb,
       db_connections: dbConnections,
-      uptime_hours:   Math.round(os.uptime() / 3600),
-      node_version:   process.version,
-      platform:       os.platform(),
+      uptime_hours: +(os.uptime() / 3600).toFixed(2),
+      platform:     os.platform(),
+      node_version: process.version,
       active_tenants,
       open_tickets,
       unpaid_amount,
