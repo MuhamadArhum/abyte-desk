@@ -88,15 +88,14 @@ interface MenuItem {
 interface AnnouncementItem { id: number; title: string; message: string; type: string; }
 
 const POPUP_CONFIG: Record<string, {
-  gradient: string; gradientFrom: string; gradientTo: string;
-  ring: string; label: string; icon: any;
-  btnBg: string; btnText: string; softBg: string; softText: string;
-  glow: string;
+  label: string; icon: any;
+  accentBg: string; accentText: string; accentRing: string;
+  iconBox: string; pillBg: string; pillText: string;
 }> = {
-  info:        { gradient: 'from-blue-500 via-blue-600 to-indigo-700',        gradientFrom: '#3b82f6', gradientTo: '#4338ca', ring: 'ring-blue-500/20',    label: '📢 Announcement', icon: Info,          btnBg: 'bg-blue-600 hover:bg-blue-700',          btnText: 'text-white', softBg: 'bg-blue-50',    softText: 'text-blue-600',    glow: 'shadow-blue-500/25'    },
-  warning:     { gradient: 'from-amber-400 via-amber-500 to-orange-600',      gradientFrom: '#f59e0b', gradientTo: '#ea580c', ring: 'ring-amber-500/20',   label: '⚠️ Warning',      icon: AlertTriangle, btnBg: 'bg-amber-500 hover:bg-amber-600',         btnText: 'text-white', softBg: 'bg-amber-50',   softText: 'text-amber-600',   glow: 'shadow-amber-500/25'   },
-  maintenance: { gradient: 'from-orange-500 via-red-500 to-rose-600',         gradientFrom: '#f97316', gradientTo: '#e11d48', ring: 'ring-rose-500/20',    label: '🔧 Maintenance',  icon: Wrench,        btnBg: 'bg-rose-600 hover:bg-rose-700',           btnText: 'text-white', softBg: 'bg-rose-50',    softText: 'text-rose-600',    glow: 'shadow-rose-500/25'    },
-  success:     { gradient: 'from-emerald-400 via-emerald-500 to-teal-600',    gradientFrom: '#10b981', gradientTo: '#0d9488', ring: 'ring-emerald-500/20', label: '✅ New Update',   icon: CheckCircle,   btnBg: 'bg-emerald-600 hover:bg-emerald-700',     btnText: 'text-white', softBg: 'bg-emerald-50', softText: 'text-emerald-600', glow: 'shadow-emerald-500/25' },
+  info:        { label: 'Announcement', icon: Info,          accentBg: 'bg-sky-500',     accentText: 'text-sky-600',     accentRing: 'ring-sky-200',     iconBox: 'bg-sky-100',     pillBg: 'bg-sky-100',     pillText: 'text-sky-700'     },
+  warning:     { label: 'Warning',      icon: AlertTriangle, accentBg: 'bg-amber-500',   accentText: 'text-amber-600',   accentRing: 'ring-amber-200',   iconBox: 'bg-amber-100',   pillBg: 'bg-amber-100',   pillText: 'text-amber-700'   },
+  maintenance: { label: 'Maintenance',  icon: Wrench,        accentBg: 'bg-rose-500',    accentText: 'text-rose-600',    accentRing: 'ring-rose-200',    iconBox: 'bg-rose-100',    pillBg: 'bg-rose-100',    pillText: 'text-rose-700'    },
+  success:     { label: 'New Update',   icon: CheckCircle,   accentBg: 'bg-emerald-500', accentText: 'text-emerald-600', accentRing: 'ring-emerald-200', iconBox: 'bg-emerald-100', pillBg: 'bg-emerald-100', pillText: 'text-emerald-700' },
 };
 
 function AnnouncementBanner() {
@@ -143,8 +142,8 @@ function AnnouncementBanner() {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
-        backgroundColor: visible ? 'rgba(2,6,23,0.7)' : 'rgba(2,6,23,0)',
-        backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        backgroundColor: visible ? 'rgba(2,6,23,0.75)' : 'rgba(2,6,23,0)',
+        backdropFilter: visible ? 'blur(8px)' : 'blur(0px)',
         transition: 'background-color 0.35s ease, backdrop-filter 0.35s ease',
         pointerEvents: visible ? 'auto' : 'none',
       }}
@@ -156,92 +155,88 @@ function AnnouncementBanner() {
           opacity: visible ? 1 : 0,
           transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
         }}
-        className="w-full max-w-md"
+        className="w-full max-w-sm"
       >
-        {/* Card */}
-        <div className={`relative bg-white rounded-3xl overflow-hidden shadow-2xl ${cfg.glow} ring-1 ${cfg.ring}`}>
+        {/* Card — dark theme */}
+        <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-black/50 ring-1 ring-white/10"
+          style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 60%, #0f172a 100%)' }}>
 
-          {/* Top gradient banner — tall hero */}
-          <div
-            className={`relative bg-gradient-to-br ${cfg.gradient} px-7 pt-8 pb-10 overflow-hidden`}
-          >
-            {/* Decorative circles */}
-            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-black/10 rounded-full" />
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.06]"
-              style={{ backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', backgroundSize: '22px 22px' }} />
+          {/* Dot grid overlay */}
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+            style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
-            {/* Close button */}
+          {/* Top accent line */}
+          <div className={`h-1 w-full ${cfg.accentBg}`} />
+
+          {/* Glow blob behind icon */}
+          <div className={`absolute top-8 left-1/2 -translate-x-1/2 w-40 h-40 ${cfg.accentBg} opacity-10 rounded-full blur-3xl pointer-events-none`} />
+
+          {/* Header */}
+          <div className="relative px-7 pt-8 pb-6 flex flex-col items-center text-center">
+
+            {/* Close */}
             <button
               onClick={() => dismiss(a.id)}
-              className="absolute top-4 right-4 w-8 h-8 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-150 backdrop-blur-sm"
+              className="absolute top-4 right-4 w-8 h-8 bg-white/8 hover:bg-white/15 rounded-full flex items-center justify-center transition-all duration-150 ring-1 ring-white/10"
             >
-              <X size={14} className="text-white" />
+              <X size={13} className="text-slate-400" />
             </button>
 
-            {/* Count badge */}
+            {/* Count */}
             {active.length > 1 && (
-              <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              <div className="absolute top-4 left-4 text-[10px] font-bold text-slate-500 bg-white/5 px-2.5 py-1 rounded-full ring-1 ring-white/10">
                 {current + 1} / {active.length}
               </div>
             )}
 
-            {/* Icon circle */}
-            <div className="flex flex-col items-center text-center relative z-10">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-black/10 ring-1 ring-white/30">
-                <Icon size={32} className="text-white" />
-              </div>
-              <span className="text-white/80 text-[11px] font-bold uppercase tracking-[0.15em] mb-1.5">{cfg.label}</span>
-              <h2 className="text-white font-black text-xl leading-snug drop-shadow-sm">{a.title}</h2>
+            {/* Icon */}
+            <div className={`w-16 h-16 ${cfg.iconBox} rounded-2xl flex items-center justify-center mb-5 ring-1 ${cfg.accentRing} shadow-lg`}>
+              <Icon size={28} className={cfg.accentText} />
             </div>
+
+            {/* Type pill */}
+            <span className={`text-[10px] font-black uppercase tracking-[0.18em] px-3 py-1 rounded-full mb-3 ${cfg.pillBg} ${cfg.pillText}`}>
+              {cfg.label}
+            </span>
+
+            {/* Title */}
+            <h2 className="text-white font-black text-lg leading-snug">{a.title}</h2>
           </div>
 
-          {/* Swoosh connector */}
-          <div
-            className="h-5 -mt-5 relative z-10"
-            style={{
-              background: 'white',
-              borderRadius: '50% 50% 0 0 / 100% 100% 0 0',
-            }}
-          />
+          {/* Divider */}
+          <div className="mx-7 h-px bg-white/[0.07]" />
 
-          {/* Body */}
-          <div className="px-7 pb-2 -mt-2">
-            <div className={`${cfg.softBg} rounded-2xl px-4 py-4`}>
-              <p className="text-sm text-slate-600 leading-relaxed text-center">{a.message}</p>
-            </div>
+          {/* Message */}
+          <div className="px-7 py-5">
+            <p className="text-sm text-slate-400 leading-relaxed text-center">{a.message}</p>
           </div>
 
           {/* Footer */}
-          <div className="px-7 py-5 flex items-center gap-3">
+          <div className="px-7 pb-6 flex flex-col gap-2.5">
             {active.length > 1 ? (
-              <>
+              <div className="flex gap-2.5">
                 <button
                   onClick={next}
-                  className="flex-1 py-2.5 text-sm font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
+                  className="flex-1 py-2.5 text-sm font-bold bg-white/8 hover:bg-white/12 text-slate-300 rounded-xl transition-all ring-1 ring-white/10"
                 >
                   Next →
                 </button>
                 <button
                   onClick={() => dismiss(a.id)}
-                  className={`flex-1 py-2.5 text-sm font-bold ${cfg.btnBg} ${cfg.btnText} rounded-xl transition-all shadow-md`}
+                  className={`flex-1 py-2.5 text-sm font-bold ${cfg.accentBg} text-white rounded-xl transition-all shadow-lg hover:opacity-90`}
                 >
                   Got it
                 </button>
-              </>
+              </div>
             ) : (
               <button
                 onClick={() => dismiss(a.id)}
-                className={`w-full py-3 text-sm font-black ${cfg.btnBg} ${cfg.btnText} rounded-xl transition-all shadow-lg tracking-wide`}
+                className={`w-full py-3 text-sm font-black ${cfg.accentBg} text-white rounded-xl transition-all shadow-lg hover:opacity-90 tracking-wide`}
               >
                 Got it, thanks!
               </button>
             )}
-          </div>
-
-          {/* Branding strip */}
-          <div className="px-7 pb-5 text-center">
-            <p className="text-[10px] text-slate-300 font-medium tracking-wide">
+            <p className="text-center text-[10px] text-slate-600 font-medium tracking-wide pt-1">
               AByte ERP · Official Announcement
             </p>
           </div>
