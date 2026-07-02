@@ -358,6 +358,12 @@ export default function HelpSupport() {
         </div>
       </div>
 
+      {/* Support Tickets */}
+      <div className="mb-10">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Support Tickets</h2>
+        <TicketsSection />
+      </div>
+
       {/* Quick Links */}
       <div className="grid grid-cols-3 gap-4 mb-10">
         {[
@@ -450,12 +456,6 @@ export default function HelpSupport() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Support Tickets */}
-      <div className="mb-10">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Support Tickets</h2>
-        <TicketsSection />
       </div>
 
       {/* Contact Support */}
