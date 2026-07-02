@@ -31,8 +31,7 @@ function priceOf(mod, prices) {
 exports.getAll = async (req, res) => {
   try {
     const tenants = await query(`
-      SELECT t.*, tc.company_name, tc.logo_url, tc.modules_enabled,
-             t.subscription_ends_at, t.subscription_status
+      SELECT t.*, tc.company_name, tc.logo_url, tc.modules_enabled
       FROM tenants t
       LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
       ORDER BY t.created_at DESC
@@ -262,16 +261,21 @@ exports.getStats = async (req, res) => {
       mods.forEach(m => { monthlyRevenue += priceOf(m, prices); });
     });
 
-    const [{ expiring_soon }] = await query(
-      `SELECT COUNT(*) AS expiring_soon FROM tenants
-       WHERE subscription_ends_at IS NOT NULL
-         AND subscription_ends_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-         AND subscription_ends_at > CURDATE()`
-    );
-    const [{ expired }] = await query(
-      `SELECT COUNT(*) AS expired FROM tenants
-       WHERE subscription_ends_at IS NOT NULL AND subscription_ends_at <= CURDATE()`
-    );
+    let expiring_soon = 0, expired = 0;
+    try {
+      const [es] = await query(
+        `SELECT COUNT(*) AS expiring_soon FROM tenants
+         WHERE subscription_ends_at IS NOT NULL
+           AND subscription_ends_at <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+           AND subscription_ends_at > CURDATE()`
+      );
+      const [ex] = await query(
+        `SELECT COUNT(*) AS expired FROM tenants
+         WHERE subscription_ends_at IS NOT NULL AND subscription_ends_at <= CURDATE()`
+      );
+      expiring_soon = es.expiring_soon || 0;
+      expired = ex.expired || 0;
+    } catch { /* columns may not exist yet — safe default */ }
 
     res.json({ total, active, inactive: total - active, monthly_revenue: monthlyRevenue, expiring_soon, expired });
   } catch (err) {
