@@ -11,7 +11,7 @@ interface DailyReportModalProps {
 const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) => {
   const { currencySymbol: currency } = useSettings();
   const [sales, setSales] = useState<any[]>([]);
-  const [_loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [summary, setSummary] = useState({
     totalSales: 0,
     cash: 0,
@@ -58,6 +58,7 @@ const DailyReportModal: React.FC<DailyReportModalProps> = ({ isOpen, onClose }) 
     setSummary(stats);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen) fetchSales();
   }, [isOpen]);

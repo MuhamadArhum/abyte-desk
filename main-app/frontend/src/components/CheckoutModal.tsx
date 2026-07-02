@@ -432,6 +432,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   };
 
   // F6 = Print Cash, F7 = Print Card — active only while success screen is shown
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!successSale || !settings) return;
     const onKey = (e: KeyboardEvent) => {

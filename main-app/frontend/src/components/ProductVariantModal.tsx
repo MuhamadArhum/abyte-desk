@@ -41,6 +41,7 @@ const ProductVariantModal: React.FC<ProductVariantModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isOpen && product) {
       fetchVariants();

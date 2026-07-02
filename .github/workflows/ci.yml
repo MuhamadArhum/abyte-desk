@@ -26,8 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: main-app/backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci --omit=dev
@@ -56,8 +54,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: main-app/frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
