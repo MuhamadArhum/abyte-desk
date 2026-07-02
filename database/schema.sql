@@ -1112,6 +1112,18 @@ CREATE TABLE IF NOT EXISTS raw_sale_items (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
+-- Print Queue (for browser-based printing via polling)
+CREATE TABLE IF NOT EXISTS print_queue (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    type VARCHAR(50) NOT NULL DEFAULT 'invoice',
+    payload LONGTEXT NOT NULL,
+    status ENUM('pending','printing','done','failed') NOT NULL DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP NULL,
+    INDEX idx_print_status (status)
+);
+
 -- Cash Registers
 CREATE TABLE IF NOT EXISTS cash_registers (
     register_id INT PRIMARY KEY AUTO_INCREMENT,

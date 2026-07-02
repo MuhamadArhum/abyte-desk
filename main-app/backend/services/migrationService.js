@@ -387,6 +387,16 @@ const MIGRATIONS = [
       `);
     },
   },
+  {
+    version: 16,
+    name: 'audit_logs_old_new_values',
+    async run(db) {
+      // auditService.js inserts old_values/new_values — add columns if missing
+      await queryDb(db, `ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS old_values JSON NULL`);
+      await queryDb(db, `ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_values JSON NULL`);
+      await queryDb(db, `ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_name VARCHAR(100) NULL`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {
