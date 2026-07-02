@@ -139,57 +139,67 @@ function AnnouncementBanner() {
   const Icon = cfg.icon;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 pointer-events-none" style={{ maxWidth: 360 }}>
+    /* Full-screen overlay */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        backgroundColor: visible ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0)',
+        backdropFilter: visible ? 'blur(4px)' : 'blur(0px)',
+        transition: 'background-color 0.3s ease, backdrop-filter 0.3s ease',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) dismiss(a.id); }}
+    >
       <div
-        className="pointer-events-auto"
         style={{
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.96)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(32px) scale(0.92)',
           opacity: visible ? 1 : 0,
-          transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+          transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
         }}
       >
-        <div className="bg-white rounded-2xl shadow-2xl shadow-black/15 border border-slate-100 overflow-hidden w-[340px]">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/25 border border-slate-100 overflow-hidden w-[400px] max-w-full">
 
           {/* Gradient header */}
-          <div className={`relative bg-gradient-to-br ${cfg.gradient} px-5 py-5 overflow-hidden`}>
+          <div className={`relative bg-gradient-to-br ${cfg.gradient} px-6 py-6 overflow-hidden`}>
             <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-            <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-2xl" />
+            <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/10 rounded-full blur-2xl" />
+            <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-black/10 rounded-full blur-xl" />
             <div className="relative flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                  <Icon size={20} className="text-white" />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm shadow-lg shadow-black/10">
+                  <Icon size={24} className="text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="bg-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">{cfg.label}</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-white/25 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">{cfg.label}</span>
                     {active.length > 1 && (
-                      <span className="bg-white/15 text-white/80 text-[10px] font-bold px-2 py-0.5 rounded-full">{current + 1}/{active.length}</span>
+                      <span className="bg-white/15 text-white/80 text-[10px] font-bold px-2 py-0.5 rounded-full">{current + 1} / {active.length}</span>
                     )}
                   </div>
-                  <h3 className="text-white font-black text-sm leading-tight">{a.title}</h3>
+                  <h3 className="text-white font-black text-base leading-tight">{a.title}</h3>
                 </div>
               </div>
-              <button onClick={() => dismiss(a.id)} className="flex-shrink-0 w-7 h-7 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
-                <X size={13} className="text-white" />
+              <button onClick={() => dismiss(a.id)} className="flex-shrink-0 w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition mt-0.5">
+                <X size={14} className="text-white" />
               </button>
             </div>
           </div>
 
           {/* Body */}
-          <div className="px-5 py-4">
+          <div className="px-6 py-5">
             <p className="text-sm text-slate-600 leading-relaxed">{a.message}</p>
           </div>
 
           {/* Footer */}
-          <div className="px-5 pb-4 flex items-center justify-between gap-3">
+          <div className="px-6 pb-5 flex items-center justify-between gap-3">
             <p className="text-[11px] text-slate-400 font-medium">From AByte Support</p>
             <div className="flex items-center gap-2">
               {active.length > 1 && (
-                <button onClick={next} className={`text-xs font-bold px-3 py-1.5 ${cfg.labelBg} ${cfg.labelText} rounded-lg hover:opacity-80 transition`}>
+                <button onClick={next} className={`text-xs font-bold px-4 py-2 ${cfg.labelBg} ${cfg.labelText} rounded-xl hover:opacity-80 transition`}>
                   Next →
                 </button>
               )}
-              <button onClick={() => dismiss(a.id)} className="text-xs font-bold px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition">
+              <button onClick={() => dismiss(a.id)} className="text-xs font-bold px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition">
                 Got it
               </button>
             </div>
