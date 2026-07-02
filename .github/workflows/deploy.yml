@@ -7,42 +7,19 @@ on:
 permissions:
   contents: read
 
-# Cancel any in-progress deploy if a new push comes in
 concurrency:
   group: deploy-production
-  cancel-in-progress: false   # don't cancel — queue instead (safe for DB migrations)
+  cancel-in-progress: false
 
 jobs:
-  # ── 1. Detect what changed ────────────────────────────────────
-  changes:
-    name: Detect changed apps
-    runs-on: ubuntu-latest
-    outputs:
-      main-app:    ${{ steps.filter.outputs.main-app }}
-      admin-panel: ${{ steps.filter.outputs.admin-panel }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Filter changed paths
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            main-app:
-              - 'main-app/**'
-              - 'database/**'
-            admin-panel:
-              - 'admin-panel/**'
-              - 'database/**'
-
-  # ── 2. CI gate (must pass before deploy) ─────────────────────
+  # ── 1. CI Gate ────────────────────────────────────────────────
   ci:
     name: CI Gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,12 +42,11 @@ jobs:
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000' }}
 
-  # ── 3. Deploy Main App ────────────────────────────────────────
+  # ── 2. Deploy Main App ────────────────────────────────────────
   deploy-main:
     name: Deploy — Main App
     runs-on: ubuntu-latest
-    needs: [changes, ci]
-    if: needs.changes.outputs.main-app == 'true'
+    needs: [ci]
     environment: production
 
     steps:
@@ -85,20 +61,15 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
-
-            echo "→ Resetting auto-generated lock files to avoid merge conflicts..."
             git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
             git checkout -- admin-panel/frontend/package-lock.json 2>/dev/null || true
-
-            echo "→ Running main-app deploy script..."
             bash main-app/deploy.sh
 
-  # ── 4. Deploy Admin Panel ─────────────────────────────────────
+  # ── 3. Deploy Admin Panel ─────────────────────────────────────
   deploy-admin:
     name: Deploy — Admin Panel
     runs-on: ubuntu-latest
-    needs: [changes, ci]
-    if: needs.changes.outputs.admin-panel == 'true'
+    needs: [ci]
     environment: production
 
     steps:
@@ -113,22 +84,6 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
-
-            echo "→ Resetting auto-generated lock files..."
             git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
             git checkout -- admin-panel/frontend/package-lock.json 2>/dev/null || true
-
-            echo "→ Running admin-panel deploy script..."
             bash admin-panel/deploy.sh
-
-  # ── 5. Notify on failure ──────────────────────────────────────
-  notify-failure:
-    name: Notify on failure
-    runs-on: ubuntu-latest
-    needs: [deploy-main, deploy-admin]
-    if: failure()
-    steps:
-      - name: Deployment failed
-        run: |
-          echo "::error::Deployment failed! Check logs above."
-          exit 1
