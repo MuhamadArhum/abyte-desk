@@ -89,14 +89,16 @@ interface AnnouncementItem { id: number; title: string; message: string; type: s
 
 const POPUP_CONFIG: Record<string, {
   label: string; icon: any;
-  headerBg: string; headerFrom: string; headerTo: string;
-  badgeBg: string; badgeText: string;
-  btnFrom: string; btnTo: string;
+  iconBg: string; iconColor: string;
+  accentBar: string;
+  labelColor: string;
+  btnStyle: string;
+  dotColor: string;
 }> = {
-  info:        { label: 'Announcement', icon: Info,          headerBg: 'from-violet-600 to-purple-700',  headerFrom: '#7c3aed', headerTo: '#7e22ce', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700', btnFrom: '#7c3aed', btnTo: '#6d28d9' },
-  warning:     { label: 'Warning',      icon: AlertTriangle, headerBg: 'from-orange-500 to-amber-500',   headerFrom: '#f97316', headerTo: '#f59e0b', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', btnFrom: '#f97316', btnTo: '#f59e0b' },
-  maintenance: { label: 'Maintenance',  icon: Wrench,        headerBg: 'from-rose-600 to-pink-600',      headerFrom: '#e11d48', headerTo: '#db2777', badgeBg: 'bg-rose-100',   badgeText: 'text-rose-700',   btnFrom: '#e11d48', btnTo: '#db2777' },
-  success:     { label: 'New Update',   icon: CheckCircle,   headerBg: 'from-emerald-500 to-teal-500',   headerFrom: '#10b981', headerTo: '#14b8a6', badgeBg: 'bg-emerald-100',badgeText: 'text-emerald-700',btnFrom: '#10b981', btnTo: '#0d9488' },
+  info:        { label: 'Announcement', icon: Info,          iconBg: 'bg-indigo-100',  iconColor: 'text-indigo-600',  accentBar: 'bg-indigo-500',  labelColor: 'text-indigo-500',  btnStyle: 'bg-indigo-600 hover:bg-indigo-700',   dotColor: 'bg-indigo-500'  },
+  warning:     { label: 'Warning',      icon: AlertTriangle, iconBg: 'bg-amber-100',   iconColor: 'text-amber-600',   accentBar: 'bg-amber-400',   labelColor: 'text-amber-500',   btnStyle: 'bg-amber-500 hover:bg-amber-600',     dotColor: 'bg-amber-500'   },
+  maintenance: { label: 'Maintenance',  icon: Wrench,        iconBg: 'bg-rose-100',    iconColor: 'text-rose-600',    accentBar: 'bg-rose-500',    labelColor: 'text-rose-500',    btnStyle: 'bg-rose-600 hover:bg-rose-700',       dotColor: 'bg-rose-500'    },
+  success:     { label: 'New Update',   icon: CheckCircle,   iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', accentBar: 'bg-emerald-500', labelColor: 'text-emerald-600', btnStyle: 'bg-emerald-600 hover:bg-emerald-700', dotColor: 'bg-emerald-500' },
 };
 
 function AnnouncementBanner() {
@@ -141,101 +143,109 @@ function AnnouncementBanner() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       style={{
-        backgroundColor: visible ? 'rgba(15,23,42,0.8)' : 'rgba(15,23,42,0)',
-        backdropFilter: visible ? 'blur(10px)' : 'blur(0px)',
-        transition: 'background-color 0.4s ease, backdrop-filter 0.4s ease',
+        backgroundColor: visible ? 'rgba(2,6,23,0.72)' : 'rgba(2,6,23,0)',
+        backdropFilter: visible ? 'blur(8px)' : 'blur(0px)',
+        transition: 'background-color 0.3s ease, backdrop-filter 0.3s ease',
         pointerEvents: visible ? 'auto' : 'none',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(a.id); }}
     >
       <div
+        className="w-full"
         style={{
-          transform: visible ? 'scale(1) translateY(0)' : 'scale(0.85) translateY(30px)',
+          maxWidth: 460,
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.94)',
           opacity: visible ? 1 : 0,
-          transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
+          transition: 'transform 0.42s cubic-bezier(0.34,1.56,0.64,1), opacity 0.28s ease',
         }}
-        className="w-full max-w-xs"
       >
-        {/* White card */}
-        <div className="bg-white rounded-[28px] overflow-hidden shadow-2xl shadow-black/30">
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/20 overflow-hidden">
 
-          {/* Colored header block */}
-          <div
-            className={`relative bg-gradient-to-br ${cfg.headerBg} pt-10 pb-16 flex flex-col items-center overflow-hidden`}
-          >
-            {/* Abstract shapes */}
-            <div className="absolute -top-6 -left-6 w-32 h-32 bg-white/10 rounded-full" />
-            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-black/10 rounded-full" />
-            <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-bl-full" />
+          {/* Top accent bar */}
+          <div className={`h-1 w-full ${cfg.accentBar}`} />
 
-            {/* Close btn */}
-            <button
-              onClick={() => dismiss(a.id)}
-              className="absolute top-3.5 right-3.5 w-7 h-7 bg-black/20 hover:bg-black/35 rounded-full flex items-center justify-center transition"
-            >
-              <X size={12} className="text-white" />
-            </button>
+          {/* Card body */}
+          <div className="p-6 sm:p-8">
 
-            {/* Count pill */}
-            {active.length > 1 && (
-              <div className="absolute top-3.5 left-3.5 bg-black/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                {current + 1}/{active.length}
+            {/* Top row: branding + close */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="AByte" className="w-5 h-5 object-contain opacity-80" />
+                <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase">AByte ERP</span>
               </div>
-            )}
-
-            {/* Big icon */}
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center shadow-xl shadow-black/20 ring-2 ring-white/30 relative z-10">
-              <Icon size={36} className="text-white drop-shadow" />
+              <div className="flex items-center gap-3">
+                {active.length > 1 && (
+                  <span className="text-[11px] font-semibold text-slate-400">
+                    {current + 1} / {active.length}
+                  </span>
+                )}
+                <button
+                  onClick={() => dismiss(a.id)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                >
+                  <X size={14} className="text-slate-500" />
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* Floating badge — overlaps header/body */}
-          <div className="flex justify-center -mt-4 relative z-10">
-            <span className={`${cfg.badgeBg} ${cfg.badgeText} text-[10px] font-black uppercase tracking-[0.15em] px-4 py-1.5 rounded-full shadow-md`}>
-              {cfg.label}
-            </span>
-          </div>
+            {/* Icon + type */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className={`w-12 h-12 rounded-xl ${cfg.iconBg} flex items-center justify-center flex-shrink-0`}>
+                <Icon size={22} className={cfg.iconColor} />
+              </div>
+              <span className={`text-xs font-black uppercase tracking-[0.18em] ${cfg.labelColor}`}>
+                {cfg.label}
+              </span>
+            </div>
 
-          {/* Body */}
-          <div className="px-6 pt-4 pb-2 text-center">
-            <h2 className="text-slate-900 font-black text-[17px] leading-snug mb-2">{a.title}</h2>
-            <p className="text-slate-500 text-sm leading-relaxed">{a.message}</p>
-          </div>
+            {/* Title */}
+            <h2 className="text-slate-900 font-black text-xl sm:text-2xl leading-tight mb-3">
+              {a.title}
+            </h2>
 
-          {/* CTA */}
-          <div className="px-6 pt-5 pb-6 flex flex-col gap-2">
-            {active.length > 1 ? (
-              <div className="flex gap-2.5">
+            {/* Divider */}
+            <div className="w-10 h-0.5 bg-slate-200 mb-4 rounded-full" />
+
+            {/* Message */}
+            <p className="text-slate-500 text-sm sm:text-[15px] leading-relaxed mb-8">
+              {a.message}
+            </p>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              {active.length > 1 && (
                 <button
                   onClick={next}
-                  className="flex-1 py-3 text-sm font-bold bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition"
+                  className="flex-1 py-3 text-sm font-bold border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors"
                 >
                   Next →
                 </button>
-                <button
-                  onClick={() => dismiss(a.id)}
-                  className="flex-1 py-3 text-sm font-bold text-white rounded-2xl transition hover:opacity-90 shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${cfg.btnFrom}, ${cfg.btnTo})` }}
-                >
-                  Got it
-                </button>
-              </div>
-            ) : (
+              )}
               <button
                 onClick={() => dismiss(a.id)}
-                className="w-full py-3.5 text-sm font-black text-white rounded-2xl transition hover:opacity-90 shadow-lg tracking-wide"
-                style={{ background: `linear-gradient(135deg, ${cfg.btnFrom}, ${cfg.btnTo})` }}
+                className={`flex-1 py-3 text-sm font-bold text-white rounded-xl transition-all ${cfg.btnStyle} shadow-sm`}
               >
                 Got it, thanks!
               </button>
-            )}
-            <p className="text-center text-[10px] text-slate-300 font-medium tracking-wide">
-              AByte ERP · Official Notice
-            </p>
-          </div>
+            </div>
 
+            {/* Progress dots for multiple */}
+            {active.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-5">
+                {active.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i === current ? `w-5 ${cfg.dotColor}` : 'w-1.5 bg-slate-200'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
     </div>
