@@ -155,6 +155,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
   const [formErrors, setFormErrors]   = useState<Record<string, string>>({});
   const [formData, setFormData]       = useState({ ...EMPTY_FORM });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) return;
     setFormErrors({});
@@ -187,6 +188,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess, staffToEdit }: Props) => {
   }, [isOpen, staffToEdit]);
 
   // Re-fetch designations when department changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) return;
     fetchDesignations(formData.department);

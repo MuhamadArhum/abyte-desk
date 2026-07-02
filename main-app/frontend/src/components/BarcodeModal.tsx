@@ -107,7 +107,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
               .label:last-child { page-break-after: avoid; }
             }
           </style>
-          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
         </head>
         <body>
           ${labels}
@@ -116,7 +116,7 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
               JsBarcode(svg, "${barcode}", { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 10, margin: 2 });
             });
             setTimeout(function() { window.print(); }, 300);
-          <\/script>
+          </script>
         </body>
       </html>
     `);

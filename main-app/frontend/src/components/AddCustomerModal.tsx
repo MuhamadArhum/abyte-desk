@@ -63,7 +63,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
 
   const validatePhone = (phone: string) => {
     if (!phone) return true; // Phone is optional
-    const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+    const phoneRegex = /^[\d\s+\-()]+$/;
     return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
   };
 

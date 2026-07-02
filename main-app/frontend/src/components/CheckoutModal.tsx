@@ -97,6 +97,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
         fetchPendingSaleDetails(pendingSale.sale_id);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Reset amountPaid when payment method changes so the updated total is shown

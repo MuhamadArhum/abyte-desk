@@ -83,7 +83,7 @@ const AIWidgetInner = () => {
         text: response.data.reply,
         timestamp: new Date()
       }]);
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'model',
@@ -122,7 +122,7 @@ const AIWidgetInner = () => {
         return (
           <div key={idx} className="flex gap-2 ml-2">
             <span className="text-emerald-400 font-bold">•</span>
-            <span>{line.replace(/^[•\-]\s*/, '')}</span>
+            <span>{line.replace(/^[•-]\s*/, '')}</span>
           </div>
         );
       }
