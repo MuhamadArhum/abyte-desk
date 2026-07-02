@@ -2,7 +2,7 @@ import { type ReactNode, useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu,
-  Activity, TrendingUp, ClipboardList, FileText, LifeBuoy, Bell, X, Megaphone,
+  Activity, TrendingUp, ClipboardList, FileText, LifeBuoy, Bell, X, Megaphone, Cpu,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/tickets',  label: 'Tickets',   icon: LifeBuoy },
   { to: '/audit',          label: 'Audit Log',     icon: ClipboardList },
   { to: '/announcements',  label: 'Announcements', icon: Megaphone },
+  { to: '/system',         label: 'System Health', icon: Cpu },
   { to: '/settings',       label: 'Settings',      icon: Settings },
 ];
 
@@ -28,6 +29,7 @@ const breadcrumbMap: Record<string, string> = {
   '/tickets':   'Tickets',
   '/audit':          'Audit Log',
   '/announcements':  'Announcements',
+  '/system':         'System Health',
   '/settings':       'Settings',
 };
 

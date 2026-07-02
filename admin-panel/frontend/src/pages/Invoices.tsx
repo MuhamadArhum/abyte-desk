@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FileText, Plus, X, Printer, CheckCircle, Send, Trash2, RefreshCw } from 'lucide-react';
+import { FileText, Plus, X, Printer, CheckCircle, Send, Trash2, RefreshCw, Zap, CreditCard, Eye } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 
@@ -14,6 +14,19 @@ interface Invoice {
   notes: string | null;
   created_at: string;
   paid_at: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
+  payment_note: string | null;
+  payment_date: string | null;
+}
+
+interface InvoiceStats {
+  total: number;
+  paid_count: number;
+  sent_count: number;
+  draft_count: number;
+  paid_revenue: number;
+  pending_amount: number;
 }
 
 interface Tenant {
@@ -36,6 +49,169 @@ function formatPeriod(p: string) {
   const [y, m] = p.split('-');
   const date = new Date(Number(y), Number(m) - 1, 1);
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+// ─── Payment Modal ────────────────────────────────────────────────────────────
+function PaymentModal({ inv, onClose, onDone }: { inv: Invoice; onClose: () => void; onDone: () => void }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    payment_method: 'cash' as 'cash' | 'bank' | 'online' | 'other',
+    payment_reference: '',
+    payment_note: '',
+    payment_date: new Date().toISOString().split('T')[0],
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put(`/invoices/${inv.invoice_id}/payment`, {
+        payment_method:    form.payment_method,
+        payment_reference: form.payment_reference || undefined,
+        payment_note:      form.payment_note || undefined,
+        payment_date:      form.payment_date || undefined,
+      });
+      toast('success', 'Payment recorded');
+      onDone();
+      onClose();
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response?.data?.message : undefined;
+      toast('error', msg || 'Failed to record payment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const methods = [
+    { value: 'cash',   label: 'Cash' },
+    { value: 'bank',   label: 'Bank Transfer' },
+    { value: 'online', label: 'Online' },
+    { value: 'other',  label: 'Other' },
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <CreditCard size={15} className="text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Record Payment</h2>
+              <p className="text-xs text-slate-400">{inv.invoice_number} · Rs. {Number(inv.amount).toLocaleString()}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-2">Payment Method *</label>
+            <div className="grid grid-cols-4 gap-2">
+              {methods.map(m => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, payment_method: m.value }))}
+                  className={`py-2 text-xs font-bold rounded-xl border-2 transition-all ${
+                    form.payment_method === m.value
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Payment Date *</label>
+            <input
+              type="date"
+              value={form.payment_date}
+              onChange={e => setForm(f => ({ ...f, payment_date: e.target.value }))}
+              required
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Reference / Transaction ID</label>
+            <input
+              type="text"
+              value={form.payment_reference}
+              onChange={e => setForm(f => ({ ...f, payment_reference: e.target.value }))}
+              placeholder="e.g. TXN-20260701"
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Note</label>
+            <textarea
+              value={form.payment_note}
+              onChange={e => setForm(f => ({ ...f, payment_note: e.target.value }))}
+              rows={2}
+              placeholder="Optional payment note..."
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+            />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : 'Record Payment'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Payment Detail Modal ─────────────────────────────────────────────────────
+function PaymentDetailModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <CheckCircle size={15} className="text-emerald-600" />
+            </div>
+            <h2 className="text-base font-bold text-slate-800">Payment Details</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-6 space-y-3">
+          {[
+            { label: 'Invoice',   value: inv.invoice_number },
+            { label: 'Client',    value: inv.tenant_name },
+            { label: 'Amount',    value: `Rs. ${Number(inv.amount).toLocaleString()}` },
+            { label: 'Method',    value: inv.payment_method?.replace('_', ' ') ?? '—' },
+            { label: 'Date',      value: inv.payment_date ? new Date(inv.payment_date).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' }) : '—' },
+            { label: 'Reference', value: inv.payment_reference || '—' },
+            { label: 'Note',      value: inv.payment_note || '—' },
+          ].map(row => (
+            <div key={row.label} className="flex justify-between text-sm">
+              <span className="text-slate-400 font-medium">{row.label}</span>
+              <span className="text-slate-700 font-semibold capitalize">{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Generate Invoice Modal ───────────────────────────────────────────────────
@@ -71,8 +247,9 @@ function GenerateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onC
       toast('success', 'Invoice generated');
       onCreated();
       onClose();
-    } catch (err: any) {
-      toast('error', err?.response?.data?.message || 'Failed to create invoice');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response?.data?.message : undefined;
+      toast('error', msg || 'Failed to create invoice');
     } finally {
       setSaving(false);
     }
@@ -214,11 +391,19 @@ function printInvoice(inv: Invoice) {
 
 export default function Invoices() {
   const { toast } = useToast();
-  const [invoices, setInvoices]     = useState<Invoice[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [showModal, setShowModal]   = useState(false);
-  const [activeTab, setActiveTab]   = useState<typeof STATUS_TABS[number]>('all');
-  const [updating, setUpdating]     = useState<number | null>(null);
+  const [invoices, setInvoices]         = useState<Invoice[]>([]);
+  const [stats, setStats]               = useState<InvoiceStats | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [showModal, setShowModal]       = useState(false);
+  const [activeTab, setActiveTab]       = useState<typeof STATUS_TABS[number]>('all');
+  const [updating, setUpdating]         = useState<number | null>(null);
+  const [autoGenLoading, setAutoGenLoading] = useState(false);
+  const [paymentInv, setPaymentInv]     = useState<Invoice | null>(null);
+  const [detailInv, setDetailInv]       = useState<Invoice | null>(null);
+
+  const loadStats = useCallback(() => {
+    api.get('/invoices/stats').then(r => setStats(r.data)).catch(() => {});
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -226,7 +411,8 @@ export default function Invoices() {
     api.get('/invoices', { params })
       .then(r => setInvoices(r.data.data || []))
       .finally(() => setLoading(false));
-  }, [activeTab]);
+    loadStats();
+  }, [activeTab, loadStats]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -249,19 +435,30 @@ export default function Invoices() {
       await api.delete(`/invoices/${id}`);
       toast('success', 'Invoice deleted');
       load();
-    } catch (err: any) {
-      toast('error', err?.response?.data?.message || 'Failed to delete');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response?.data?.message : undefined;
+      toast('error', msg || 'Failed to delete');
     }
   };
 
-  const handlePrint = (inv: Invoice) => {
-    printInvoice(inv);
+  const handleAutoGenerate = async () => {
+    setAutoGenLoading(true);
+    try {
+      const r = await api.post('/invoices/auto-generate');
+      toast('success', r.data.message || 'Invoices generated');
+      load();
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response?.data?.message : undefined;
+      toast('error', msg || 'Auto-generate failed');
+    } finally {
+      setAutoGenLoading(false);
+    }
   };
 
   return (
     <div className="p-6 max-w-7xl space-y-5">
       {/* Header */}
-      <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden ">
+      <div className="relative bg-white border border-slate-100 rounded-2xl px-6 py-4 shadow-sm overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/60 via-transparent to-transparent pointer-events-none" />
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -278,6 +475,14 @@ export default function Invoices() {
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
             <button
+              onClick={handleAutoGenerate}
+              disabled={autoGenLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-indigo-200 disabled:opacity-60"
+            >
+              <Zap size={14} />
+              {autoGenLoading ? 'Generating…' : 'Auto-Generate'}
+            </button>
+            <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-emerald-200"
             >
@@ -288,8 +493,25 @@ export default function Invoices() {
         </div>
       </div>
 
+      {/* Stats Bar */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Invoices', value: stats.total,                                     color: 'text-slate-700',   bg: 'bg-white' },
+            { label: 'Paid Revenue',   value: `Rs. ${Number(stats.paid_revenue).toLocaleString()}`, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
+            { label: 'Pending',        value: `Rs. ${Number(stats.pending_amount).toLocaleString()}`, color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-100' },
+            { label: 'Unpaid Count',   value: `${stats.sent_count + stats.draft_count} invoices`, color: 'text-rose-500',    bg: 'bg-white' },
+          ].map(s => (
+            <div key={s.label} className={`${s.bg} rounded-2xl border border-slate-100 px-4 py-3.5 shadow-sm`}>
+              <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Status Tabs */}
-      <div className="flex gap-1 bg-white border border-slate-200 rounded-2xl p-1  w-fit shadow-sm">
+      <div className="flex gap-1 bg-white border border-slate-200 rounded-2xl p-1 w-fit shadow-sm">
         {STATUS_TABS.map(tab => (
           <button
             key={tab}
@@ -306,7 +528,7 @@ export default function Invoices() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden ">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -357,6 +579,15 @@ export default function Invoices() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
+                        {inv.status === 'paid' && inv.payment_method && (
+                          <button
+                            onClick={() => setDetailInv(inv)}
+                            title="Payment details"
+                            className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors"
+                          >
+                            <Eye size={13} />
+                          </button>
+                        )}
                         {inv.status === 'draft' && (
                           <button
                             onClick={() => updateStatus(inv.invoice_id, 'sent')}
@@ -369,16 +600,16 @@ export default function Invoices() {
                         )}
                         {inv.status === 'sent' && (
                           <button
-                            onClick={() => updateStatus(inv.invoice_id, 'paid')}
+                            onClick={() => setPaymentInv(inv)}
                             disabled={updating === inv.invoice_id}
-                            title="Mark as Paid"
+                            title="Record Payment"
                             className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                           >
-                            <CheckCircle size={13} />
+                            <CreditCard size={13} />
                           </button>
                         )}
                         <button
-                          onClick={() => handlePrint(inv)}
+                          onClick={() => printInvoice(inv)}
                           title="Print"
                           className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                         >
@@ -405,6 +636,12 @@ export default function Invoices() {
 
       {showModal && (
         <GenerateInvoiceModal onClose={() => setShowModal(false)} onCreated={load} />
+      )}
+      {paymentInv && (
+        <PaymentModal inv={paymentInv} onClose={() => setPaymentInv(null)} onDone={load} />
+      )}
+      {detailInv && (
+        <PaymentDetailModal inv={detailInv} onClose={() => setDetailInv(null)} />
       )}
     </div>
   );

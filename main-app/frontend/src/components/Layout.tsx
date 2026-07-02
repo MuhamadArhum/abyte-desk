@@ -112,6 +112,10 @@ function AnnouncementBanner() {
       if (r.data.length > 0) {
         setAnnouncements(r.data);
         setTimeout(() => setVisible(true), 600);
+        // Record view for all fetched announcements (fire-and-forget)
+        r.data.forEach((ann: AnnouncementItem) => {
+          api.post(`/announcements/${ann.id}/view`).catch(() => {});
+        });
       }
     }).catch(() => {});
   }, []);

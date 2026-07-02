@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { masterQuery } = require('../config/masterDatabase');
+const { authenticate } = require('../middleware/auth');
 
 // GET /api/announcements/active — no auth needed, public
 router.get('/active', async (req, res) => {
@@ -16,6 +17,19 @@ router.get('/active', async (req, res) => {
     res.json(rows);
   } catch {
     res.json([]);
+  }
+});
+
+// POST /api/announcements/:id/view — record that this tenant viewed the announcement
+router.post('/:id/view', authenticate, async (req, res) => {
+  try {
+    await masterQuery(
+      `INSERT IGNORE INTO announcement_views (announcement_id, tenant_id) VALUES (?, ?)`,
+      [req.params.id, req.tenantId]
+    );
+    res.json({ ok: true });
+  } catch {
+    res.json({ ok: false });
   }
 });
 

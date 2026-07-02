@@ -2,7 +2,12 @@ const { query } = require('../config/database');
 
 exports.getAll = async (req, res) => {
   try {
-    const rows = await query(`SELECT * FROM announcements ORDER BY created_at DESC`);
+    const rows = await query(`
+      SELECT a.*,
+        (SELECT COUNT(*) FROM announcement_views v WHERE v.announcement_id = a.id) AS view_count
+      FROM announcements a
+      ORDER BY a.created_at DESC
+    `);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -19,6 +24,42 @@ exports.getActive = async (req, res) => {
         AND (ends_at   IS NULL OR ends_at   >= ?)
       ORDER BY created_at DESC
     `, [now, now]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/announcements/:id/view  — called by main app (no auth, uses X-Tenant-ID header)
+exports.recordView = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Accept tenant_id from header or body
+    const tenant_id = req.headers['x-tenant-id'] || req.body?.tenant_id;
+    if (!tenant_id) return res.status(400).json({ message: 'tenant_id required' });
+
+    await query(
+      `INSERT IGNORE INTO announcement_views (announcement_id, tenant_id) VALUES (?, ?)`,
+      [id, tenant_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/announcements/:id/views  — admin: who viewed it
+exports.getViews = async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT v.tenant_id, COALESCE(tc.company_name, t.tenant_name) AS tenant_name,
+             v.viewed_at
+      FROM announcement_views v
+      JOIN tenants t ON t.tenant_id = v.tenant_id
+      LEFT JOIN tenant_configs tc ON tc.tenant_id = v.tenant_id
+      WHERE v.announcement_id = ?
+      ORDER BY v.viewed_at DESC
+    `, [req.params.id]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

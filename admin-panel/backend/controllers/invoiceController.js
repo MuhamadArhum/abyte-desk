@@ -1,5 +1,16 @@
 const { query } = require('../config/database');
-const logger = require('../config/logger');
+const logger    = require('../config/logger');
+
+// ── helper: next invoice number ──────────────────────────────
+async function nextInvoiceNumber() {
+  const [{ max_num }] = await query(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(invoice_number, '-', -1) AS UNSIGNED)), 0) AS max_num
+     FROM invoices WHERE invoice_number LIKE 'INV-%'`
+  );
+  const num  = String(Number(max_num) + 1).padStart(4, '0');
+  const year = new Date().getFullYear();
+  return `INV-${year}-${num}`;
+}
 
 // GET /api/invoices
 exports.getAll = async (req, res) => {
@@ -22,6 +33,26 @@ exports.getAll = async (req, res) => {
     res.json({ data: rows });
   } catch (err) {
     logger.error('invoice getAll error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/invoices/stats
+exports.getStats = async (req, res) => {
+  try {
+    const [totals] = await query(`
+      SELECT
+        COUNT(*)                                          AS total,
+        SUM(CASE WHEN status='paid'  THEN 1 ELSE 0 END) AS paid_count,
+        SUM(CASE WHEN status='sent'  THEN 1 ELSE 0 END) AS sent_count,
+        SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END) AS draft_count,
+        COALESCE(SUM(CASE WHEN status='paid'  THEN amount ELSE 0 END), 0) AS paid_revenue,
+        COALESCE(SUM(CASE WHEN status!='paid' THEN amount ELSE 0 END), 0) AS pending_amount
+      FROM invoices
+    `);
+    res.json(totals);
+  } catch (err) {
+    logger.error('invoice getStats error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -52,25 +83,58 @@ exports.create = async (req, res) => {
     if (!tenant_id || !amount || !period_month) {
       return res.status(400).json({ message: 'tenant_id, amount, period_month required' });
     }
-
-    // Auto-generate invoice number like INV-2026-0001
-    const [{ max_num }] = await query(
-      `SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(invoice_number, '-', -1) AS UNSIGNED)), 0) AS max_num
-       FROM invoices WHERE invoice_number LIKE 'INV-%'`
-    );
-    const nextNum = String(Number(max_num) + 1).padStart(4, '0');
-    const year = new Date().getFullYear();
-    const invoice_number = `INV-${year}-${nextNum}`;
-
+    const invoice_number = await nextInvoiceNumber();
     const result = await query(
       `INSERT INTO invoices (tenant_id, invoice_number, amount, period_month, notes)
        VALUES (?, ?, ?, ?, ?)`,
       [tenant_id, invoice_number, amount, period_month, notes || null]
     );
-
     res.status(201).json({ message: 'Invoice created', invoice_id: result.insertId, invoice_number });
   } catch (err) {
     logger.error('invoice create error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/invoices/auto-generate  — generate for all active tenants for current month
+exports.autoGenerate = async (req, res) => {
+  try {
+    const now        = new Date();
+    const period_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const tenants = await query(
+      `SELECT t.tenant_id, COALESCE(tc.company_name, t.tenant_name) AS tenant_name,
+              tc.monthly_price
+       FROM tenants t
+       LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+       WHERE t.is_active = 1`,
+    );
+
+    const existing = await query(
+      `SELECT tenant_id FROM invoices WHERE period_month = ?`,
+      [period_month]
+    );
+    const existingIds = new Set(existing.map(r => r.tenant_id));
+
+    let created = 0;
+    let skipped = 0;
+    for (const t of tenants) {
+      if (existingIds.has(t.tenant_id)) { skipped++; continue; }
+      const amount = Number(t.monthly_price) || 0;
+      if (amount <= 0) { skipped++; continue; }
+      const invoice_number = await nextInvoiceNumber();
+      await query(
+        `INSERT INTO invoices (tenant_id, invoice_number, amount, period_month, notes)
+         VALUES (?, ?, ?, ?, ?)`,
+        [t.tenant_id, invoice_number, amount, period_month, `Auto-generated for ${period_month}`]
+      );
+      created++;
+    }
+
+    logger.info(`[InvoiceAutoGen] period=${period_month} created=${created} skipped=${skipped}`);
+    res.json({ message: `Generated ${created} invoice(s)`, created, skipped, period_month });
+  } catch (err) {
+    logger.error('invoice autoGenerate error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -82,24 +146,41 @@ exports.updateStatus = async (req, res) => {
     if (!['draft', 'sent', 'paid'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
-
-    const paid_at = status === 'paid' ? new Date() : null;
-
     if (status === 'paid') {
-      await query(
-        'UPDATE invoices SET status = ?, paid_at = NOW() WHERE invoice_id = ?',
-        [status, req.params.id]
-      );
+      await query('UPDATE invoices SET status = ?, paid_at = NOW() WHERE invoice_id = ?', [status, req.params.id]);
     } else {
-      await query(
-        'UPDATE invoices SET status = ?, paid_at = NULL WHERE invoice_id = ?',
-        [status, req.params.id]
-      );
+      await query('UPDATE invoices SET status = ?, paid_at = NULL WHERE invoice_id = ?', [status, req.params.id]);
     }
-
     res.json({ message: 'Status updated' });
   } catch (err) {
     logger.error('invoice updateStatus error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/invoices/:id/payment  — record payment details
+exports.recordPayment = async (req, res) => {
+  try {
+    const { payment_method, payment_reference, payment_note, payment_date } = req.body;
+    if (!payment_method) return res.status(400).json({ message: 'payment_method required' });
+
+    await query(
+      `UPDATE invoices
+       SET status = 'paid', paid_at = NOW(),
+           payment_method = ?, payment_reference = ?, payment_note = ?,
+           payment_date = ?
+       WHERE invoice_id = ?`,
+      [
+        payment_method,
+        payment_reference || null,
+        payment_note      || null,
+        payment_date      || null,
+        req.params.id,
+      ]
+    );
+    res.json({ message: 'Payment recorded' });
+  } catch (err) {
+    logger.error('invoice recordPayment error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -109,9 +190,7 @@ exports.delete = async (req, res) => {
   try {
     const rows = await query('SELECT status FROM invoices WHERE invoice_id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Invoice not found' });
-    if (rows[0].status !== 'draft') {
-      return res.status(400).json({ message: 'Only draft invoices can be deleted' });
-    }
+    if (rows[0].status !== 'draft') return res.status(400).json({ message: 'Only draft invoices can be deleted' });
     await query('DELETE FROM invoices WHERE invoice_id = ?', [req.params.id]);
     res.json({ message: 'Invoice deleted' });
   } catch (err) {

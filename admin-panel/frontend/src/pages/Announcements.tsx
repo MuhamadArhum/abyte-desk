@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Megaphone, Plus, Trash2, Edit2, X, Loader2, CheckCircle, AlertTriangle, Wrench, Info, Radio, Clock } from 'lucide-react';
+import { Megaphone, Plus, Trash2, Edit2, X, Loader2, CheckCircle, AlertTriangle, Wrench, Info, Radio, Clock, Eye, Users } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 
@@ -8,6 +8,13 @@ type AnnouncementType = 'info' | 'warning' | 'maintenance' | 'success';
 interface Announcement {
   id: number; title: string; message: string; type: AnnouncementType;
   is_active: number; starts_at: string | null; ends_at: string | null; created_at: string;
+  view_count?: number;
+}
+
+interface ViewEntry {
+  tenant_id: number;
+  tenant_name: string;
+  viewed_at: string;
 }
 
 const TYPE_CONFIG = {
@@ -19,6 +26,72 @@ const TYPE_CONFIG = {
 
 const empty = { title: '', message: '', type: 'info' as AnnouncementType, starts_at: '', ends_at: '' };
 
+// ─── Who Viewed Modal ─────────────────────────────────────────────────────────
+function ViewsModal({ announcement, onClose }: { announcement: Announcement; onClose: () => void }) {
+  const [views, setViews]   = useState<ViewEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get(`/announcements/${announcement.id}/views`)
+      .then(r => setViews(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [announcement.id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Users size={15} className="text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">Who Viewed</h2>
+              <p className="text-xs text-slate-400 truncate max-w-[220px]">{announcement.title}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="py-10 flex items-center justify-center">
+              <Loader2 size={22} className="animate-spin text-indigo-400" />
+            </div>
+          ) : views.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              <Eye size={28} className="mx-auto mb-2 text-slate-200" />
+              <p className="text-sm font-medium">No views yet</p>
+            </div>
+          ) : (
+            views.map((v, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-[11px] font-bold text-indigo-700 flex-shrink-0">
+                  {(v.tenant_name || '?')[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-700 truncate">{v.tenant_name}</p>
+                  <p className="text-[11px] text-slate-400">
+                    {new Date(v.viewed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        {!loading && views.length > 0 && (
+          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60">
+            <p className="text-xs text-slate-400 font-medium">{views.length} client{views.length !== 1 ? 's' : ''} viewed this announcement</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Announcements() {
   const { toast } = useToast();
   const [items, setItems]       = useState<Announcement[]>([]);
@@ -28,6 +101,7 @@ export default function Announcements() {
   const [form, setForm]         = useState({ ...empty });
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [viewingAnn, setViewingAnn] = useState<Announcement | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -228,6 +302,15 @@ export default function Announcements() {
                         <span className={`w-1.5 h-1.5 rounded-full ${a.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
                         {a.is_active ? 'Live' : 'Inactive'}
                       </span>
+                      {(a.view_count ?? 0) > 0 && (
+                        <button
+                          onClick={() => setViewingAnn(a)}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                        >
+                          <Eye size={10} />
+                          {a.view_count} view{a.view_count !== 1 ? 's' : ''}
+                        </button>
+                      )}
                     </div>
                     <p className="text-sm text-slate-500 leading-relaxed">{a.message}</p>
                     {(a.starts_at || a.ends_at) && (
@@ -244,6 +327,9 @@ export default function Announcements() {
                     <button onClick={() => toggleActive(a)} className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${a.is_active ? 'bg-slate-100 text-slate-500 hover:bg-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'}`}>
                       {a.is_active ? 'Pause' : 'Go Live'}
                     </button>
+                    <button onClick={() => setViewingAnn(a)} title="Who viewed" className="p-2 hover:bg-indigo-50 rounded-lg text-slate-400 hover:text-indigo-600 transition">
+                      <Eye size={14} />
+                    </button>
                     <button onClick={() => openEdit(a)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition">
                       <Edit2 size={14} />
                     </button>
@@ -257,6 +343,8 @@ export default function Announcements() {
           );
         })}
       </div>
+
+      {viewingAnn && <ViewsModal announcement={viewingAnn} onClose={() => setViewingAnn(null)} />}
     </div>
   );
 }
