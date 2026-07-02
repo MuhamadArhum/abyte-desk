@@ -89,13 +89,14 @@ interface AnnouncementItem { id: number; title: string; message: string; type: s
 
 const POPUP_CONFIG: Record<string, {
   label: string; icon: any;
-  accentBg: string; accentText: string; accentRing: string;
-  iconBox: string; pillBg: string; pillText: string;
+  headerBg: string; headerFrom: string; headerTo: string;
+  badgeBg: string; badgeText: string;
+  btnFrom: string; btnTo: string;
 }> = {
-  info:        { label: 'Announcement', icon: Info,          accentBg: 'bg-sky-500',     accentText: 'text-sky-600',     accentRing: 'ring-sky-200',     iconBox: 'bg-sky-100',     pillBg: 'bg-sky-100',     pillText: 'text-sky-700'     },
-  warning:     { label: 'Warning',      icon: AlertTriangle, accentBg: 'bg-amber-500',   accentText: 'text-amber-600',   accentRing: 'ring-amber-200',   iconBox: 'bg-amber-100',   pillBg: 'bg-amber-100',   pillText: 'text-amber-700'   },
-  maintenance: { label: 'Maintenance',  icon: Wrench,        accentBg: 'bg-rose-500',    accentText: 'text-rose-600',    accentRing: 'ring-rose-200',    iconBox: 'bg-rose-100',    pillBg: 'bg-rose-100',    pillText: 'text-rose-700'    },
-  success:     { label: 'New Update',   icon: CheckCircle,   accentBg: 'bg-emerald-500', accentText: 'text-emerald-600', accentRing: 'ring-emerald-200', iconBox: 'bg-emerald-100', pillBg: 'bg-emerald-100', pillText: 'text-emerald-700' },
+  info:        { label: 'Announcement', icon: Info,          headerBg: 'from-violet-600 to-purple-700',  headerFrom: '#7c3aed', headerTo: '#7e22ce', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700', btnFrom: '#7c3aed', btnTo: '#6d28d9' },
+  warning:     { label: 'Warning',      icon: AlertTriangle, headerBg: 'from-orange-500 to-amber-500',   headerFrom: '#f97316', headerTo: '#f59e0b', badgeBg: 'bg-orange-100', badgeText: 'text-orange-700', btnFrom: '#f97316', btnTo: '#f59e0b' },
+  maintenance: { label: 'Maintenance',  icon: Wrench,        headerBg: 'from-rose-600 to-pink-600',      headerFrom: '#e11d48', headerTo: '#db2777', badgeBg: 'bg-rose-100',   badgeText: 'text-rose-700',   btnFrom: '#e11d48', btnTo: '#db2777' },
+  success:     { label: 'New Update',   icon: CheckCircle,   headerBg: 'from-emerald-500 to-teal-500',   headerFrom: '#10b981', headerTo: '#14b8a6', badgeBg: 'bg-emerald-100',badgeText: 'text-emerald-700',btnFrom: '#10b981', btnTo: '#0d9488' },
 };
 
 function AnnouncementBanner() {
@@ -142,88 +143,81 @@ function AnnouncementBanner() {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
-        backgroundColor: visible ? 'rgba(2,6,23,0.75)' : 'rgba(2,6,23,0)',
-        backdropFilter: visible ? 'blur(8px)' : 'blur(0px)',
-        transition: 'background-color 0.35s ease, backdrop-filter 0.35s ease',
+        backgroundColor: visible ? 'rgba(15,23,42,0.8)' : 'rgba(15,23,42,0)',
+        backdropFilter: visible ? 'blur(10px)' : 'blur(0px)',
+        transition: 'background-color 0.4s ease, backdrop-filter 0.4s ease',
         pointerEvents: visible ? 'auto' : 'none',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(a.id); }}
     >
       <div
         style={{
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.88)',
+          transform: visible ? 'scale(1) translateY(0)' : 'scale(0.85) translateY(30px)',
           opacity: visible ? 1 : 0,
-          transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+          transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s ease',
         }}
-        className="w-full max-w-sm"
+        className="w-full max-w-xs"
       >
-        {/* Card — dark theme */}
-        <div className="relative rounded-3xl overflow-hidden shadow-2xl shadow-black/50 ring-1 ring-white/10"
-          style={{ background: 'linear-gradient(160deg, #0f172a 0%, #1e293b 60%, #0f172a 100%)' }}>
+        {/* White card */}
+        <div className="bg-white rounded-[28px] overflow-hidden shadow-2xl shadow-black/30">
 
-          {/* Dot grid overlay */}
-          <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
-            style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          {/* Colored header block */}
+          <div
+            className={`relative bg-gradient-to-br ${cfg.headerBg} pt-10 pb-16 flex flex-col items-center overflow-hidden`}
+          >
+            {/* Abstract shapes */}
+            <div className="absolute -top-6 -left-6 w-32 h-32 bg-white/10 rounded-full" />
+            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-black/10 rounded-full" />
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-bl-full" />
 
-          {/* Top accent line */}
-          <div className={`h-1 w-full ${cfg.accentBg}`} />
-
-          {/* Glow blob behind icon */}
-          <div className={`absolute top-8 left-1/2 -translate-x-1/2 w-40 h-40 ${cfg.accentBg} opacity-10 rounded-full blur-3xl pointer-events-none`} />
-
-          {/* Header */}
-          <div className="relative px-7 pt-8 pb-6 flex flex-col items-center text-center">
-
-            {/* Close */}
+            {/* Close btn */}
             <button
               onClick={() => dismiss(a.id)}
-              className="absolute top-4 right-4 w-8 h-8 bg-white/8 hover:bg-white/15 rounded-full flex items-center justify-center transition-all duration-150 ring-1 ring-white/10"
+              className="absolute top-3.5 right-3.5 w-7 h-7 bg-black/20 hover:bg-black/35 rounded-full flex items-center justify-center transition"
             >
-              <X size={13} className="text-slate-400" />
+              <X size={12} className="text-white" />
             </button>
 
-            {/* Count */}
+            {/* Count pill */}
             {active.length > 1 && (
-              <div className="absolute top-4 left-4 text-[10px] font-bold text-slate-500 bg-white/5 px-2.5 py-1 rounded-full ring-1 ring-white/10">
-                {current + 1} / {active.length}
+              <div className="absolute top-3.5 left-3.5 bg-black/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                {current + 1}/{active.length}
               </div>
             )}
 
-            {/* Icon */}
-            <div className={`w-16 h-16 ${cfg.iconBox} rounded-2xl flex items-center justify-center mb-5 ring-1 ${cfg.accentRing} shadow-lg`}>
-              <Icon size={28} className={cfg.accentText} />
+            {/* Big icon */}
+            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center shadow-xl shadow-black/20 ring-2 ring-white/30 relative z-10">
+              <Icon size={36} className="text-white drop-shadow" />
             </div>
+          </div>
 
-            {/* Type pill */}
-            <span className={`text-[10px] font-black uppercase tracking-[0.18em] px-3 py-1 rounded-full mb-3 ${cfg.pillBg} ${cfg.pillText}`}>
+          {/* Floating badge — overlaps header/body */}
+          <div className="flex justify-center -mt-4 relative z-10">
+            <span className={`${cfg.badgeBg} ${cfg.badgeText} text-[10px] font-black uppercase tracking-[0.15em] px-4 py-1.5 rounded-full shadow-md`}>
               {cfg.label}
             </span>
-
-            {/* Title */}
-            <h2 className="text-white font-black text-lg leading-snug">{a.title}</h2>
           </div>
 
-          {/* Divider */}
-          <div className="mx-7 h-px bg-white/[0.07]" />
-
-          {/* Message */}
-          <div className="px-7 py-5">
-            <p className="text-sm text-slate-400 leading-relaxed text-center">{a.message}</p>
+          {/* Body */}
+          <div className="px-6 pt-4 pb-2 text-center">
+            <h2 className="text-slate-900 font-black text-[17px] leading-snug mb-2">{a.title}</h2>
+            <p className="text-slate-500 text-sm leading-relaxed">{a.message}</p>
           </div>
 
-          {/* Footer */}
-          <div className="px-7 pb-6 flex flex-col gap-2.5">
+          {/* CTA */}
+          <div className="px-6 pt-5 pb-6 flex flex-col gap-2">
             {active.length > 1 ? (
               <div className="flex gap-2.5">
                 <button
                   onClick={next}
-                  className="flex-1 py-2.5 text-sm font-bold bg-white/8 hover:bg-white/12 text-slate-300 rounded-xl transition-all ring-1 ring-white/10"
+                  className="flex-1 py-3 text-sm font-bold bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition"
                 >
                   Next →
                 </button>
                 <button
                   onClick={() => dismiss(a.id)}
-                  className={`flex-1 py-2.5 text-sm font-bold ${cfg.accentBg} text-white rounded-xl transition-all shadow-lg hover:opacity-90`}
+                  className="flex-1 py-3 text-sm font-bold text-white rounded-2xl transition hover:opacity-90 shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${cfg.btnFrom}, ${cfg.btnTo})` }}
                 >
                   Got it
                 </button>
@@ -231,15 +225,21 @@ function AnnouncementBanner() {
             ) : (
               <button
                 onClick={() => dismiss(a.id)}
-                className={`w-full py-3 text-sm font-black ${cfg.accentBg} text-white rounded-xl transition-all shadow-lg hover:opacity-90 tracking-wide`}
+                className="w-full py-3.5 text-sm font-black text-white rounded-2xl transition hover:opacity-90 shadow-lg tracking-wide"
+                style={{ background: `linear-gradient(135deg, ${cfg.btnFrom}, ${cfg.btnTo})` }}
               >
                 Got it, thanks!
               </button>
             )}
-            <p className="text-center text-[10px] text-slate-600 font-medium tracking-wide pt-1">
-              AByte ERP · Official Announcement
+            <p className="text-center text-[10px] text-slate-300 font-medium tracking-wide">
+              AByte ERP · Official Notice
             </p>
           </div>
+
+        </div>
+      </div>
+    </div>
+  );
 
         </div>
       </div>
