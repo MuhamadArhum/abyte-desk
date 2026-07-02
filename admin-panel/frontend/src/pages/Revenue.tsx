@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, Users, DollarSign, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Calendar } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar
