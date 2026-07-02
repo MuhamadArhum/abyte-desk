@@ -193,7 +193,7 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">ERP Dashboard Overview</h1>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Abyte ERP Dashboard Overview</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Welcome back! Dear <span className="font-bold text-emerald-600">{user?.name}</span>. Here's what's happening today.
           </p>
@@ -205,7 +205,7 @@ const Dashboard = () => {
           )}
           {isAdmin && activeBranchId === null && (
             <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
-              <Building2 size={11} />All Branches (Consolidated)
+              <Building2 size={11} />All Branches Data (Consolidated)
             </span>
           )}
         </motion.div>
