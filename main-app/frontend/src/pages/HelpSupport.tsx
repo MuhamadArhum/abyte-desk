@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, ChevronDown, ChevronUp, MessageCircle, Mail, BookOpen, Zap, ShoppingCart, Package, Users, DollarSign, Settings, ArrowRight, Keyboard, Video, FileText, LifeBuoy, Plus, X, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import api from '../api/axios';
+import api from '../utils/api';
 
 const faqs: { category: string; icon: any; color: string; items: { q: string; a: string }[] }[] = [
   {
