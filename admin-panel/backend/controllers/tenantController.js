@@ -41,9 +41,14 @@ exports.getAll = async (req, res) => {
       try {
         const [users] = await tenantQuery(t.db_name, `SELECT COUNT(*) as cnt FROM \`${t.db_name}\`.users`);
         const [sales] = await tenantQuery(t.db_name, `SELECT COUNT(*) as cnt FROM \`${t.db_name}\`.sales`);
-        return { ...t, stats: { users: users?.cnt || 0, sales: sales?.cnt || 0 } };
+        const [dbSize] = await query(
+          `SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size_mb
+           FROM information_schema.tables WHERE table_schema = ? GROUP BY table_schema`,
+          [t.db_name]
+        );
+        return { ...t, stats: { users: users?.cnt || 0, sales: sales?.cnt || 0 }, db_size_mb: dbSize?.size_mb || 0 };
       } catch {
-        return { ...t, stats: { users: 0, sales: 0 } };
+        return { ...t, stats: { users: 0, sales: 0 }, db_size_mb: 0 };
       }
     }));
 

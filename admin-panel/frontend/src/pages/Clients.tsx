@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -13,6 +13,7 @@ interface Tenant {
   company_name: string; db_name: string;
   subscription_ends_at: string | null;
   subscription_status: 'trial' | 'active' | 'expired' | 'suspended' | null;
+  db_size_mb: number;
 }
 
 interface ResetTarget  { id: number; name: string; }
@@ -48,10 +49,16 @@ function daysRemaining(dateStr: string | null): number | null {
   return Math.ceil(diff / 86400000);
 }
 
+function formatDbSize(mb: number): string {
+  if (!mb || mb === 0) return '< 0.1 MB';
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${mb.toFixed(1)} MB`;
+}
+
 function SkeletonRow() {
   return (
     <tr className="animate-pulse border-b border-slate-100">
-      {[30, 140, 160, 120, 90, 90, 80].map((w, i) => (
+      {[30, 140, 160, 120, 90, 90, 90, 80].map((w, i) => (
         <td key={i} className="px-4 py-4">
           <div className="h-4 bg-slate-100 rounded" style={{ width: w }} />
         </td>
@@ -232,7 +239,7 @@ export default function Clients() {
                     className="w-4 h-4 rounded border-slate-300 accent-emerald-500"
                   />
                 </th>
-                {['Client', 'Email', 'Modules', 'Monthly', 'Subscription', 'Status', 'Actions'].map(h => (
+                {['Client', 'Email', 'Modules', 'Monthly', 'DB Size', 'Subscription', 'Status', 'Actions'].map(h => (
                   <th key={h} className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     {h}
                   </th>
@@ -303,6 +310,20 @@ export default function Clients() {
                         <td className="px-4 py-4">
                           <span className="font-semibold text-slate-700 text-xs">Rs. {monthly.toLocaleString()}</span>
                           <span className="text-slate-400 text-xs">/mo</span>
+                        </td>
+
+                        {/* DB Size */}
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-1.5">
+                            <Database size={12} className="text-slate-400 flex-shrink-0" />
+                            <span className={`text-xs font-semibold ${
+                              c.db_size_mb >= 512 ? 'text-red-500' :
+                              c.db_size_mb >= 100 ? 'text-amber-600' :
+                              'text-slate-600'
+                            }`}>
+                              {formatDbSize(c.db_size_mb)}
+                            </span>
+                          </div>
                         </td>
 
                         {/* Subscription */}
@@ -383,7 +404,7 @@ export default function Clients() {
               {/* Empty state */}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
                         <Users size={28} className="text-gray-300" />
