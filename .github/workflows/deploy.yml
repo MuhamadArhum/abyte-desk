@@ -30,14 +30,16 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
+            git remote prune origin 2>/dev/null || true
             git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
             git checkout -- admin-panel/frontend/package-lock.json 2>/dev/null || true
             bash main-app/deploy.sh
 
-  # ── Deploy Admin Panel ────────────────────────────────────────
+  # ── Deploy Admin Panel (after main, to avoid git race condition) ──
   deploy-admin:
     name: Deploy — Admin Panel
     runs-on: ubuntu-latest
+    needs: [deploy-main]
     environment: production
 
     steps:
@@ -52,6 +54,4 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
-            git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
-            git checkout -- admin-panel/frontend/package-lock.json 2>/dev/null || true
             bash admin-panel/deploy.sh
