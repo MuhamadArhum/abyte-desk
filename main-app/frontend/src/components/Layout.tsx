@@ -64,6 +64,8 @@ import {
   Fingerprint,
   Barcode,
   X,
+  Info,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -85,11 +87,14 @@ interface MenuItem {
 
 interface AnnouncementItem { id: number; title: string; message: string; type: string; }
 
-const TYPE_STYLES: Record<string, { bg: string; border: string; text: string; icon: string }> = {
-  info:        { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-800',   icon: 'text-blue-500' },
-  warning:     { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-800',  icon: 'text-amber-500' },
-  maintenance: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', icon: 'text-orange-500' },
-  success:     { bg: 'bg-emerald-50',border: 'border-emerald-200',text: 'text-emerald-800',icon: 'text-emerald-500' },
+const BANNER_STYLES: Record<string, {
+  gradient: string; border: string; iconBg: string; iconColor: string;
+  titleColor: string; msgColor: string; closeColor: string; icon: any;
+}> = {
+  info:        { gradient: 'from-blue-600 to-indigo-600',    border: 'border-blue-500/30',    iconBg: 'bg-blue-500/20',    iconColor: 'text-blue-100',    titleColor: 'text-white',       msgColor: 'text-blue-100',    closeColor: 'text-blue-200 hover:text-white',    icon: Info },
+  warning:     { gradient: 'from-amber-500 to-orange-500',   border: 'border-amber-400/30',   iconBg: 'bg-amber-400/20',   iconColor: 'text-amber-100',   titleColor: 'text-white',       msgColor: 'text-amber-100',   closeColor: 'text-amber-200 hover:text-white',   icon: AlertTriangle },
+  maintenance: { gradient: 'from-orange-600 to-red-600',     border: 'border-orange-400/30',  iconBg: 'bg-orange-400/20',  iconColor: 'text-orange-100',  titleColor: 'text-white',       msgColor: 'text-orange-100',  closeColor: 'text-orange-200 hover:text-white',  icon: Wrench },
+  success:     { gradient: 'from-emerald-500 to-teal-600',   border: 'border-emerald-400/30', iconBg: 'bg-emerald-400/20', iconColor: 'text-emerald-100', titleColor: 'text-white',       msgColor: 'text-emerald-100', closeColor: 'text-emerald-200 hover:text-white', icon: CheckCircle },
 };
 
 function AnnouncementBanner() {
@@ -104,17 +109,28 @@ function AnnouncementBanner() {
   if (visible.length === 0) return null;
 
   return (
-    <div className="space-y-1.5 px-4 pt-3">
+    <div className="space-y-2 px-4 pt-3">
       {visible.map(a => {
-        const s = TYPE_STYLES[a.type] || TYPE_STYLES.info;
+        const s = BANNER_STYLES[a.type] || BANNER_STYLES.info;
+        const Icon = s.icon;
         return (
-          <div key={a.id} className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${s.bg} ${s.border}`}>
-            <AlertTriangle size={15} className={`${s.icon} flex-shrink-0 mt-0.5`} />
-            <div className="flex-1 min-w-0">
-              <span className={`text-xs font-bold ${s.text}`}>{a.title}: </span>
-              <span className={`text-xs ${s.text} opacity-80`}>{a.message}</span>
+          <div key={a.id} className={`relative flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-r ${s.gradient} border ${s.border} shadow-lg overflow-hidden`}>
+            {/* Subtle dot pattern */}
+            <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+            {/* Icon */}
+            <div className={`relative w-8 h-8 ${s.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
+              <Icon size={16} className={s.iconColor} />
             </div>
-            <button onClick={() => setDismissed(d => new Set([...d, a.id]))} className={`flex-shrink-0 ${s.icon} hover:opacity-70 transition`}>
+            {/* Text */}
+            <div className="relative flex-1 min-w-0">
+              <span className={`text-xs font-black ${s.titleColor}`}>{a.title}</span>
+              <span className={`text-xs ${s.msgColor} opacity-90 ml-1.5`}>— {a.message}</span>
+            </div>
+            {/* Dismiss */}
+            <button
+              onClick={() => setDismissed(d => new Set([...d, a.id]))}
+              className={`relative flex-shrink-0 p-1 rounded-lg ${s.closeColor} transition`}
+            >
               <X size={14} />
             </button>
           </div>
