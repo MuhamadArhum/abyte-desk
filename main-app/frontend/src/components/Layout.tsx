@@ -88,14 +88,15 @@ interface MenuItem {
 interface AnnouncementItem { id: number; title: string; message: string; type: string; }
 
 const POPUP_CONFIG: Record<string, {
-  gradient: string; lightBg: string; lightBorder: string;
-  accent: string; label: string; icon: any;
-  labelBg: string; labelText: string;
+  gradient: string; gradientFrom: string; gradientTo: string;
+  ring: string; label: string; icon: any;
+  btnBg: string; btnText: string; softBg: string; softText: string;
+  glow: string;
 }> = {
-  info:        { gradient: 'from-blue-600 to-indigo-700',    lightBg: 'bg-blue-50',    lightBorder: 'border-blue-100',    accent: 'bg-blue-600',    label: 'Info',        icon: Info,          labelBg: 'bg-blue-100',    labelText: 'text-blue-700'    },
-  warning:     { gradient: 'from-amber-500 to-orange-600',   lightBg: 'bg-amber-50',   lightBorder: 'border-amber-100',   accent: 'bg-amber-500',   label: 'Warning',     icon: AlertTriangle, labelBg: 'bg-amber-100',   labelText: 'text-amber-700'   },
-  maintenance: { gradient: 'from-orange-600 to-red-600',     lightBg: 'bg-orange-50',  lightBorder: 'border-orange-100',  accent: 'bg-orange-600',  label: 'Maintenance', icon: Wrench,        labelBg: 'bg-orange-100',  labelText: 'text-orange-700'  },
-  success:     { gradient: 'from-emerald-500 to-teal-600',   lightBg: 'bg-emerald-50', lightBorder: 'border-emerald-100', accent: 'bg-emerald-500', label: 'Update',      icon: CheckCircle,   labelBg: 'bg-emerald-100', labelText: 'text-emerald-700' },
+  info:        { gradient: 'from-blue-500 via-blue-600 to-indigo-700',        gradientFrom: '#3b82f6', gradientTo: '#4338ca', ring: 'ring-blue-500/20',    label: '📢 Announcement', icon: Info,          btnBg: 'bg-blue-600 hover:bg-blue-700',          btnText: 'text-white', softBg: 'bg-blue-50',    softText: 'text-blue-600',    glow: 'shadow-blue-500/25'    },
+  warning:     { gradient: 'from-amber-400 via-amber-500 to-orange-600',      gradientFrom: '#f59e0b', gradientTo: '#ea580c', ring: 'ring-amber-500/20',   label: '⚠️ Warning',      icon: AlertTriangle, btnBg: 'bg-amber-500 hover:bg-amber-600',         btnText: 'text-white', softBg: 'bg-amber-50',   softText: 'text-amber-600',   glow: 'shadow-amber-500/25'   },
+  maintenance: { gradient: 'from-orange-500 via-red-500 to-rose-600',         gradientFrom: '#f97316', gradientTo: '#e11d48', ring: 'ring-rose-500/20',    label: '🔧 Maintenance',  icon: Wrench,        btnBg: 'bg-rose-600 hover:bg-rose-700',           btnText: 'text-white', softBg: 'bg-rose-50',    softText: 'text-rose-600',    glow: 'shadow-rose-500/25'    },
+  success:     { gradient: 'from-emerald-400 via-emerald-500 to-teal-600',    gradientFrom: '#10b981', gradientTo: '#0d9488', ring: 'ring-emerald-500/20', label: '✅ New Update',   icon: CheckCircle,   btnBg: 'bg-emerald-600 hover:bg-emerald-700',     btnText: 'text-white', softBg: 'bg-emerald-50', softText: 'text-emerald-600', glow: 'shadow-emerald-500/25' },
 };
 
 function AnnouncementBanner() {
@@ -108,7 +109,7 @@ function AnnouncementBanner() {
     api.get('/announcements/active').then(r => {
       if (r.data.length > 0) {
         setAnnouncements(r.data);
-        setTimeout(() => setVisible(true), 800);
+        setTimeout(() => setVisible(true), 600);
       }
     }).catch(() => {});
   }, []);
@@ -139,70 +140,110 @@ function AnnouncementBanner() {
   const Icon = cfg.icon;
 
   return (
-    /* Full-screen overlay */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
-        backgroundColor: visible ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0)',
-        backdropFilter: visible ? 'blur(4px)' : 'blur(0px)',
-        transition: 'background-color 0.3s ease, backdrop-filter 0.3s ease',
+        backgroundColor: visible ? 'rgba(2,6,23,0.7)' : 'rgba(2,6,23,0)',
+        backdropFilter: visible ? 'blur(6px)' : 'blur(0px)',
+        transition: 'background-color 0.35s ease, backdrop-filter 0.35s ease',
         pointerEvents: visible ? 'auto' : 'none',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) dismiss(a.id); }}
     >
       <div
         style={{
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(32px) scale(0.92)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.88)',
           opacity: visible ? 1 : 0,
-          transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+          transition: 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
         }}
+        className="w-full max-w-md"
       >
-        <div className="bg-white rounded-2xl shadow-2xl shadow-black/25 border border-slate-100 overflow-hidden w-[400px] max-w-full">
+        {/* Card */}
+        <div className={`relative bg-white rounded-3xl overflow-hidden shadow-2xl ${cfg.glow} ring-1 ${cfg.ring}`}>
 
-          {/* Gradient header */}
-          <div className={`relative bg-gradient-to-br ${cfg.gradient} px-6 py-6 overflow-hidden`}>
-            <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-            <div className="absolute -top-10 -right-10 w-36 h-36 bg-white/10 rounded-full blur-2xl" />
-            <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-black/10 rounded-full blur-xl" />
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm shadow-lg shadow-black/10">
-                  <Icon size={24} className="text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="bg-white/25 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">{cfg.label}</span>
-                    {active.length > 1 && (
-                      <span className="bg-white/15 text-white/80 text-[10px] font-bold px-2 py-0.5 rounded-full">{current + 1} / {active.length}</span>
-                    )}
-                  </div>
-                  <h3 className="text-white font-black text-base leading-tight">{a.title}</h3>
-                </div>
+          {/* Top gradient banner — tall hero */}
+          <div
+            className={`relative bg-gradient-to-br ${cfg.gradient} px-7 pt-8 pb-10 overflow-hidden`}
+          >
+            {/* Decorative circles */}
+            <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full" />
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-black/10 rounded-full" />
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full h-full opacity-[0.06]"
+              style={{ backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', backgroundSize: '22px 22px' }} />
+
+            {/* Close button */}
+            <button
+              onClick={() => dismiss(a.id)}
+              className="absolute top-4 right-4 w-8 h-8 bg-white/15 hover:bg-white/30 rounded-full flex items-center justify-center transition-all duration-150 backdrop-blur-sm"
+            >
+              <X size={14} className="text-white" />
+            </button>
+
+            {/* Count badge */}
+            {active.length > 1 && (
+              <div className="absolute top-4 left-4 bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                {current + 1} / {active.length}
               </div>
-              <button onClick={() => dismiss(a.id)} className="flex-shrink-0 w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition mt-0.5">
-                <X size={14} className="text-white" />
-              </button>
+            )}
+
+            {/* Icon circle */}
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-black/10 ring-1 ring-white/30">
+                <Icon size={32} className="text-white" />
+              </div>
+              <span className="text-white/80 text-[11px] font-bold uppercase tracking-[0.15em] mb-1.5">{cfg.label}</span>
+              <h2 className="text-white font-black text-xl leading-snug drop-shadow-sm">{a.title}</h2>
             </div>
           </div>
 
+          {/* Swoosh connector */}
+          <div
+            className="h-5 -mt-5 relative z-10"
+            style={{
+              background: 'white',
+              borderRadius: '50% 50% 0 0 / 100% 100% 0 0',
+            }}
+          />
+
           {/* Body */}
-          <div className="px-6 py-5">
-            <p className="text-sm text-slate-600 leading-relaxed">{a.message}</p>
+          <div className="px-7 pb-2 -mt-2">
+            <div className={`${cfg.softBg} rounded-2xl px-4 py-4`}>
+              <p className="text-sm text-slate-600 leading-relaxed text-center">{a.message}</p>
+            </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 pb-5 flex items-center justify-between gap-3">
-            <p className="text-[11px] text-slate-400 font-medium">From AByte Support</p>
-            <div className="flex items-center gap-2">
-              {active.length > 1 && (
-                <button onClick={next} className={`text-xs font-bold px-4 py-2 ${cfg.labelBg} ${cfg.labelText} rounded-xl hover:opacity-80 transition`}>
+          <div className="px-7 py-5 flex items-center gap-3">
+            {active.length > 1 ? (
+              <>
+                <button
+                  onClick={next}
+                  className="flex-1 py-2.5 text-sm font-bold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
+                >
                   Next →
                 </button>
-              )}
-              <button onClick={() => dismiss(a.id)} className="text-xs font-bold px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition">
-                Got it
+                <button
+                  onClick={() => dismiss(a.id)}
+                  className={`flex-1 py-2.5 text-sm font-bold ${cfg.btnBg} ${cfg.btnText} rounded-xl transition-all shadow-md`}
+                >
+                  Got it
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => dismiss(a.id)}
+                className={`w-full py-3 text-sm font-black ${cfg.btnBg} ${cfg.btnText} rounded-xl transition-all shadow-lg tracking-wide`}
+              >
+                Got it, thanks!
               </button>
-            </div>
+            )}
+          </div>
+
+          {/* Branding strip */}
+          <div className="px-7 pb-5 text-center">
+            <p className="text-[10px] text-slate-300 font-medium tracking-wide">
+              AByte ERP · Official Announcement
+            </p>
           </div>
 
         </div>
