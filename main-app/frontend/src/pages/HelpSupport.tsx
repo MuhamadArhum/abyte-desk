@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Search, ChevronDown, ChevronUp, MessageCircle, Mail, BookOpen, Zap, ShoppingCart, Package, Users, DollarSign, Settings, ArrowRight, Keyboard, Video, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Search, ChevronDown, ChevronUp, MessageCircle, Mail, BookOpen, Zap, ShoppingCart, Package, Users, DollarSign, Settings, ArrowRight, Keyboard, Video, FileText, LifeBuoy, Plus, X, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import api from '../api/axios';
 
 const faqs: { category: string; icon: any; color: string; items: { q: string; a: string }[] }[] = [
   {
@@ -72,6 +73,238 @@ const shortcuts = [
   { keys: ['Ctrl', 'B'], action: 'Create backup' },
   { keys: ['Ctrl', '/'], action: 'Open this help page' },
 ];
+
+interface Ticket {
+  ticket_id: number;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}
+
+const STATUS_STYLES = {
+  open:        { bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    label: 'Open' },
+  in_progress: { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500',   label: 'In Progress' },
+  resolved:    { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Resolved' },
+  closed:      { bg: 'bg-slate-100',  text: 'text-slate-600',   dot: 'bg-slate-400',   label: 'Closed' },
+};
+
+const PRIORITY_STYLES = {
+  low:    { bg: 'bg-slate-100',  text: 'text-slate-600',   label: 'Low' },
+  medium: { bg: 'bg-blue-50',    text: 'text-blue-700',    label: 'Medium' },
+  high:   { bg: 'bg-orange-50',  text: 'text-orange-700',  label: 'High' },
+  urgent: { bg: 'bg-red-50',     text: 'text-red-700',     label: 'Urgent' },
+};
+
+function TicketsSection() {
+  const [tickets, setTickets]       = useState<Ticket[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [showForm, setShowForm]     = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [expanded, setExpanded]     = useState<number | null>(null);
+  const [form, setForm]             = useState({ subject: '', message: '', priority: 'medium' as Ticket['priority'] });
+  const [error, setError]           = useState('');
+  const [success, setSuccess]       = useState('');
+
+  const fetchTickets = () => {
+    setLoading(true);
+    api.get('/support-tickets')
+      .then(r => setTickets(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchTickets(); }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!form.subject.trim() || !form.message.trim()) {
+      setError('Subject and message are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/support-tickets', form);
+      setSuccess('Ticket submitted! Our team will respond shortly.');
+      setForm({ subject: '', message: '', priority: 'medium' });
+      setShowForm(false);
+      fetchTickets();
+      setTimeout(() => setSuccess(''), 4000);
+    } catch {
+      setError('Failed to submit ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-slate-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <LifeBuoy size={16} className="text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">My Support Tickets</h3>
+            <p className="text-xs text-gray-400">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''} submitted</p>
+          </div>
+        </div>
+        <button
+          onClick={() => { setShowForm(v => !v); setError(''); }}
+          className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-xl hover:bg-emerald-700 transition"
+        >
+          {showForm ? <><X size={13} /> Cancel</> : <><Plus size={13} /> New Ticket</>}
+        </button>
+      </div>
+
+      {/* Success banner */}
+      {success && (
+        <div className="mx-5 mt-4 flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl">
+          <CheckCircle size={15} className="flex-shrink-0" />
+          {success}
+        </div>
+      )}
+
+      {/* New Ticket Form */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="p-5 border-b border-gray-100 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Subject</label>
+            <input
+              type="text"
+              placeholder="Brief description of your issue"
+              value={form.subject}
+              onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Message</label>
+            <textarea
+              rows={4}
+              placeholder="Describe your issue in detail — include steps to reproduce if applicable"
+              value={form.message}
+              onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition resize-none"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Priority</label>
+              <select
+                value={form.priority}
+                onChange={e => setForm(f => ({ ...f, priority: e.target.value as Ticket['priority'] }))}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition bg-white"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div className="flex-1 flex items-end">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+              >
+                {submitting ? <><Loader2 size={14} className="animate-spin" /> Submitting…</> : 'Submit Ticket'}
+              </button>
+            </div>
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 px-4 py-3 rounded-xl">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              {error}
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* Ticket List */}
+      <div>
+        {loading ? (
+          <div className="p-5 space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : tickets.length === 0 ? (
+          <div className="py-14 text-center text-gray-400">
+            <LifeBuoy size={32} className="mx-auto mb-3 opacity-30" />
+            <p className="font-medium text-sm">No tickets yet</p>
+            <p className="text-xs mt-1">Click "New Ticket" to contact support</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {tickets.map(t => {
+              const st = STATUS_STYLES[t.status];
+              const pr = PRIORITY_STYLES[t.priority];
+              const isOpen = expanded === t.ticket_id;
+              return (
+                <div key={t.ticket_id}>
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : t.ticket_id)}
+                    className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50/60 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-800 truncate">{t.subject}</span>
+                        <span className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${st.bg} ${st.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                          {st.label}
+                        </span>
+                        <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${pr.bg} ${pr.text}`}>
+                          {pr.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <Clock size={11} />
+                        {new Date(t.created_at).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        <span className="text-gray-300">·</span>
+                        #{t.ticket_id}
+                      </div>
+                    </div>
+                    {isOpen
+                      ? <ChevronUp size={15} className="text-gray-400 flex-shrink-0" />
+                      : <ChevronDown size={15} className="text-gray-300 flex-shrink-0" />
+                    }
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 space-y-3">
+                      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Your Message</p>
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{t.message}</p>
+                      </div>
+                      {t.admin_notes && (
+                        <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                          <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide mb-2">Support Response</p>
+                          <p className="text-sm text-emerald-800 leading-relaxed whitespace-pre-wrap">{t.admin_notes}</p>
+                        </div>
+                      )}
+                      {t.resolved_at && (
+                        <div className="flex items-center gap-2 text-xs text-emerald-600">
+                          <CheckCircle size={13} />
+                          Resolved on {new Date(t.resolved_at).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function HelpSupport() {
   const [search, setSearch] = useState('');
@@ -217,6 +450,12 @@ export default function HelpSupport() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Support Tickets */}
+      <div className="mb-10">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Support Tickets</h2>
+        <TicketsSection />
       </div>
 
       {/* Contact Support */}

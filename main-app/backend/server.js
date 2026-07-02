@@ -96,6 +96,7 @@ const recipeRoutes          = require('./routes/recipeRoutes');
 const productionRoutes      = require('./routes/productionRoutes');
 const biometricRoutes       = require('./routes/biometricRoutes');
 const agentRoutes           = require('./routes/agentRoutes');
+const supportTicketRoutes   = require('./routes/supportTicketRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -259,6 +260,7 @@ app.use('/api/staff',               staffRoutes);
 app.use('/api/biometric',           biometricRoutes);
 app.use('/api/agent', agentLimiter);
 app.use('/api/agent',               agentRoutes);
+app.use('/api/support-tickets',     supportTicketRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
