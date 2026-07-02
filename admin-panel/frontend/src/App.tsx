@@ -13,6 +13,7 @@ import Settings from './pages/Settings';
 import AuditLog from './pages/AuditLog';
 import Invoices from './pages/Invoices';
 import Tickets from './pages/Tickets';
+import Announcements from './pages/Announcements';
 
 const LogoLoader = () => (
   <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4">
@@ -51,6 +52,7 @@ function AppRoutes() {
               <Route path="/audit"          element={<AuditLog />} />
               <Route path="/invoices"       element={<Invoices />} />
               <Route path="/tickets"        element={<Tickets />} />
+              <Route path="/announcements" element={<Announcements />} />
             </Routes>
           </Layout>
         </PrivateRoute>

@@ -63,10 +63,12 @@ import {
   History,
   Fingerprint,
   Barcode,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIWidget from './AIWidget';
+import api from '../utils/api';
 import ProfileModal from './ProfileModal';
 import { usePrintQueue } from '../hooks/usePrintQueue';
 
@@ -79,6 +81,47 @@ interface MenuItem {
   color?: string;
   isSection?: boolean;
   children?: MenuItem[];
+}
+
+interface AnnouncementItem { id: number; title: string; message: string; type: string; }
+
+const TYPE_STYLES: Record<string, { bg: string; border: string; text: string; icon: string }> = {
+  info:        { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-800',   icon: 'text-blue-500' },
+  warning:     { bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-800',  icon: 'text-amber-500' },
+  maintenance: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', icon: 'text-orange-500' },
+  success:     { bg: 'bg-emerald-50',border: 'border-emerald-200',text: 'text-emerald-800',icon: 'text-emerald-500' },
+};
+
+function AnnouncementBanner() {
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [dismissed, setDismissed]         = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    api.get('/announcements/active').then(r => setAnnouncements(r.data)).catch(() => {});
+  }, []);
+
+  const visible = announcements.filter(a => !dismissed.has(a.id));
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5 px-4 pt-3">
+      {visible.map(a => {
+        const s = TYPE_STYLES[a.type] || TYPE_STYLES.info;
+        return (
+          <div key={a.id} className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${s.bg} ${s.border}`}>
+            <AlertTriangle size={15} className={`${s.icon} flex-shrink-0 mt-0.5`} />
+            <div className="flex-1 min-w-0">
+              <span className={`text-xs font-bold ${s.text}`}>{a.title}: </span>
+              <span className={`text-xs ${s.text} opacity-80`}>{a.message}</span>
+            </div>
+            <button onClick={() => setDismissed(d => new Set([...d, a.id]))} className={`flex-shrink-0 ${s.icon} hover:opacity-70 transition`}>
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -765,6 +808,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto flex flex-col relative">
+          <AnnouncementBanner />
           <motion.div
             key={`${location.pathname}-${activeBranchId ?? 'all'}`}
             initial={{ opacity: 0, y: 10 }}

@@ -2,7 +2,7 @@ import { type ReactNode, useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, LogOut, Settings, ChevronRight, Menu,
-  Activity, TrendingUp, ClipboardList, FileText, LifeBuoy, Bell, X,
+  Activity, TrendingUp, ClipboardList, FileText, LifeBuoy, Bell, X, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -14,8 +14,9 @@ const navItems = [
   { to: '/activity', label: 'Activity',  icon: Activity },
   { to: '/invoices', label: 'Invoices',  icon: FileText },
   { to: '/tickets',  label: 'Tickets',   icon: LifeBuoy },
-  { to: '/audit',    label: 'Audit Log', icon: ClipboardList },
-  { to: '/settings', label: 'Settings',  icon: Settings },
+  { to: '/audit',          label: 'Audit Log',     icon: ClipboardList },
+  { to: '/announcements',  label: 'Announcements', icon: Megaphone },
+  { to: '/settings',       label: 'Settings',      icon: Settings },
 ];
 
 const breadcrumbMap: Record<string, string> = {
@@ -25,8 +26,9 @@ const breadcrumbMap: Record<string, string> = {
   '/activity':  'Activity',
   '/invoices':  'Invoices',
   '/tickets':   'Tickets',
-  '/audit':     'Audit Log',
-  '/settings':  'Settings',
+  '/audit':          'Audit Log',
+  '/announcements':  'Announcements',
+  '/settings':       'Settings',
 };
 
 interface LoginActivity {

@@ -15,7 +15,8 @@ const tenantRoutes   = require('./routes/tenantRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const auditRoutes    = require('./routes/auditRoutes');
 const invoiceRoutes  = require('./routes/invoiceRoutes');
-const ticketRoutes   = require('./routes/ticketRoutes');
+const ticketRoutes        = require('./routes/ticketRoutes');
+const announcementRoutes  = require('./routes/announcementRoutes');
 
 async function runMigrations() {
   const migrations = [
@@ -57,6 +58,17 @@ async function runMigrations() {
     )`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subscription_ends_at DATE NULL`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subscription_status ENUM('trial','active','expired','suspended') DEFAULT 'trial'`,
+    `CREATE TABLE IF NOT EXISTS announcements (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      type ENUM('info','warning','maintenance','success') DEFAULT 'info',
+      is_active TINYINT(1) DEFAULT 1,
+      starts_at DATETIME NULL,
+      ends_at DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const sql of migrations) {
@@ -101,7 +113,8 @@ app.use('/api/tenants',  tenantRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit',    auditRoutes);
 app.use('/api/invoices', invoiceRoutes);
-app.use('/api/tickets',  ticketRoutes);
+app.use('/api/tickets',        ticketRoutes);
+app.use('/api/announcements',  announcementRoutes);
 
 app.use((err, req, res, next) => {
   logger.error('Unhandled error', { error: err.message });
