@@ -87,55 +87,116 @@ interface MenuItem {
 
 interface AnnouncementItem { id: number; title: string; message: string; type: string; }
 
-const BANNER_STYLES: Record<string, {
-  gradient: string; border: string; iconBg: string; iconColor: string;
-  titleColor: string; msgColor: string; closeColor: string; icon: any;
+const POPUP_CONFIG: Record<string, {
+  gradient: string; lightBg: string; lightBorder: string;
+  accent: string; label: string; icon: any;
+  labelBg: string; labelText: string;
 }> = {
-  info:        { gradient: 'from-blue-600 to-indigo-600',    border: 'border-blue-500/30',    iconBg: 'bg-blue-500/20',    iconColor: 'text-blue-100',    titleColor: 'text-white',       msgColor: 'text-blue-100',    closeColor: 'text-blue-200 hover:text-white',    icon: Info },
-  warning:     { gradient: 'from-amber-500 to-orange-500',   border: 'border-amber-400/30',   iconBg: 'bg-amber-400/20',   iconColor: 'text-amber-100',   titleColor: 'text-white',       msgColor: 'text-amber-100',   closeColor: 'text-amber-200 hover:text-white',   icon: AlertTriangle },
-  maintenance: { gradient: 'from-orange-600 to-red-600',     border: 'border-orange-400/30',  iconBg: 'bg-orange-400/20',  iconColor: 'text-orange-100',  titleColor: 'text-white',       msgColor: 'text-orange-100',  closeColor: 'text-orange-200 hover:text-white',  icon: Wrench },
-  success:     { gradient: 'from-emerald-500 to-teal-600',   border: 'border-emerald-400/30', iconBg: 'bg-emerald-400/20', iconColor: 'text-emerald-100', titleColor: 'text-white',       msgColor: 'text-emerald-100', closeColor: 'text-emerald-200 hover:text-white', icon: CheckCircle },
+  info:        { gradient: 'from-blue-600 to-indigo-700',    lightBg: 'bg-blue-50',    lightBorder: 'border-blue-100',    accent: 'bg-blue-600',    label: 'Info',        icon: Info,          labelBg: 'bg-blue-100',    labelText: 'text-blue-700'    },
+  warning:     { gradient: 'from-amber-500 to-orange-600',   lightBg: 'bg-amber-50',   lightBorder: 'border-amber-100',   accent: 'bg-amber-500',   label: 'Warning',     icon: AlertTriangle, labelBg: 'bg-amber-100',   labelText: 'text-amber-700'   },
+  maintenance: { gradient: 'from-orange-600 to-red-600',     lightBg: 'bg-orange-50',  lightBorder: 'border-orange-100',  accent: 'bg-orange-600',  label: 'Maintenance', icon: Wrench,        labelBg: 'bg-orange-100',  labelText: 'text-orange-700'  },
+  success:     { gradient: 'from-emerald-500 to-teal-600',   lightBg: 'bg-emerald-50', lightBorder: 'border-emerald-100', accent: 'bg-emerald-500', label: 'Update',      icon: CheckCircle,   labelBg: 'bg-emerald-100', labelText: 'text-emerald-700' },
 };
 
 function AnnouncementBanner() {
   const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
   const [dismissed, setDismissed]         = useState<Set<number>>(new Set());
+  const [current, setCurrent]             = useState(0);
+  const [visible, setVisible]             = useState(false);
 
   useEffect(() => {
-    api.get('/announcements/active').then(r => setAnnouncements(r.data)).catch(() => {});
+    api.get('/announcements/active').then(r => {
+      if (r.data.length > 0) {
+        setAnnouncements(r.data);
+        setTimeout(() => setVisible(true), 800);
+      }
+    }).catch(() => {});
   }, []);
 
-  const visible = announcements.filter(a => !dismissed.has(a.id));
-  if (visible.length === 0) return null;
+  const active = announcements.filter(a => !dismissed.has(a.id));
+
+  const dismiss = (id: number) => {
+    setVisible(false);
+    setTimeout(() => {
+      setDismissed(d => new Set([...d, id]));
+      const remaining = active.filter(a => a.id !== id);
+      if (remaining.length > 0) {
+        setCurrent(0);
+        setTimeout(() => setVisible(true), 300);
+      }
+    }, 300);
+  };
+
+  const next = () => {
+    setVisible(false);
+    setTimeout(() => { setCurrent(i => (i + 1) % active.length); setVisible(true); }, 250);
+  };
+
+  if (active.length === 0) return null;
+  const a = active[Math.min(current, active.length - 1)];
+  if (!a) return null;
+  const cfg = POPUP_CONFIG[a.type] || POPUP_CONFIG.info;
+  const Icon = cfg.icon;
 
   return (
-    <div className="space-y-2 px-4 pt-3">
-      {visible.map(a => {
-        const s = BANNER_STYLES[a.type] || BANNER_STYLES.info;
-        const Icon = s.icon;
-        return (
-          <div key={a.id} className={`relative flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gradient-to-r ${s.gradient} border ${s.border} shadow-lg overflow-hidden`}>
-            {/* Subtle dot pattern */}
-            <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
-            {/* Icon */}
-            <div className={`relative w-8 h-8 ${s.iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-              <Icon size={16} className={s.iconColor} />
+    <div className="fixed bottom-6 right-6 z-50 pointer-events-none" style={{ maxWidth: 360 }}>
+      <div
+        className="pointer-events-auto"
+        style={{
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.96)',
+          opacity: visible ? 1 : 0,
+          transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
+        }}
+      >
+        <div className="bg-white rounded-2xl shadow-2xl shadow-black/15 border border-slate-100 overflow-hidden w-[340px]">
+
+          {/* Gradient header */}
+          <div className={`relative bg-gradient-to-br ${cfg.gradient} px-5 py-5 overflow-hidden`}>
+            <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+            <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-2xl" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                  <Icon size={20} className="text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="bg-white/20 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">{cfg.label}</span>
+                    {active.length > 1 && (
+                      <span className="bg-white/15 text-white/80 text-[10px] font-bold px-2 py-0.5 rounded-full">{current + 1}/{active.length}</span>
+                    )}
+                  </div>
+                  <h3 className="text-white font-black text-sm leading-tight">{a.title}</h3>
+                </div>
+              </div>
+              <button onClick={() => dismiss(a.id)} className="flex-shrink-0 w-7 h-7 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition">
+                <X size={13} className="text-white" />
+              </button>
             </div>
-            {/* Text */}
-            <div className="relative flex-1 min-w-0">
-              <span className={`text-xs font-black ${s.titleColor}`}>{a.title}</span>
-              <span className={`text-xs ${s.msgColor} opacity-90 ml-1.5`}>— {a.message}</span>
-            </div>
-            {/* Dismiss */}
-            <button
-              onClick={() => setDismissed(d => new Set([...d, a.id]))}
-              className={`relative flex-shrink-0 p-1 rounded-lg ${s.closeColor} transition`}
-            >
-              <X size={14} />
-            </button>
           </div>
-        );
-      })}
+
+          {/* Body */}
+          <div className="px-5 py-4">
+            <p className="text-sm text-slate-600 leading-relaxed">{a.message}</p>
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 pb-4 flex items-center justify-between gap-3">
+            <p className="text-[11px] text-slate-400 font-medium">From AByte Support</p>
+            <div className="flex items-center gap-2">
+              {active.length > 1 && (
+                <button onClick={next} className={`text-xs font-bold px-3 py-1.5 ${cfg.labelBg} ${cfg.labelText} rounded-lg hover:opacity-80 transition`}>
+                  Next →
+                </button>
+              )}
+              <button onClick={() => dismiss(a.id)} className="text-xs font-bold px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition">
+                Got it
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }
