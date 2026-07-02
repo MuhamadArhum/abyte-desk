@@ -336,6 +336,26 @@ async function runStartupMigrations() {
   } catch (e) {
     logger.warn('[Migration] Startup migration skipped', { error: e.message });
   }
+
+  // Ensure support_tickets table exists in master DB
+  try {
+    await queryDb(MASTER_DB, `CREATE TABLE IF NOT EXISTS support_tickets (
+      ticket_id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_id INT NOT NULL,
+      subject VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      status ENUM('open','in_progress','resolved','closed') DEFAULT 'open',
+      priority ENUM('low','medium','high','urgent') DEFAULT 'medium',
+      admin_notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      resolved_at TIMESTAMP NULL,
+      FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
+    )`);
+    logger.info('[Migration] support_tickets table ensured in master DB');
+  } catch (e) {
+    logger.warn('[Migration] support_tickets table check skipped', { error: e.message });
+  }
 }
 
 // ── Start Server ─────────────────────────────────────────────
