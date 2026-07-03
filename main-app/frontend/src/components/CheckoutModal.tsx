@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck, FileText } from 'lucide-react';
+import { X, CreditCard, Banknote, Smartphone, Check, Loader2, Printer, Tag, Star, BookOpen, Percent, CloudUpload, Truck, FileText, MessageCircle, Send, CheckCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './Toast';
@@ -62,6 +62,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   // Sync to tax dept
   const [syncLoading, setSyncLoading] = useState(false);
   const [synced, setSynced] = useState(false);
+
+  // WhatsApp state
+  const [waEnabled, setWaEnabled] = useState(false);
+  const [waSending, setWaSending] = useState(false);
+  const [waSent, setWaSent] = useState(false);
+  const [waPhone, setWaPhone] = useState('');
+  const [showWaInput, setShowWaInput] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -132,6 +139,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     } catch (error) {
       console.error('Failed to fetch settings', error);
     }
+    try {
+      const waRes = await api.get('/whatsapp/settings');
+      setWaEnabled(waRes.data.whatsapp_enabled);
+    } catch {}
   };
 
   const fetchLoyaltyInfo = async (customerId: number) => {
@@ -282,6 +293,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           setSynced(false);
         }
         setSuccessSale(completedSale);
+        if (selectedCustomer?.phone || selectedCustomer?.customer_phone) {
+          setWaPhone(selectedCustomer.phone || selectedCustomer.customer_phone || '');
+        }
+        setWaSent(false);
+        setShowWaInput(false);
         if (settings?.auto_print_receipt) setTimeout(() => doPrint(completedSale), 300);
         // KOT for dine-in/takeaway completed orders
         const ot = pendingSale?.order_type;
@@ -343,6 +359,11 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           setSynced(false);
         }
         setSuccessSale(newSale);
+        if (selectedCustomer?.phone || selectedCustomer?.customer_phone) {
+          setWaPhone(selectedCustomer.phone || selectedCustomer.customer_phone || '');
+        }
+        setWaSent(false);
+        setShowWaInput(false);
         if (settings?.auto_print_receipt) setTimeout(() => doPrint(newSale), 300);
 
         clearCart();
@@ -453,6 +474,19 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     }
   };
 
+  const handleSendWhatsApp = async () => {
+    if (!waPhone.trim()) return;
+    setWaSending(true);
+    try {
+      await api.post('/whatsapp/send-invoice', { sale_id: successSale.sale_id, phone: waPhone });
+      setWaSent(true);
+      setShowWaInput(false);
+      toast.success('Invoice sent via WhatsApp!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'WhatsApp send failed');
+    } finally { setWaSending(false); }
+  };
+
   if (!isOpen) return null;
 
   if (successSale) {
@@ -546,6 +580,37 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
               {syncLoading ? <Loader2 size={16} className="animate-spin" /> : <CloudUpload size={16} />}
               {synced ? 'Synced!' : 'Sync FBR'}
             </button>
+            {waEnabled && (
+              <>
+                {showWaInput ? (
+                  <div className="w-full flex gap-2 mt-1">
+                    <input
+                      type="tel"
+                      value={waPhone}
+                      onChange={e => setWaPhone(e.target.value)}
+                      placeholder="03001234567"
+                      className="flex-1 px-3 py-2 border-2 border-green-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500"
+                      onKeyDown={e => e.key === 'Enter' && handleSendWhatsApp()}
+                      autoFocus
+                    />
+                    <button onClick={handleSendWhatsApp} disabled={waSending || !waPhone.trim()}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition disabled:opacity-50 text-sm">
+                      {waSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      Send
+                    </button>
+                    <button onClick={() => setShowWaInput(false)} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowWaInput(true)}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 font-bold rounded-xl transition-colors border ${waSent ? 'bg-green-50 text-green-700 border-green-200' : 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200'}`}>
+                    {waSent ? <CheckCircle size={16} /> : <MessageCircle size={16} />}
+                    {waSent ? 'Sent!' : 'WhatsApp'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -100,6 +100,8 @@ const supportTicketRoutes   = require('./routes/supportTicketRoutes');
 const announcementRoutes    = require('./routes/announcementRoutes');
 const loyaltyRoutes         = require('./routes/loyaltyRoutes');
 const couponRoutes          = require('./routes/couponRoutes');
+const whatsappRoutes        = require('./routes/whatsappRoutes');
+const fbrRoutes             = require('./routes/fbrRoutes');
 
 // --- Module Guard (plan-based access) ---
 const { requireModule } = require('./middleware/moduleGuard');
@@ -267,6 +269,8 @@ app.use('/api/support-tickets',     supportTicketRoutes);
 app.use('/api/announcements',       announcementRoutes);
 app.use('/api/loyalty',             loyaltyRoutes);
 app.use('/api/coupons',             couponRoutes);
+app.use('/api/whatsapp',            whatsappRoutes);
+app.use('/api/fbr',                 fbrRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
