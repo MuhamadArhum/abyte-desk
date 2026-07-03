@@ -41,7 +41,8 @@ step 1 "Pulling latest code from Git..."
 cd "$ROOT_DIR"
 
 BEFORE=$(git rev-parse HEAD)
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 AFTER=$(git rev-parse HEAD)
 
 if [ "$BEFORE" = "$AFTER" ]; then
