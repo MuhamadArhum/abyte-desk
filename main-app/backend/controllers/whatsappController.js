@@ -1,404 +1,334 @@
 // =============================================================
-// whatsappController.js - WhatsApp Invoice Sending via Meta Cloud API
-// Manages WhatsApp settings, connection testing, and sending invoices
-// via WhatsApp Business API (Meta Graph API v19.0).
+// whatsappController.js - WhatsApp Invoice Sending via Green API
+// Green API is a WhatsApp gateway — no Meta Business account needed.
+// Docs: https://green-api.com/en/docs/
 // Used by: /api/whatsapp routes
 // =============================================================
 
 const https = require('https');
+const http  = require('http');
+const { URL } = require('url');
 const { query } = require('../config/database');
 const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
 
 // ----------------------------------------------------------------
-// Internal helpers
+// Schema bootstrap
 // ----------------------------------------------------------------
 
-/**
- * Ensure all WhatsApp-related columns exist in store_settings and
- * the whatsapp_logs table exists. Idempotent — safe to call on every request.
- */
 let _schemaDone = false;
 async function ensureWhatsAppSchema() {
   if (_schemaDone) return;
   _schemaDone = true;
+
   const alters = [
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled TINYINT(1) DEFAULT 0`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_phone_number_id VARCHAR(100) NULL`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_access_token TEXT NULL`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_template_name VARCHAR(100) NULL`,
+    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled     TINYINT(1)   DEFAULT 0`,
+    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_api_url     VARCHAR(255) NULL`,
+    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_id_instance VARCHAR(100) NULL`,
+    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS whatsapp_api_token   TEXT         NULL`,
   ];
   for (const sql of alters) {
     try { await query(sql); } catch (e) {
-      if (!e.message?.includes('Duplicate column') && !e.message?.includes('already exists')) {
-        logger.warn('[whatsappController] schema alter warning:', e.message);
-      }
+      if (!e.message?.includes('Duplicate column') && !e.message?.includes('already exists'))
+        logger.warn('[whatsapp] schema alter warning:', e.message);
     }
   }
 
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS whatsapp_logs (
-        log_id     INT PRIMARY KEY AUTO_INCREMENT,
-        sale_id    INT NULL,
-        phone      VARCHAR(30) NOT NULL,
-        status     ENUM('sent','failed') NOT NULL,
-        error_msg  TEXT NULL,
-        sent_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+        log_id    INT PRIMARY KEY AUTO_INCREMENT,
+        sale_id   INT NULL,
+        phone     VARCHAR(30)  NOT NULL,
+        status    ENUM('sent','failed') NOT NULL,
+        error_msg TEXT NULL,
+        sent_at   DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
   } catch (e) {
-    logger.warn('[whatsappController] whatsapp_logs table warning:', e.message);
+    logger.warn('[whatsapp] whatsapp_logs table warning:', e.message);
   }
 }
 
-/**
- * Normalise a phone number to Pakistani international format (no + prefix).
- * Rules:
- *   - Strip all non-digit characters
- *   - Starts with 0  → replace leading 0 with 92
- *   - Starts with 92 → keep as-is
- *   - Otherwise      → prepend 92
- */
-function normalisePhone(raw) {
+// ----------------------------------------------------------------
+// Helpers
+// ----------------------------------------------------------------
+
+// Pakistani number → "923001234567@c.us" format for Green API
+function toGreenChatId(raw) {
   const digits = String(raw || '').replace(/\D/g, '');
   if (!digits) return '';
-  if (digits.startsWith('0'))  return '92' + digits.slice(1);
-  if (digits.startsWith('92')) return digits;
-  return '92' + digits;
+  let normalized;
+  if (digits.startsWith('0'))   normalized = '92' + digits.slice(1);
+  else if (digits.startsWith('92')) normalized = digits;
+  else normalized = '92' + digits;
+  return normalized + '@c.us';
 }
 
-/**
- * Generic HTTPS request helper (returns { statusCode, body }).
- * body is parsed as JSON when possible, otherwise returned as string.
- */
-function httpsRequest(options, postData = null) {
+// Generic HTTP/HTTPS request helper
+function makeRequest(urlStr, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
+    const parsed  = new URL(urlStr);
+    const lib     = parsed.protocol === 'https:' ? https : http;
+    const reqOpts = {
+      hostname: parsed.hostname,
+      port:     parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+      path:     parsed.pathname + parsed.search,
+      method:   options.method || 'GET',
+      headers:  options.headers || {},
+    };
+
+    const req = lib.request(reqOpts, (res) => {
       let raw = '';
-      res.on('data', (chunk) => { raw += chunk; });
+      res.on('data', chunk => { raw += chunk; });
       res.on('end', () => {
         let body;
         try { body = JSON.parse(raw); } catch { body = raw; }
         resolve({ statusCode: res.statusCode, body });
       });
     });
+
     req.on('error', reject);
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timed out after 15 s')); });
-    if (postData) req.write(postData);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timed out')); });
+    if (options.body) req.write(options.body);
     req.end();
   });
 }
 
-// ----------------------------------------------------------------
-// Controller functions
-// ----------------------------------------------------------------
+// Build the Green API base URL: https://{apiUrl}/waInstance{idInstance}
+function greenBase(apiUrl, idInstance) {
+  const base = apiUrl.replace(/\/$/, '');
+  return `${base}/waInstance${idInstance}`;
+}
 
-/**
- * GET /api/whatsapp/settings
- * Returns WhatsApp settings from store_settings (access token masked).
- */
+// ----------------------------------------------------------------
+// Controller: GET /api/whatsapp/settings
+// ----------------------------------------------------------------
 exports.getSettings = async (req, res) => {
   try {
     await ensureWhatsAppSchema();
 
     const rows = await query(
-      `SELECT whatsapp_enabled, whatsapp_phone_number_id,
-              whatsapp_access_token, whatsapp_template_name
-       FROM store_settings WHERE setting_id = 1`
+      `SELECT whatsapp_enabled, whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token
+         FROM store_settings WHERE setting_id = 1`
     );
 
     if (!rows.length) {
-      return res.json({
-        whatsapp_enabled: false,
-        whatsapp_phone_number_id: '',
-        whatsapp_access_token: '',
-        whatsapp_template_name: '',
-      });
+      return res.json({ whatsapp_enabled: false, whatsapp_api_url: '', whatsapp_id_instance: '', whatsapp_api_token: '' });
     }
 
     const row = rows[0];
 
-    // Mask access token: show first 3 and last 3 chars with *** in the middle
+    // Mask token
     let maskedToken = '';
-    if (row.whatsapp_access_token) {
-      const t = row.whatsapp_access_token;
-      if (t.length > 6) {
-        maskedToken = t.slice(0, 3) + '***...' + t.slice(-3);
-      } else {
-        maskedToken = '***';
-      }
+    if (row.whatsapp_api_token) {
+      const t = row.whatsapp_api_token;
+      maskedToken = t.length > 8 ? t.slice(0, 4) + '***...' + t.slice(-4) : '***';
     }
 
     res.json({
-      whatsapp_enabled:        !!row.whatsapp_enabled,
-      whatsapp_phone_number_id: row.whatsapp_phone_number_id || '',
-      whatsapp_access_token:    maskedToken,
-      whatsapp_template_name:   row.whatsapp_template_name || '',
+      whatsapp_enabled:      !!row.whatsapp_enabled,
+      whatsapp_api_url:      row.whatsapp_api_url      || '',
+      whatsapp_id_instance:  row.whatsapp_id_instance  || '',
+      whatsapp_api_token:    maskedToken,
     });
   } catch (err) {
-    logger.error('[whatsappController] getSettings error:', err);
+    logger.error('[whatsapp] getSettings error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * PUT /api/whatsapp/settings
- * Saves WhatsApp settings. Skips access_token update if the value is a masked placeholder.
- */
+// ----------------------------------------------------------------
+// Controller: PUT /api/whatsapp/settings
+// ----------------------------------------------------------------
 exports.saveSettings = async (req, res) => {
   try {
     await ensureWhatsAppSchema();
 
-    const {
-      whatsapp_enabled,
-      whatsapp_phone_number_id,
-      whatsapp_access_token,
-      whatsapp_template_name,
-    } = req.body;
+    const { whatsapp_enabled, whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token } = req.body;
 
-    // Always update the non-sensitive fields
     await query(
       `UPDATE store_settings
-          SET whatsapp_enabled = ?,
-              whatsapp_phone_number_id = ?,
-              whatsapp_template_name = ?
+          SET whatsapp_enabled    = ?,
+              whatsapp_api_url    = ?,
+              whatsapp_id_instance= ?
         WHERE setting_id = 1`,
-      [
-        whatsapp_enabled ? 1 : 0,
-        whatsapp_phone_number_id || null,
-        whatsapp_template_name || null,
-      ]
+      [whatsapp_enabled ? 1 : 0, whatsapp_api_url || null, whatsapp_id_instance || null]
     );
 
-    // Only update access token if a real (non-masked) value was supplied
-    if (whatsapp_access_token && !whatsapp_access_token.includes('***')) {
+    // Only update token if a real (non-masked) value was supplied
+    if (whatsapp_api_token && !whatsapp_api_token.includes('***')) {
       await query(
-        `UPDATE store_settings SET whatsapp_access_token = ? WHERE setting_id = 1`,
-        [whatsapp_access_token]
+        `UPDATE store_settings SET whatsapp_api_token = ? WHERE setting_id = 1`,
+        [whatsapp_api_token]
       );
     }
 
-    await logAction(
-      req.user.user_id, req.user.name,
-      'WHATSAPP_SETTINGS_UPDATED', 'store_settings', 1,
-      { whatsapp_enabled, whatsapp_phone_number_id, whatsapp_template_name },
-      req.ip
-    );
+    await logAction(req.user.user_id, req.user.name, 'WHATSAPP_SETTINGS_UPDATED', 'store_settings', 1,
+      { whatsapp_enabled, whatsapp_api_url, whatsapp_id_instance }, req.ip);
 
     res.json({ message: 'WhatsApp settings saved successfully' });
   } catch (err) {
-    logger.error('[whatsappController] saveSettings error:', err);
+    logger.error('[whatsapp] saveSettings error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-/**
- * POST /api/whatsapp/test
- * Verifies the stored phone number ID and access token against Meta Graph API.
- * Returns { ok, phone_number, verified_name } or { ok: false, message }.
- */
+// ----------------------------------------------------------------
+// Controller: POST /api/whatsapp/test
+// Calls Green API getStateInstance to verify credentials
+// ----------------------------------------------------------------
 exports.testConnection = async (req, res) => {
   try {
     await ensureWhatsAppSchema();
 
     const rows = await query(
-      `SELECT whatsapp_phone_number_id, whatsapp_access_token
+      `SELECT whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token
          FROM store_settings WHERE setting_id = 1`
     );
 
-    if (!rows.length || !rows[0].whatsapp_phone_number_id || !rows[0].whatsapp_access_token) {
-      return res.status(400).json({ ok: false, message: 'WhatsApp phone number ID and access token are required. Save settings first.' });
+    if (!rows.length || !rows[0].whatsapp_api_url || !rows[0].whatsapp_id_instance || !rows[0].whatsapp_api_token) {
+      return res.status(400).json({ ok: false, message: 'API URL, Instance ID and Token are required. Save settings first.' });
     }
 
-    const { whatsapp_phone_number_id: phoneNumberId, whatsapp_access_token: accessToken } = rows[0];
+    const { whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token } = rows[0];
 
-    const options = {
-      hostname: 'graph.facebook.com',
-      port: 443,
-      path: `/v19.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name&access_token=${encodeURIComponent(accessToken)}`,
-      method: 'GET',
-    };
+    const url = `${greenBase(whatsapp_api_url, whatsapp_id_instance)}/getStateInstance/${whatsapp_api_token}`;
+    const { statusCode, body } = await makeRequest(url);
 
-    const { statusCode, body } = await httpsRequest(options);
-
-    if (statusCode === 200 && body && body.display_phone_number) {
-      return res.json({
-        ok: true,
-        phone_number: body.display_phone_number,
-        verified_name: body.verified_name || '',
-      });
+    if (statusCode === 200 && body?.stateInstance) {
+      const state = body.stateInstance;
+      if (state === 'authorized') {
+        return res.json({ ok: true, message: `Connected! Instance ${whatsapp_id_instance} is authorized and ready.` });
+      }
+      return res.status(400).json({ ok: false, message: `Instance state: ${state}. Please authorize the instance on Green API dashboard.` });
     }
 
-    const errMsg = body?.error?.message || 'Unknown error from Meta API';
-    logger.warn('[whatsappController] testConnection Meta API error:', body);
-    res.status(400).json({ ok: false, message: errMsg });
+    logger.warn('[whatsapp] testConnection response:', body);
+    res.status(400).json({ ok: false, message: body?.message || `HTTP ${statusCode} — check your credentials` });
   } catch (err) {
-    logger.error('[whatsappController] testConnection error:', err);
+    logger.error('[whatsapp] testConnection error:', err);
     res.status(500).json({ ok: false, message: err.message || 'Connection test failed' });
   }
 };
 
-/**
- * POST /api/whatsapp/send-invoice
- * Body: { sale_id, phone }
- * Fetches sale data, builds a WhatsApp template message, sends it via Meta Cloud API,
- * and logs the result in whatsapp_logs.
- */
+// ----------------------------------------------------------------
+// Controller: POST /api/whatsapp/send-invoice
+// Body: { sale_id, phone }
+// ----------------------------------------------------------------
 exports.sendInvoice = async (req, res) => {
   try {
     await ensureWhatsAppSchema();
 
     const { sale_id, phone } = req.body;
-
     if (!sale_id) return res.status(400).json({ message: 'sale_id is required' });
     if (!phone)   return res.status(400).json({ message: 'phone is required' });
 
-    // --- 1. Fetch WhatsApp settings ---
+    // 1. Load WhatsApp settings
     const settingsRows = await query(
-      `SELECT whatsapp_enabled, whatsapp_phone_number_id,
-              whatsapp_access_token, whatsapp_template_name
+      `SELECT whatsapp_enabled, whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token, store_name, currency_symbol
          FROM store_settings WHERE setting_id = 1`
     );
+    if (!settingsRows.length) return res.status(500).json({ message: 'Store settings not found' });
 
-    if (!settingsRows.length) {
-      return res.status(500).json({ message: 'Store settings not found' });
+    const cfg = settingsRows[0];
+    if (!cfg.whatsapp_enabled) return res.status(400).json({ message: 'WhatsApp is not enabled. Enable it in Settings → WhatsApp & FBR.' });
+    if (!cfg.whatsapp_api_url || !cfg.whatsapp_id_instance || !cfg.whatsapp_api_token) {
+      return res.status(400).json({ message: 'WhatsApp is not fully configured. Set API URL, Instance ID and Token in Settings.' });
     }
 
-    const settings = settingsRows[0];
-
-    if (!settings.whatsapp_enabled) {
-      return res.status(400).json({ message: 'WhatsApp is not enabled. Enable it in Settings.' });
-    }
-    if (!settings.whatsapp_phone_number_id || !settings.whatsapp_access_token || !settings.whatsapp_template_name) {
-      return res.status(400).json({ message: 'WhatsApp is not fully configured. Set phone number ID, access token, and template name.' });
-    }
-
-    // --- 2. Fetch store name (for template parameters) ---
-    let storeName = 'AByte POS';
-    try {
-      const storeRows = await query(`SELECT store_name FROM store_settings WHERE setting_id = 1`);
-      if (storeRows.length) storeName = storeRows[0].store_name || storeName;
-    } catch {}
-
-    // --- 3. Fetch sale ---
+    // 2. Fetch sale
     const saleRows = await query(
       `SELECT s.*, u.name AS cashier_name
-         FROM sales s
-         LEFT JOIN users u ON s.user_id = u.user_id
-        WHERE s.sale_id = ?`,
-      [sale_id]
+         FROM sales s LEFT JOIN users u ON s.user_id = u.user_id
+        WHERE s.sale_id = ?`, [sale_id]
     );
-
-    if (!saleRows.length) {
-      return res.status(404).json({ message: `Sale #${sale_id} not found` });
-    }
+    if (!saleRows.length) return res.status(404).json({ message: `Sale #${sale_id} not found` });
     const sale = saleRows[0];
 
-    // --- 4. Fetch sale items ---
-    const saleItems = await query(
-      `SELECT sd.*, p.product_name
-         FROM sale_details sd
-         LEFT JOIN products p ON sd.product_id = p.product_id
-        WHERE sd.sale_id = ?`,
-      [sale_id]
+    // 3. Fetch sale items
+    const items = await query(
+      `SELECT sd.quantity, sd.unit_price, COALESCE(p.product_name, sd.product_name, 'Item') AS product_name
+         FROM sale_details sd LEFT JOIN products p ON sd.product_id = p.product_id
+        WHERE sd.sale_id = ?`, [sale_id]
     );
 
-    // --- 5. Build template parameters ---
-    const invoiceNo  = sale.invoice_number || String(sale_id);
-    const total      = parseFloat(sale.total_amount || 0).toFixed(2);
-    const saleDate   = sale.created_at
-      ? new Date(sale.created_at).toLocaleDateString('en-PK')
+    // 4. Build message text
+    const currency   = cfg.currency_symbol || 'Rs.';
+    const storeName  = cfg.store_name || 'AByte POS';
+    const invoiceNo  = sale.invoice_no || String(sale_id);
+    const total      = parseFloat(sale.total_amount || 0).toFixed(0);
+    const saleDate   = sale.sale_date
+      ? new Date(sale.sale_date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
       : new Date().toLocaleDateString('en-PK');
-    const itemCount  = String(saleItems.length);
 
-    // --- 6. Normalise phone number ---
-    const normalisedPhone = normalisePhone(phone);
-    if (!normalisedPhone) {
-      return res.status(400).json({ message: 'Invalid phone number' });
-    }
+    const itemLines = items.map(i =>
+      `  • ${i.product_name} x${i.quantity} — ${currency}${parseFloat(i.unit_price || 0).toFixed(0)}`
+    ).join('\n');
 
-    // --- 7. Build Meta Cloud API payload ---
-    const payload = JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: normalisedPhone,
-      type: 'template',
-      template: {
-        name: settings.whatsapp_template_name,
-        language: { code: 'en' },
-        components: [
-          {
-            type: 'body',
-            parameters: [
-              { type: 'text', text: storeName   },
-              { type: 'text', text: invoiceNo   },
-              { type: 'text', text: total        },
-              { type: 'text', text: saleDate     },
-              { type: 'text', text: itemCount    },
-            ],
-          },
-        ],
-      },
-    });
+    const message = [
+      `🧾 *Invoice from ${storeName}*`,
+      ``,
+      `Invoice #: *${invoiceNo}*`,
+      `Date: ${saleDate}`,
+      ``,
+      `*Items:*`,
+      itemLines || '  (no items)',
+      ``,
+      `*Total: ${currency}${total}*`,
+      ``,
+      `Thank you for your business! 🙏`,
+    ].join('\n');
 
-    // --- 8. POST to Meta Graph API ---
-    const postOptions = {
-      hostname: 'graph.facebook.com',
-      port: 443,
-      path: `/v19.0/${encodeURIComponent(settings.whatsapp_phone_number_id)}/messages`,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${settings.whatsapp_access_token}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(payload),
-      },
-    };
+    // 5. Normalize phone to Green API chatId format
+    const chatId = toGreenChatId(phone);
+    if (!chatId) return res.status(400).json({ message: 'Invalid phone number' });
+
+    // 6. POST to Green API sendMessage
+    const url     = `${greenBase(cfg.whatsapp_api_url, cfg.whatsapp_id_instance)}/sendMessage/${cfg.whatsapp_api_token}`;
+    const payload = JSON.stringify({ chatId, message });
 
     let sendStatus = 'failed';
     let errorMsg   = null;
-    let apiResponse;
 
     try {
-      const { statusCode, body } = await httpsRequest(postOptions, payload);
-      apiResponse = body;
+      const { statusCode, body } = await makeRequest(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        body: payload,
+      });
 
-      if (statusCode >= 200 && statusCode < 300 && body?.messages?.length) {
+      if (statusCode === 200 && body?.idMessage) {
         sendStatus = 'sent';
       } else {
-        errorMsg = (body?.error?.message) || `HTTP ${statusCode}`;
-        logger.warn('[whatsappController] sendInvoice Meta API error:', body);
+        errorMsg = body?.message || body?.error || `HTTP ${statusCode}`;
+        logger.warn('[whatsapp] sendInvoice Green API error:', body);
       }
     } catch (apiErr) {
       errorMsg = apiErr.message;
-      logger.error('[whatsappController] sendInvoice API call failed:', apiErr);
+      logger.error('[whatsapp] sendInvoice API call failed:', apiErr);
     }
 
-    // --- 9. Log to whatsapp_logs ---
+    // 7. Log result
     try {
       await query(
-        `INSERT INTO whatsapp_logs (sale_id, phone, status, error_msg, sent_at)
-         VALUES (?, ?, ?, ?, NOW())`,
-        [sale_id, normalisedPhone, sendStatus, errorMsg]
+        `INSERT INTO whatsapp_logs (sale_id, phone, status, error_msg, sent_at) VALUES (?, ?, ?, ?, NOW())`,
+        [sale_id, chatId, sendStatus, errorMsg]
       );
     } catch (logErr) {
-      logger.warn('[whatsappController] Failed to insert whatsapp_logs:', logErr.message);
+      logger.warn('[whatsapp] Failed to insert log:', logErr.message);
     }
 
-    // --- 10. Audit log ---
-    await logAction(
-      req.user.user_id, req.user.name,
-      'WHATSAPP_INVOICE_SENT', 'sales', sale_id,
-      { phone: normalisedPhone, status: sendStatus, invoice_no: invoiceNo },
-      req.ip
-    );
+    await logAction(req.user.user_id, req.user.name, 'WHATSAPP_INVOICE_SENT', 'sales', sale_id,
+      { phone: chatId, status: sendStatus, invoice_no: invoiceNo }, req.ip);
 
     if (sendStatus === 'sent') {
-      return res.json({ ok: true, message: `WhatsApp invoice sent to ${normalisedPhone}` });
+      return res.json({ ok: true, message: `Invoice sent via WhatsApp to ${phone}` });
     }
 
     res.status(502).json({ ok: false, message: errorMsg || 'Failed to send WhatsApp message' });
   } catch (err) {
-    logger.error('[whatsappController] sendInvoice error:', err);
+    logger.error('[whatsapp] sendInvoice error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

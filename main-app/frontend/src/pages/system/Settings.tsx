@@ -164,7 +164,7 @@ const Settings = () => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // WhatsApp state
-  const [waSettings, setWaSettings] = useState({ whatsapp_enabled: false, whatsapp_phone_number_id: '', whatsapp_access_token: '', whatsapp_template_name: 'invoice_notification' });
+  const [waSettings, setWaSettings] = useState({ whatsapp_enabled: false, whatsapp_api_url: '', whatsapp_id_instance: '', whatsapp_api_token: '' });
   const [waSaving, setWaSaving] = useState(false);
   const [waTesting, setWaTesting] = useState(false);
   const [waTestResult, setWaTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -1765,22 +1765,22 @@ const Settings = () => {
 
                 <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number ID <span className="text-red-500">*</span></label>
-                    <input type="text" value={waSettings.whatsapp_phone_number_id} onChange={e => setWaSettings(p => ({ ...p, whatsapp_phone_number_id: e.target.value }))}
-                      placeholder="e.g. 123456789012345" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                    <p className="text-xs text-gray-400 mt-1">From Meta Business Manager → WhatsApp → Phone Numbers</p>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">API URL <span className="text-red-500">*</span></label>
+                    <input type="text" value={waSettings.whatsapp_api_url} onChange={e => setWaSettings(p => ({ ...p, whatsapp_api_url: e.target.value }))}
+                      placeholder="https://7107.api.greenapi.com" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">apiUrl from your Green API instance dashboard</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Access Token (Permanent) <span className="text-red-500">*</span></label>
-                    <input type="password" value={waSettings.whatsapp_access_token} onChange={e => setWaSettings(p => ({ ...p, whatsapp_access_token: e.target.value }))}
-                      placeholder="EAAxxxxxxxxxxxxxxxx" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                    <p className="text-xs text-gray-400 mt-1">Generate a permanent token from Meta Business Manager</p>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Instance ID <span className="text-red-500">*</span></label>
+                    <input type="text" value={waSettings.whatsapp_id_instance} onChange={e => setWaSettings(p => ({ ...p, whatsapp_id_instance: e.target.value }))}
+                      placeholder="e.g. 7107607411" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">idInstance from Green API dashboard</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Message Template Name <span className="text-red-500">*</span></label>
-                    <input type="text" value={waSettings.whatsapp_template_name} onChange={e => setWaSettings(p => ({ ...p, whatsapp_template_name: e.target.value }))}
-                      placeholder="invoice_notification" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                    <p className="text-xs text-gray-400 mt-1">Approved template name. Must have 5 body variables: store_name, invoice_no, total, date, item_count</p>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">API Token <span className="text-red-500">*</span></label>
+                    <input type="password" value={waSettings.whatsapp_api_token} onChange={e => setWaSettings(p => ({ ...p, whatsapp_api_token: e.target.value }))}
+                      placeholder="apiTokenInstance" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">apiTokenInstance from Green API dashboard</p>
                   </div>
                 </div>
 
@@ -1792,7 +1792,7 @@ const Settings = () => {
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={handleTestWa} disabled={waTesting || !waSettings.whatsapp_phone_number_id || !waSettings.whatsapp_access_token}
+                  <button onClick={handleTestWa} disabled={waTesting || !waSettings.whatsapp_api_url || !waSettings.whatsapp_id_instance}
                     className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition disabled:opacity-50">
                     {waTesting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
                     Test Connection
