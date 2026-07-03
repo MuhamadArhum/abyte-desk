@@ -9,6 +9,8 @@ router.use(requirePermission('system.backup'));
 
 router.post('/', backupController.createBackup);
 router.get('/', backupController.listBackups);
+router.get('/schedule', backupController.getSchedule);
+router.put('/schedule', backupController.saveSchedule);
 router.post('/restore', validateBackupFilename, handleValidation, backupController.restoreBackup);
 router.get('/download/:filename', backupController.downloadBackup);
 router.delete('/:filename', backupController.deleteBackup);

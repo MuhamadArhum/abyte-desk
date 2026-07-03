@@ -306,30 +306,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-// ── Scheduled Backup (daily at 2:00 AM) ─────────────────────
-const cron = require('node-cron');
-cron.schedule('0 2 * * *', async () => {
-  try {
-    logger.info('[Backup] Running scheduled daily backup...');
-    const backupService = require('./services/backupService');
-    const result = await backupService.createBackup(null, 'scheduled');
-    logger.info('[Backup] Scheduled backup completed', { filename: result.filename });
-
-    // Send email notification if configured
-    try {
-      const emailService = require('./services/emailService');
-      if (emailService.isConfigured() && process.env.BACKUP_NOTIFY_EMAIL) {
-        await emailService.sendBackupNotification({
-          to: process.env.BACKUP_NOTIFY_EMAIL,
-          filename: result.filename,
-          status: 'completed',
-        });
-      }
-    } catch {}
-  } catch (err) {
-    logger.error('[Backup] Scheduled backup failed', { error: err.message });
-  }
-});
+// ── Scheduled Backup (dynamic — time set by Admin in Settings) ──
+const { rescheduleBackup } = require('./services/backupScheduler');
 
 // ── Startup Migration: run numbered migrations on all tenant DBs ──
 const { queryDb } = require('./config/database');
@@ -387,4 +365,19 @@ app.listen(PORT, async () => {
   cron.schedule('0 * * * *', () => {
     cleanExpired().catch(() => {});
   });
+
+  // Load backup schedule from DB and start cron
+  try {
+    const { query: q } = require('./config/database');
+    await q(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_enabled TINYINT(1) DEFAULT 1`).catch(() => {});
+    await q(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_time VARCHAR(5) DEFAULT '02:00'`).catch(() => {});
+    const rows = await q(`SELECT backup_schedule_enabled, backup_schedule_time FROM store_settings WHERE setting_id = 1`).catch(() => []);
+    const enabled = rows.length ? !!rows[0].backup_schedule_enabled : true;
+    const timeStr = (rows.length && rows[0].backup_schedule_time) ? rows[0].backup_schedule_time : '02:00';
+    const [hh, mm] = timeStr.split(':').map(Number);
+    rescheduleBackup(enabled, hh || 2, mm || 0);
+  } catch (e) {
+    logger.warn('[Backup] Could not load schedule from DB, using default 02:00', { error: e.message });
+    rescheduleBackup(true, 2, 0);
+  }
 });

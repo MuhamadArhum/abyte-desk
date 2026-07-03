@@ -125,3 +125,56 @@ exports.deleteBackup = async (req, res) => {
     res.status(500).json({ message: error.message || 'Failed to delete backup' });
   }
 };
+
+// GET /api/backup/schedule — return current backup schedule
+exports.getSchedule = async (req, res) => {
+  try {
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_enabled TINYINT(1) DEFAULT 1`).catch(() => {});
+    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_time VARCHAR(5) DEFAULT '02:00'`).catch(() => {});
+
+    const rows = await query(`SELECT backup_schedule_enabled, backup_schedule_time FROM store_settings WHERE setting_id = 1`);
+    if (!rows.length) return res.json({ backup_schedule_enabled: true, backup_schedule_time: '02:00' });
+
+    res.json({
+      backup_schedule_enabled: !!rows[0].backup_schedule_enabled,
+      backup_schedule_time:    rows[0].backup_schedule_time || '02:00',
+    });
+  } catch (err) {
+    logger.error('getSchedule error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/backup/schedule — save and apply new backup schedule
+exports.saveSchedule = async (req, res) => {
+  try {
+    const { backup_schedule_enabled, backup_schedule_time } = req.body;
+
+    // Validate time format HH:MM
+    if (!backup_schedule_time || !/^\d{2}:\d{2}$/.test(backup_schedule_time)) {
+      return res.status(400).json({ message: 'Invalid time format. Use HH:MM (e.g. 02:00)' });
+    }
+
+    const [hh, mm] = backup_schedule_time.split(':').map(Number);
+    if (hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+      return res.status(400).json({ message: 'Invalid time. Hours 0-23, Minutes 0-59' });
+    }
+
+    await query(
+      `UPDATE store_settings SET backup_schedule_enabled = ?, backup_schedule_time = ? WHERE setting_id = 1`,
+      [backup_schedule_enabled ? 1 : 0, backup_schedule_time]
+    );
+
+    // Reschedule the cron job dynamically
+    const { rescheduleBackup } = require('../services/backupScheduler');
+    rescheduleBackup(backup_schedule_enabled, hh, mm);
+
+    await logAction(req.user.user_id, req.user.name, 'BACKUP_SCHEDULE_UPDATED', 'store_settings', 1,
+      { backup_schedule_enabled, backup_schedule_time }, req.ip);
+
+    res.json({ message: `Backup schedule updated — daily at ${backup_schedule_time}` });
+  } catch (err) {
+    logger.error('saveSchedule error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

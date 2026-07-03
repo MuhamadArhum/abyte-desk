@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive } from 'lucide-react';
+import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive, Save } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -51,6 +51,11 @@ const Backup = () => {
   // All backups for summary (from current page data we can estimate)
   const [allStats, setAllStats] = useState({ totalSize: 0, completedCount: 0, failedCount: 0 });
 
+  // Schedule state
+  const [schedule, setSchedule] = useState({ backup_schedule_enabled: true, backup_schedule_time: '02:00' });
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleMsg, setScheduleMsg] = useState({ type: '', text: '' });
+
   const fetchBackups = useCallback(async () => {
     setLoading(true);
     try {
@@ -80,7 +85,21 @@ const Backup = () => {
 
   useEffect(() => {
     fetchBackups();
+    api.get('/backup/schedule').then(r => setSchedule(r.data)).catch(() => {});
   }, [fetchBackups]);
+
+  const handleSaveSchedule = async () => {
+    setScheduleSaving(true);
+    setScheduleMsg({ type: '', text: '' });
+    try {
+      const res = await api.put('/backup/schedule', schedule);
+      setScheduleMsg({ type: 'success', text: res.data.message });
+    } catch (err: any) {
+      setScheduleMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save schedule' });
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
 
   const handleCreate = async () => {
     setCreating(true);
@@ -160,6 +179,65 @@ const Backup = () => {
           <button onClick={() => setMessage({ type: '', text: '' })} className="ml-auto text-sm opacity-60 hover:opacity-100">Dismiss</button>
         </div>
       )}
+
+      {/* Backup Schedule */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
+            <Clock size={18} className="text-blue-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Automatic Backup Schedule</h2>
+            <p className="text-xs text-gray-500">Set the time for daily automatic backup</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4">
+          {/* Enable toggle */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={schedule.backup_schedule_enabled}
+                onChange={e => setSchedule(p => ({ ...p, backup_schedule_enabled: e.target.checked }))}
+                className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+            <span className="text-sm font-medium text-gray-700">
+              {schedule.backup_schedule_enabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+
+          {/* Time picker */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Backup Time (24-hour)</label>
+            <input
+              type="time"
+              value={schedule.backup_schedule_time}
+              onChange={e => setSchedule(p => ({ ...p, backup_schedule_time: e.target.value }))}
+              disabled={!schedule.backup_schedule_enabled}
+              className="px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-lg font-mono disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          <button onClick={handleSaveSchedule} disabled={scheduleSaving}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
+            {scheduleSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Save Schedule
+          </button>
+        </div>
+
+        {scheduleMsg.text && (
+          <div className={`mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium ${scheduleMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            {scheduleMsg.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
+            {scheduleMsg.text}
+          </div>
+        )}
+
+        {schedule.backup_schedule_enabled && (
+          <p className="mt-3 text-xs text-gray-400">
+            Next backup will run today / tomorrow at <strong>{schedule.backup_schedule_time}</strong>
+          </p>
+        )}
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
