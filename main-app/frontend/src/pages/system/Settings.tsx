@@ -41,10 +41,6 @@ import {
   ImageOff,
   MessageCircle,
   FileCheck,
-  AlertCircle,
-  CheckCircle2,
-  Send,
-  Database,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
