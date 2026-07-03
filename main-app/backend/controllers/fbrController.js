@@ -161,7 +161,7 @@ function buildFbrPayload(sale, items, posid, ntn) {
     : new Date().toISOString().replace('T', ' ').substring(0, 19);
 
   return {
-    InvoiceNumber:    sale.invoice_number || String(sale.sale_id),
+    InvoiceNumber:    sale.invoice_no || String(sale.sale_id),
     POSID:            Number(posid),
     DateTime:         saleDate,
     BuyerNTN:         '',

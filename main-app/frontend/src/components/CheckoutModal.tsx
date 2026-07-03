@@ -87,6 +87,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setCreditDueDate('');
       setPendingItems([]);
       setPendingTaxRate(0);
+      setWaPhone('');
+      setWaSent(false);
+      setShowWaInput(false);
       // For cart sales, initialize charges from CartContext immediately
       if (!pendingSale || pendingSale.isCartEdit) {
         setPendingAdditionalRate(additionalRate);
@@ -325,7 +328,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
           payment_method: paymentMethodStr,
           amount_paid: finalAmountPaid,
           user_id: user?.user_id,
-          status: paymentMethod === 'credit' ? 'completed' : 'completed',
+          status: 'completed',
           tax_percent: pendingTaxRate,
           additional_charges_percent: pendingAdditionalRate,
           note: noteStr,
@@ -465,10 +468,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
   const handleSyncTax = async (saleId: number) => {
     setSyncLoading(true);
     try {
-      await api.post(`/sales/${saleId}/sync-tax`);
+      await api.post(`/fbr/post-invoice`, { sale_id: saleId });
+      await api.post(`/sales/${saleId}/sync-tax`).catch(() => {});
       setSynced(true);
+      toast.success('Invoice posted to FBR successfully');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Sync failed');
+      toast.error(err.response?.data?.message || 'FBR sync failed');
     } finally {
       setSyncLoading(false);
     }
@@ -483,6 +488,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
       setShowWaInput(false);
       toast.success('Invoice sent via WhatsApp!');
     } catch (err: any) {
+      setWaSent(false);
       toast.error(err.response?.data?.message || 'WhatsApp send failed');
     } finally { setWaSending(false); }
   };
