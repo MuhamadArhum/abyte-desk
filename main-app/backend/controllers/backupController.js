@@ -18,6 +18,13 @@ exports.createBackup = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'BACKUP_CREATED', 'backup', null,
       { filename: result.filename }, req.ip);
 
+    // Upload to Google Drive in background (don't block the response)
+    const gdriveService = require('../services/googleDriveService');
+    gdriveService.uploadBackup(result.filepath, result.filename).catch(async (driveErr) => {
+      logger.error('[GDrive] Manual backup upload failed', { error: driveErr.message });
+      await gdriveService.recordUploadFailure(result.filename, driveErr.message).catch(() => {});
+    });
+
     res.status(201).json({ message: 'Backup created successfully', filename: result.filename });
   } catch (error) {
     logger.error('Create backup error:', error);
@@ -34,7 +41,7 @@ exports.listBackups = async (req, res) => {
     const total = Number(countResult[0].total);
 
     const backups = await query(
-      'SELECT b.*, u.name as created_by_name FROM backups b JOIN users u ON b.created_by = u.user_id ORDER BY b.created_at DESC LIMIT ? OFFSET ?',
+      'SELECT b.*, COALESCE(u.name, "System") as created_by_name FROM backups b LEFT JOIN users u ON b.created_by = u.user_id ORDER BY b.created_at DESC LIMIT ? OFFSET ?',
       [parseInt(limit), offset]
     );
     const sanitized = backups.map(b => Object.fromEntries(Object.entries(b).map(([k, v]) => [k, typeof v === 'bigint' ? Number(v) : v])));
