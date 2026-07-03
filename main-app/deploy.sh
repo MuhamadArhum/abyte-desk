@@ -42,6 +42,7 @@ cd "$ROOT_DIR"
 
 BEFORE=$(git rev-parse HEAD)
 git checkout -- main-app/backend/package-lock.json 2>/dev/null || true
+git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
 git pull origin main
 AFTER=$(git rev-parse HEAD)
 
