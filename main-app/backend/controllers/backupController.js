@@ -145,6 +145,67 @@ exports.getSchedule = async (req, res) => {
   }
 };
 
+// GET /api/backup/drive-settings
+exports.getDriveSettings = async (req, res) => {
+  try {
+    const gdriveService = require('../services/googleDriveService');
+    const settings = await gdriveService.getSettings();
+    // Mask the JSON so private key isn't sent to frontend — just indicate if set
+    const hasJson = !!(settings.gdrive_service_account_json && settings.gdrive_service_account_json.trim());
+    res.json({ ...settings, gdrive_service_account_json: hasJson ? '__SET__' : '' });
+  } catch (err) {
+    logger.error('getDriveSettings error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/backup/drive-settings
+exports.saveDriveSettings = async (req, res) => {
+  try {
+    const { gdrive_enabled, gdrive_folder_id, gdrive_service_account_json } = req.body;
+    const gdriveService = require('../services/googleDriveService');
+
+    // If frontend sends '__SET__' it means "don't change the existing JSON"
+    const currentSettings = await gdriveService.getSettings();
+    const jsonToSave = gdrive_service_account_json === '__SET__'
+      ? currentSettings.gdrive_service_account_json
+      : gdrive_service_account_json;
+
+    await gdriveService.saveSettings({ gdrive_enabled, gdrive_folder_id, gdrive_service_account_json: jsonToSave });
+
+    await logAction(req.user.user_id, req.user.name, 'GDRIVE_SETTINGS_UPDATED', 'store_settings', 1,
+      { gdrive_enabled, gdrive_folder_id }, req.ip);
+
+    res.json({ message: 'Google Drive settings saved' });
+  } catch (err) {
+    logger.error('saveDriveSettings error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+// POST /api/backup/test-drive
+exports.testDriveConnection = async (req, res) => {
+  try {
+    const { gdrive_service_account_json, gdrive_folder_id } = req.body;
+    if (!gdrive_service_account_json || !gdrive_folder_id) {
+      return res.status(400).json({ message: 'Service account JSON and folder ID are required' });
+    }
+
+    const gdriveService = require('../services/googleDriveService');
+    let jsonToTest = gdrive_service_account_json;
+    if (gdrive_service_account_json === '__SET__') {
+      const s = await gdriveService.getSettings();
+      jsonToTest = s.gdrive_service_account_json;
+    }
+
+    const result = await gdriveService.testConnection(jsonToTest, gdrive_folder_id);
+    res.json({ message: `Connected! Folder: "${result.folder_name}"`, folder_name: result.folder_name });
+  } catch (err) {
+    logger.error('testDriveConnection error:', err);
+    res.status(400).json({ message: `Connection failed: ${err.message}` });
+  }
+};
+
 // PUT /api/backup/schedule — save and apply new backup schedule
 exports.saveSchedule = async (req, res) => {
   try {

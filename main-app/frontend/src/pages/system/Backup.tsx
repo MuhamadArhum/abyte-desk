@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
-import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive, Save } from 'lucide-react';
+import { Database, Download, Trash2, Upload, Loader2, AlertTriangle, Check, HardDrive, Clock, Shield, FileArchive, Save, Cloud, Wifi } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -56,6 +56,24 @@ const Backup = () => {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleMsg, setScheduleMsg] = useState({ type: '', text: '' });
 
+  // Google Drive state
+  interface DriveSettings {
+    gdrive_enabled: boolean;
+    gdrive_folder_id: string;
+    gdrive_service_account_json: string;
+    gdrive_last_upload_at: string | null;
+    gdrive_last_upload_file: string | null;
+    gdrive_last_upload_status: string | null;
+  }
+  const [drive, setDrive] = useState<DriveSettings>({
+    gdrive_enabled: false, gdrive_folder_id: '', gdrive_service_account_json: '',
+    gdrive_last_upload_at: null, gdrive_last_upload_file: null, gdrive_last_upload_status: null,
+  });
+  const [driveJsonInput, setDriveJsonInput] = useState('');
+  const [driveSaving, setDriveSaving] = useState(false);
+  const [driveTesting, setDriveTesting] = useState(false);
+  const [driveMsg, setDriveMsg] = useState({ type: '', text: '' });
+
   const fetchBackups = useCallback(async () => {
     setLoading(true);
     try {
@@ -86,6 +104,10 @@ const Backup = () => {
   useEffect(() => {
     fetchBackups();
     api.get('/backup/schedule').then(r => setSchedule(r.data)).catch(() => {});
+    api.get('/backup/drive-settings').then(r => {
+      setDrive(r.data);
+      // Don't pre-fill the JSON textarea — user must paste again to change
+    }).catch(() => {});
   }, [fetchBackups]);
 
   const handleSaveSchedule = async () => {
@@ -98,6 +120,45 @@ const Backup = () => {
       setScheduleMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save schedule' });
     } finally {
       setScheduleSaving(false);
+    }
+  };
+
+  const handleSaveDrive = async () => {
+    setDriveSaving(true);
+    setDriveMsg({ type: '', text: '' });
+    try {
+      // If user left JSON blank, send '__SET__' to preserve existing value
+      const jsonPayload = driveJsonInput.trim() || '__SET__';
+      await api.put('/backup/drive-settings', {
+        gdrive_enabled: drive.gdrive_enabled,
+        gdrive_folder_id: drive.gdrive_folder_id,
+        gdrive_service_account_json: jsonPayload,
+      });
+      setDriveMsg({ type: 'success', text: 'Google Drive settings saved' });
+      if (driveJsonInput.trim()) setDriveJsonInput('');
+      // Refresh to get updated last-upload info
+      api.get('/backup/drive-settings').then(r => setDrive(r.data)).catch(() => {});
+    } catch (err: any) {
+      setDriveMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save' });
+    } finally {
+      setDriveSaving(false);
+    }
+  };
+
+  const handleTestDrive = async () => {
+    setDriveTesting(true);
+    setDriveMsg({ type: '', text: '' });
+    try {
+      const jsonPayload = driveJsonInput.trim() || '__SET__';
+      const res = await api.post('/backup/test-drive', {
+        gdrive_service_account_json: jsonPayload,
+        gdrive_folder_id: drive.gdrive_folder_id,
+      });
+      setDriveMsg({ type: 'success', text: res.data.message });
+    } catch (err: any) {
+      setDriveMsg({ type: 'error', text: err.response?.data?.message || 'Connection failed' });
+    } finally {
+      setDriveTesting(false);
     }
   };
 
@@ -236,6 +297,101 @@ const Backup = () => {
           <p className="mt-3 text-xs text-gray-400">
             Next backup will run today / tomorrow at <strong>{schedule.backup_schedule_time}</strong>
           </p>
+        )}
+      </div>
+
+      {/* Google Drive Settings */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center">
+            <Cloud size={18} className="text-indigo-600" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-800">Google Drive Auto-Upload</h2>
+            <p className="text-xs text-gray-500">Automatically upload each daily backup to Google Drive</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {/* Enable toggle */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={drive.gdrive_enabled}
+                onChange={e => setDrive(p => ({ ...p, gdrive_enabled: e.target.checked }))}
+                className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+            <span className="text-sm font-medium text-gray-700">
+              {drive.gdrive_enabled ? 'Upload Enabled' : 'Upload Disabled'}
+            </span>
+          </div>
+
+          {/* Folder ID */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Google Drive Folder ID</label>
+            <input
+              type="text"
+              value={drive.gdrive_folder_id}
+              onChange={e => setDrive(p => ({ ...p, gdrive_folder_id: e.target.value }))}
+              placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74O..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono"
+            />
+            <p className="text-xs text-gray-400 mt-1">Copy from Google Drive folder URL</p>
+          </div>
+        </div>
+
+        {/* Service Account JSON */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">
+            Service Account JSON
+            {drive.gdrive_service_account_json === '__SET__' && (
+              <span className="ml-2 text-emerald-600 font-medium">✓ Already configured — paste new JSON to replace</span>
+            )}
+          </label>
+          <textarea
+            value={driveJsonInput}
+            onChange={e => setDriveJsonInput(e.target.value)}
+            rows={5}
+            placeholder={'{\n  "type": "service_account",\n  "project_id": "...",\n  "private_key": "...",\n  ...\n}'}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            From Google Cloud Console → IAM → Service Accounts → Keys → Add Key → JSON.
+            Share the Drive folder with the service account email.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button onClick={handleTestDrive} disabled={driveTesting || !drive.gdrive_folder_id}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition disabled:opacity-50 text-sm">
+            {driveTesting ? <Loader2 size={15} className="animate-spin" /> : <Wifi size={15} />}
+            Test Connection
+          </button>
+          <button onClick={handleSaveDrive} disabled={driveSaving}
+            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition disabled:opacity-50 text-sm">
+            {driveSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            Save Drive Settings
+          </button>
+        </div>
+
+        {driveMsg.text && (
+          <div className={`mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium ${driveMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            {driveMsg.type === 'success' ? <Check size={16} /> : <AlertTriangle size={16} />}
+            {driveMsg.text}
+          </div>
+        )}
+
+        {/* Last upload status */}
+        {drive.gdrive_last_upload_at && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-6 text-xs text-gray-500">
+            <span><strong>Last upload:</strong> {new Date(drive.gdrive_last_upload_at).toLocaleString()}</span>
+            {drive.gdrive_last_upload_file && <span><strong>File:</strong> {drive.gdrive_last_upload_file}</span>}
+            {drive.gdrive_last_upload_status && (
+              <span className={drive.gdrive_last_upload_status === 'success' ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold'}>
+                {drive.gdrive_last_upload_status}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

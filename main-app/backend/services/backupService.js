@@ -1,8 +1,10 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const { query } = require('../config/database');
+const { query, queryDb } = require('../config/database');
 const logger = require('../config/logger');
+
+const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
 const BACKUP_DIR = path.join(__dirname, '..', 'backups');
 
@@ -45,31 +47,46 @@ function runCommand(executable, args, options = {}) {
   });
 }
 
+async function getAllDatabaseNames() {
+  try {
+    const tenants = await queryDb(MASTER_DB, 'SELECT db_name FROM tenants WHERE is_active = 1');
+    const tenantDbs = tenants.map(t => t.db_name).filter(Boolean);
+    // Master DB first, then all tenant DBs (deduplicated)
+    const all = [MASTER_DB, ...tenantDbs];
+    return [...new Set(all)];
+  } catch (err) {
+    logger.warn('[Backup] Could not fetch tenant DB list, falling back to single DB', { error: err.message });
+    return [process.env.DB_NAME || 'abyte_pos'];
+  }
+}
+
 async function createBackup(userId, type = 'manual') {
-  const filename = `abyte_pos_backup_${getTimestamp()}.sql`;
+  const filename = `abyte_all_backup_${getTimestamp()}.sql`;
   const filepath = path.join(BACKUP_DIR, filename);
 
   const dbHost = process.env.DB_HOST || 'localhost';
   const dbPort = process.env.DB_PORT || '3306';
   const dbUser = process.env.DB_USER || 'root';
   const dbPass = process.env.DB_PASSWORD || '';
-  const dbName = process.env.DB_NAME || 'abyte_pos';
 
-  // Build args array — no shell expansion, each arg is passed literally
-  const buildArgs = (extraFlags = []) => [
+  const allDbs = await getAllDatabaseNames();
+  logger.info('[Backup] Dumping databases', { dbs: allDbs });
+
+  // Use --databases flag so mysqldump includes CREATE DATABASE + USE statements
+  const buildArgs = (dbs) => [
     `-h${dbHost}`,
     `-P${dbPort}`,
     `-u${dbUser}`,
     ...(dbPass ? [`-p${dbPass}`] : []),
-    ...extraFlags,
-    dbName,
+    '--databases',
+    ...dbs,
   ];
 
   const dumpPath = process.env.MARIADB_DUMP_PATH || 'mariadb-dump';
 
   const runDump = (executable) =>
     new Promise((resolve, reject) => {
-      const args = buildArgs();
+      const args = buildArgs(allDbs);
       const proc = spawn(executable, args, { shell: false });
       const out = fs.createWriteStream(filepath);
       proc.stdout.pipe(out);

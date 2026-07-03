@@ -28,6 +28,21 @@ function rescheduleBackup(enabled, hour, minute) {
       const result = await backupService.createBackup(null, 'scheduled');
       logger.info('[Backup] Scheduled backup completed', { filename: result.filename });
 
+      // Upload to Google Drive if configured
+      try {
+        const gdriveService = require('./googleDriveService');
+        const fileId = await gdriveService.uploadBackup(result.filepath, result.filename);
+        if (fileId) {
+          logger.info('[GDrive] Backup uploaded to Google Drive', { fileId, filename: result.filename });
+        }
+      } catch (driveErr) {
+        logger.error('[GDrive] Drive upload failed', { error: driveErr.message });
+        try {
+          const gdriveService = require('./googleDriveService');
+          await gdriveService.recordUploadFailure(result.filename, driveErr.message);
+        } catch (_e) { /* silent */ }
+      }
+
       try {
         if (emailService.isConfigured() && process.env.BACKUP_NOTIFY_EMAIL) {
           await emailService.sendBackupNotification({

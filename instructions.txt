@@ -9,4 +9,3 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
-# CI/CD Active Thu Jul  2 21:51:55 PST 2026
