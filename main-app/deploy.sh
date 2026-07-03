@@ -41,9 +41,8 @@ step 1 "Pulling latest code from Git..."
 cd "$ROOT_DIR"
 
 BEFORE=$(git rev-parse HEAD)
-git checkout -- main-app/backend/package-lock.json 2>/dev/null || true
-git checkout -- main-app/frontend/package-lock.json 2>/dev/null || true
-git pull origin main
+git fetch origin main
+git reset --hard origin/main
 AFTER=$(git rev-parse HEAD)
 
 if [ "$BEFORE" = "$AFTER" ]; then
