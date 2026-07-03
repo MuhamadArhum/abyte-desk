@@ -451,7 +451,7 @@ const Settings = () => {
     try {
       const res = await api.get('/whatsapp/settings');
       setWaSettings(res.data);
-    } catch {}
+    } catch (_e) { /* silent — settings may not exist yet */ }
   };
 
   const handleSaveWaSettings = async () => {
@@ -478,7 +478,7 @@ const Settings = () => {
     try {
       const res = await api.get('/fbr/settings');
       setFbrSettings(res.data);
-    } catch {}
+    } catch (_e) { /* silent — settings may not exist yet */ }
   };
 
   const handleSaveFbrSettings = async () => {
@@ -506,7 +506,7 @@ const Settings = () => {
     try {
       const res = await api.get('/fbr/logs');
       setFbrLogs(res.data.data || []);
-    } catch {} finally { setFbrLogsLoading(false); }
+    } catch (_e) { /* silent */ } finally { setFbrLogsLoading(false); }
   };
 
   const handleRetryFailed = async () => {
