@@ -4,7 +4,7 @@
 #  Usage: cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 # ═══════════════════════════════════════════════════════════════
 
-set -e
+set -eo pipefail
 
 # ── Colors ────────────────────────────────────────────────────
 RED='\033[0;31m';  GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -36,7 +36,7 @@ echo -e "${YELLOW}${BOLD}║      Abyte ERP — Admin Panel Deploy      ║${NC}
 echo -e "${YELLOW}${BOLD}║      $(date '+%Y-%m-%d  %H:%M:%S')                 ║${NC}"
 echo -e "${YELLOW}${BOLD}╚══════════════════════════════════════════╝${NC}"
 
-# ── Step 1: Git Pull ──────────────────────────────────────────
+# ── Step 1: Git Update ────────────────────────────────────────
 step 1 "Pulling latest code from Git..."
 cd "$ROOT_DIR"
 
@@ -57,17 +57,17 @@ fi
 step 2 "Installing backend dependencies..."
 cd "$BACKEND_DIR"
 
-npm install --omit=dev --silent 2>&1 | tail -1 || fail "npm install failed"
+npm install --omit=dev || fail "Backend npm install failed"
 ok "Backend packages ready"
 
 # ── Step 3: Build Frontend ────────────────────────────────────
 step 3 "Building frontend (React + Vite)..."
 cd "$FRONTEND_DIR"
 
-npm install --silent 2>&1 | tail -1 || fail "Frontend npm install failed"
+npm install || fail "Frontend npm install failed"
 
 BUILD_START=$(date +%s)
-npm run build 2>&1 | tail -3
+npm run build || fail "Frontend build failed"
 BUILD_END=$(date +%s)
 BUILD_TIME=$(( BUILD_END - BUILD_START ))
 
@@ -81,10 +81,10 @@ info "Bundle size: $DIST_SIZE"
 step 4 "Restarting backend via PM2..."
 cd "$PROJECT_DIR"
 
-pm2 startOrRestart ecosystem.config.js --env production --silent
-pm2 save --force --silent
+pm2 startOrRestart ecosystem.config.js --env production || fail "PM2 restart failed"
+pm2 save --force
 
-sleep 2
+sleep 3
 
 ok "PM2 process restarted"
 
@@ -107,7 +107,7 @@ if echo "$STATUS" | grep -q "online"; then
   PM2_MEM=$(echo $STATUS | cut -d'|' -f3)
   ok "Process online — PID: $PM2_PID | Memory: $PM2_MEM"
 else
-  echo -e "      ${YELLOW}⚠ Could not verify process status${NC}"
+  echo -e "      ${YELLOW}⚠ PM2 status: $STATUS — check: pm2 logs $PM2_APP${NC}"
 fi
 
 # ── Done ──────────────────────────────────────────────────────
