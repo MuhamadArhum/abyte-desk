@@ -71,7 +71,12 @@ exports.create = async (req, res) => {
 // PUT /api/tickets/:id
 exports.update = async (req, res) => {
   try {
+    const { id } = req.params;
     const { status, priority, admin_notes } = req.body;
+
+    const existing = await query('SELECT ticket_id FROM support_tickets WHERE ticket_id = ?', [id]);
+    if (existing.length === 0) return res.status(404).json({ message: 'Ticket not found' });
+
     const fields = [];
     const params = [];
 
@@ -90,7 +95,7 @@ exports.update = async (req, res) => {
 
     if (fields.length === 0) return res.status(400).json({ message: 'Nothing to update' });
 
-    params.push(req.params.id);
+    params.push(id);
     await query(`UPDATE support_tickets SET ${fields.join(', ')} WHERE ticket_id = ?`, params);
 
     res.json({ message: 'Ticket updated' });

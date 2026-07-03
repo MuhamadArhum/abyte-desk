@@ -227,6 +227,37 @@ exports.update = async (req, res) => {
   }
 };
 
+// POST /api/tenants/:id/renew — extend subscription by N months
+exports.renew = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const months = Math.max(1, Math.min(24, parseInt(req.body.months) || 1));
+
+    const tenants = await query('SELECT * FROM tenants WHERE tenant_id = ?', [id]);
+    if (tenants.length === 0) return res.status(404).json({ message: 'Client not found' });
+
+    const t = tenants[0];
+    // Extend from current end date if it's still in the future, otherwise from today
+    const base = (t.subscription_ends_at && new Date(t.subscription_ends_at) > new Date())
+      ? new Date(t.subscription_ends_at)
+      : new Date();
+    base.setMonth(base.getMonth() + months);
+    const newEndsAt = base.toISOString().split('T')[0];
+
+    await query(
+      `UPDATE tenants SET is_active = 1, subscription_status = 'active', subscription_ends_at = ? WHERE tenant_id = ?`,
+      [newEndsAt, id]
+    );
+
+    logAction(req.admin?.admin_id, 'RENEW_SUBSCRIPTION', 'tenant', Number(id), null, { months, ends_at: newEndsAt }, req.ip);
+
+    res.json({ message: 'Subscription renewed', ends_at: newEndsAt, months });
+  } catch (err) {
+    logger.error('Renew subscription error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // POST /api/tenants/:id/reset-password
 exports.resetPassword = async (req, res) => {
   try {

@@ -19,6 +19,7 @@ router.get('/:id/details',        tenantController.getDetails);
 router.post('/',                  tenantController.create);
 router.put('/:id',                tenantController.update);
 router.post('/:id/reset-password',     tenantController.resetPassword);
+router.post('/:id/renew',              tenantController.renew);
 router.get('/:id/branches',            tenantController.getBranches);
 router.post('/:id/branches',           tenantController.createBranch);
 router.put('/:id/branches/:branchId',  tenantController.updateBranch);

@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useAuthStore from '../store/authStore';
 
-const BASE_URL = 'https://erp.abytesol.com/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://erp.abytesol.com/api';
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 15000 });
 

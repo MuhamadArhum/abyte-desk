@@ -49,6 +49,7 @@ export default function OrderScreen() {
   const [sending, setSending] = useState(false);
   const [cartVisible, setCartVisible] = useState(false);
   const [payModalVisible, setPayModalVisible] = useState(false);
+  const [selectedPayMethod, setSelectedPayMethod] = useState('cash');
   const [receiptModalData, setReceiptModalData] = useState(null);
   const [note, setNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,14 +71,15 @@ export default function OrderScreen() {
 
   const taxPercent = React.useMemo(() => {
     if (!settings) return 0;
-    const cashRate   = parseFloat(settings.tax_on_cash   || settings.tax_rate || 0);
-    const onlineRate = parseFloat(settings.tax_on_online || settings.tax_rate || 0);
-    if (settings.pos_mode === 'category' && settings.pos_tax_config) {
-      const cat = settings.pos_tax_config[getCatKey(orderType)] || {};
+    const s = settings;
+    if (s.pos_mode === 'category' && s.pos_tax_config) {
+      const cat = s.pos_tax_config[getCatKey(orderType)] || {};
       if (!cat.tax_enabled) return 0;
     }
-    return cashRate;
-  }, [settings, orderType]);
+    if (selectedPayMethod === 'card')   return parseFloat(s.tax_on_card   || s.tax_rate || 0);
+    if (selectedPayMethod === 'online') return parseFloat(s.tax_on_online || s.tax_rate || 0);
+    return parseFloat(s.tax_on_cash || s.tax_rate || 0);
+  }, [settings, orderType, selectedPayMethod]);
 
   const additionalPercent = React.useMemo(() => {
     if (!settings?.pos_tax_config) return 0;
@@ -574,6 +576,7 @@ export default function OrderScreen() {
                   style={[styles.payCard, { backgroundColor: pm.bg, borderColor: pm.border }]}
                   onPress={() => {
                     haptic();
+                    setSelectedPayMethod(pm.value);
                     setPayModalVisible(false);
                     setReceiptModalData(buildOrderReceiptData(pm.value));
                   }}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -79,6 +79,7 @@ export default function Clients() {
   const [moduleTarget, setModuleTarget] = useState<ModuleTarget | null>(null);
   const [search, setSearch]       = useState('');
   const [toggling, setToggling]   = useState<number | null>(null);
+  const [renewing, setRenewing]   = useState<number | null>(null);
 
   // Bulk selection
   const [selected, setSelected]   = useState<Set<number>>(new Set());
@@ -90,6 +91,18 @@ export default function Clients() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const renewSubscription = async (id: number, name: string) => {
+    setRenewing(id);
+    try {
+      const r = await api.post(`/tenants/${id}/renew`, { months: 1 });
+      toast('success', `${name} renewed until ${r.data.ends_at}`);
+      await load();
+    } catch {
+      toast('error', 'Failed to renew subscription');
+    }
+    setRenewing(null);
+  };
 
   const toggleStatus = async (id: number, current: number) => {
     setToggling(id);
@@ -373,6 +386,17 @@ export default function Clients() {
                               className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
                             >
                               <Package size={15} />
+                            </button>
+                            <button
+                              onClick={() => renewSubscription(c.tenant_id, c.company_name || c.tenant_name)}
+                              disabled={renewing === c.tenant_id}
+                              title="Renew Subscription (+1 month)"
+                              className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition disabled:opacity-40"
+                            >
+                              {renewing === c.tenant_id
+                                ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
+                                : <RotateCcw size={15} />
+                              }
                             </button>
                             <button
                               onClick={() => toggleStatus(c.tenant_id, c.is_active)}

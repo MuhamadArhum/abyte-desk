@@ -16,16 +16,23 @@ const parsePagination = (q) => {
   return { page, limit, offset };
 };
 
-// Generate delivery number: DL-01, DL-02 … (global sequential)
-async function generateDeliveryNumber() {
-  const rows = await query(
-    `SELECT delivery_number FROM deliveries WHERE delivery_number LIKE 'DL-%' ORDER BY delivery_id DESC LIMIT 1`
-  );
-  let seq = 1;
-  if (rows.length > 0) {
-    seq = (parseInt(rows[0].delivery_number.replace('DL-', '')) || 0) + 1;
+// Generate delivery number: DL-01, DL-02 … (global sequential, named-lock protected)
+async function generateDeliveryNumber(conn) {
+  const lockKey = 'delivery_number_lock';
+  const [lockRow] = await conn.query('SELECT GET_LOCK(?, 10) as locked', [lockKey]);
+  if (!lockRow.locked) throw new Error('Could not acquire delivery number lock');
+  try {
+    const rows = await conn.query(
+      `SELECT delivery_number FROM deliveries WHERE delivery_number LIKE 'DL-%' ORDER BY delivery_id DESC LIMIT 1`
+    );
+    let seq = 1;
+    if (rows.length > 0) {
+      seq = (parseInt(rows[0].delivery_number.replace('DL-', '')) || 0) + 1;
+    }
+    return `DL-${String(seq).padStart(2, '0')}`;
+  } finally {
+    await conn.query('SELECT RELEASE_LOCK(?)', [lockKey]);
   }
-  return `DL-${String(seq).padStart(2, '0')}`;
 }
 
 // GET /api/deliveries/stats
@@ -205,7 +212,7 @@ exports.create = async (req, res) => {
     if (!customer_id)        return res.status(400).json({ message: 'Customer is required' });
     if (!delivery_address)   return res.status(400).json({ message: 'Delivery address is required' });
 
-    const delivery_number = await generateDeliveryNumber();
+    const delivery_number = await generateDeliveryNumber(conn);
     const status = (rider_name && rider_name.trim()) ? 'assigned' : 'pending';
 
     const branch_id = req.user.branch_id || null;

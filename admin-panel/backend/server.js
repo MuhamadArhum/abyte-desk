@@ -115,10 +115,20 @@ async function runMigrations() {
 // Monthly auto-invoice — 1st of every month at 9:00 AM
 async function runAutoInvoice() {
   try {
-    const now         = new Date();
+    const now          = new Date();
     const period_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // Load per-module prices from settings (mirrors tenantController.getModulePrices/priceOf)
+    const MODULE_DEFAULTS = { sales: 2250, inventory: 2250, accounts: 2999, hr: 2999 };
+    let customPrices = {};
+    try {
+      const priceRows = await query("SELECT `key`, value FROM settings WHERE `key` LIKE 'price_%'");
+      priceRows.forEach(r => { customPrices[r.key.replace('price_', '')] = Number(r.value); });
+    } catch { /* use defaults */ }
+    const priceOf = (mod) => customPrices[mod] !== undefined ? customPrices[mod] : (MODULE_DEFAULTS[mod] || 0);
+
     const tenants = await query(
-      `SELECT t.tenant_id, tc.monthly_price
+      `SELECT t.tenant_id, tc.modules_enabled
        FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
        WHERE t.is_active = 1`
     );
@@ -128,7 +138,10 @@ async function runAutoInvoice() {
     let created = 0;
     for (const t of tenants) {
       if (existingIds.has(t.tenant_id)) continue;
-      const amount = Number(t.monthly_price) || 0;
+      const modules = typeof t.modules_enabled === 'string'
+        ? JSON.parse(t.modules_enabled || '[]')
+        : (t.modules_enabled || []);
+      const amount = modules.reduce((sum, m) => sum + priceOf(m), 0);
       if (amount <= 0) continue;
       const [{ max_num }] = await query(
         `SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(invoice_number,'-',-1) AS UNSIGNED)),0) AS max_num FROM invoices WHERE invoice_number LIKE 'INV-%'`
