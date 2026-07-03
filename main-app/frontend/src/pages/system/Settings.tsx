@@ -260,8 +260,7 @@ const Settings = () => {
 
   useEffect(() => {
     if (activeTab === 'printer') checkAgentStatus();
-    if (activeTab === 'whatsapp') loadWaSettings();
-    if (activeTab === 'fbr') { loadFbrSettings(); loadFbrLogs(); }
+    if (activeTab === 'integrations') { loadWaSettings(); loadFbrSettings(); loadFbrLogs(); }
   }, [activeTab]);
 
   useEffect(() => {
@@ -538,8 +537,7 @@ const Settings = () => {
     { id: 'users',      name: 'Users',             icon: Users,       adminOnly: true },
     { id: 'printer',    name: 'Printer',           icon: Printer,     adminOnly: true },
     { id: 'security',   name: 'Security',          icon: Shield },
-    { id: 'whatsapp',   name: 'WhatsApp',          icon: MessageCircle, adminOnly: true },
-    { id: 'fbr',        name: 'FBR / Tax',         icon: FileCheck,   adminOnly: true },
+    { id: 'integrations', name: 'WhatsApp & FBR',   icon: MessageCircle, adminOnly: true },
     { id: 'system',     name: 'System',            icon: Server,      adminOnly: true },
   ];
 
@@ -1738,202 +1736,206 @@ const Settings = () => {
           )}
 
           {/* ========== WHATSAPP TAB ========== */}
-          {activeTab === 'whatsapp' && currentUser?.role_name === 'Admin' && (
-            <div className="space-y-6">
-              <h2 className="text-base font-semibold text-gray-800">WhatsApp Integration</h2>
-              <p className="text-sm text-gray-500">Send invoice receipts to customers via WhatsApp using Meta Cloud API.</p>
+          {/* ========== WHATSAPP & FBR TAB ========== */}
+          {activeTab === 'integrations' && currentUser?.role_name === 'Admin' && (
+            <div className="space-y-10">
 
-              {/* Enable toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div>
-                  <p className="font-semibold text-gray-800">Enable WhatsApp Sending</p>
-                  <p className="text-xs text-gray-500 mt-0.5">When enabled, staff can send invoices via WhatsApp after checkout</p>
+              {/* ── WhatsApp Section ── */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-green-100 rounded-xl flex items-center justify-center">
+                    <MessageCircle size={18} className="text-green-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-800">WhatsApp Integration</h2>
+                    <p className="text-xs text-gray-500">Send invoice receipts to customers via Meta Cloud API</p>
+                  </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={waSettings.whatsapp_enabled} onChange={e => setWaSettings(p => ({ ...p, whatsapp_enabled: e.target.checked }))} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number ID <span className="text-red-500">*</span></label>
-                  <input type="text" value={waSettings.whatsapp_phone_number_id} onChange={e => setWaSettings(p => ({ ...p, whatsapp_phone_number_id: e.target.value }))}
-                    placeholder="e.g. 123456789012345" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                  <p className="text-xs text-gray-400 mt-1">From Meta Business Manager → WhatsApp → Phone Numbers</p>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div>
+                    <p className="font-semibold text-gray-800">Enable WhatsApp Sending</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Staff can send invoices via WhatsApp after checkout</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={waSettings.whatsapp_enabled} onChange={e => setWaSettings(p => ({ ...p, whatsapp_enabled: e.target.checked }))} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Access Token (Permanent) <span className="text-red-500">*</span></label>
-                  <input type="password" value={waSettings.whatsapp_access_token} onChange={e => setWaSettings(p => ({ ...p, whatsapp_access_token: e.target.value }))}
-                    placeholder="EAAxxxxxxxxxxxxxxxx" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                  <p className="text-xs text-gray-400 mt-1">Generate a permanent token from Meta Business Manager</p>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone Number ID <span className="text-red-500">*</span></label>
+                    <input type="text" value={waSettings.whatsapp_phone_number_id} onChange={e => setWaSettings(p => ({ ...p, whatsapp_phone_number_id: e.target.value }))}
+                      placeholder="e.g. 123456789012345" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">From Meta Business Manager → WhatsApp → Phone Numbers</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Access Token (Permanent) <span className="text-red-500">*</span></label>
+                    <input type="password" value={waSettings.whatsapp_access_token} onChange={e => setWaSettings(p => ({ ...p, whatsapp_access_token: e.target.value }))}
+                      placeholder="EAAxxxxxxxxxxxxxxxx" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">Generate a permanent token from Meta Business Manager</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Message Template Name <span className="text-red-500">*</span></label>
+                    <input type="text" value={waSettings.whatsapp_template_name} onChange={e => setWaSettings(p => ({ ...p, whatsapp_template_name: e.target.value }))}
+                      placeholder="invoice_notification" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">Approved template name. Must have 5 body variables: store_name, invoice_no, total, date, item_count</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Message Template Name <span className="text-red-500">*</span></label>
-                  <input type="text" value={waSettings.whatsapp_template_name} onChange={e => setWaSettings(p => ({ ...p, whatsapp_template_name: e.target.value }))}
-                    placeholder="invoice_notification" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                  <p className="text-xs text-gray-400 mt-1">Approved template name from WhatsApp Business Manager. Template must have 5 body parameters: store_name, invoice_no, total, date, item_count</p>
-                </div>
-              </div>
 
-              {/* Test result */}
-              {waTestResult && (
-                <div className={`flex items-start gap-3 p-4 rounded-xl border ${waTestResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                  {waTestResult.ok ? <CheckCircle size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
-                  <p className="text-sm">{waTestResult.message}</p>
-                </div>
-              )}
+                {waTestResult && (
+                  <div className={`flex items-start gap-3 p-4 rounded-xl border ${waTestResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                    {waTestResult.ok ? <CheckCircle size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
+                    <p className="text-sm">{waTestResult.message}</p>
+                  </div>
+                )}
 
-              <div className="flex gap-3">
-                <button onClick={handleTestWa} disabled={waTesting || !waSettings.whatsapp_phone_number_id || !waSettings.whatsapp_access_token}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition disabled:opacity-50">
-                  {waTesting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-                  Test Connection
-                </button>
-                <button onClick={handleSaveWaSettings} disabled={waSaving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
-                  {waSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Save Settings
-                </button>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-amber-800 mb-2">Setup Instructions</p>
-                <ol className="text-xs text-amber-700 space-y-1 list-decimal list-inside">
-                  <li>Go to Meta Business Manager → WhatsApp → Getting Started</li>
-                  <li>Create a Message Template with 5 body variables (store_name, invoice_no, total, date, item_count)</li>
-                  <li>Get your Phone Number ID and generate a Permanent Token</li>
-                  <li>Enter credentials above and click Test Connection</li>
-                  <li>After saving, a "Send WhatsApp" button will appear on every checkout receipt</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {/* ========== FBR TAB ========== */}
-          {activeTab === 'fbr' && currentUser?.role_name === 'Admin' && (
-            <div className="space-y-6">
-              <h2 className="text-base font-semibold text-gray-800">FBR POS Integration</h2>
-              <p className="text-sm text-gray-500">Connect to Federal Board of Revenue (FBR) for TIER-1 retailer tax compliance. Each sale is reported to FBR automatically.</p>
-
-              {/* Enable toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div>
-                  <p className="font-semibold text-gray-800">Enable FBR Reporting</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Auto-report each sale to FBR after checkout</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={fbrSettings.fbr_enabled} onChange={e => setFbrSettings(p => ({ ...p, fbr_enabled: e.target.checked }))} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
-
-              {/* Mode toggle */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">API Mode</label>
                 <div className="flex gap-3">
-                  {(['sandbox', 'live'] as const).map(mode => (
-                    <button key={mode} onClick={() => setFbrSettings(p => ({ ...p, fbr_mode: mode }))}
-                      className={`px-5 py-2.5 rounded-xl font-semibold text-sm border-2 transition ${fbrSettings.fbr_mode === mode ? (mode === 'live' ? 'border-red-500 bg-red-50 text-red-700' : 'border-blue-500 bg-blue-50 text-blue-700') : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                      {mode === 'live' ? '🔴 Live (Production)' : '🔵 Sandbox (Testing)'}
-                    </button>
-                  ))}
-                </div>
-                {fbrSettings.fbr_mode === 'live' && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">Live mode reports real sales to FBR. Only enable after testing in sandbox.</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">POSID <span className="text-red-500">*</span></label>
-                  <input type="text" value={fbrSettings.fbr_posid} onChange={e => setFbrSettings(p => ({ ...p, fbr_posid: e.target.value }))}
-                    placeholder="e.g. 123456" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                  <p className="text-xs text-gray-400 mt-1">POS ID issued by FBR upon registration</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Business NTN</label>
-                  <input type="text" value={fbrSettings.fbr_ntn} onChange={e => setFbrSettings(p => ({ ...p, fbr_ntn: e.target.value }))}
-                    placeholder="e.g. 1234567-8" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                  <p className="text-xs text-gray-400 mt-1">Your NTN registered with FBR</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">FBR Username <span className="text-red-500">*</span></label>
-                  <input type="text" value={fbrSettings.fbr_username} onChange={e => setFbrSettings(p => ({ ...p, fbr_username: e.target.value }))}
-                    placeholder="FBR portal username" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">FBR Password <span className="text-red-500">*</span></label>
-                  <input type="password" value={fbrSettings.fbr_password} onChange={e => setFbrSettings(p => ({ ...p, fbr_password: e.target.value }))}
-                    placeholder="FBR portal password" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  <button onClick={handleTestWa} disabled={waTesting || !waSettings.whatsapp_phone_number_id || !waSettings.whatsapp_access_token}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition disabled:opacity-50">
+                    {waTesting ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                    Test Connection
+                  </button>
+                  <button onClick={handleSaveWaSettings} disabled={waSaving}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
+                    {waSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save WhatsApp
+                  </button>
                 </div>
               </div>
 
-              {/* Test result */}
-              {fbrTestResult && (
-                <div className={`flex items-start gap-3 p-4 rounded-xl border ${fbrTestResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                  {fbrTestResult.ok ? <CheckCircle size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
-                  <p className="text-sm">{fbrTestResult.message}</p>
-                </div>
-              )}
+              {/* ── Divider ── */}
+              <div className="border-t border-gray-200" />
 
-              <div className="flex gap-3">
-                <button onClick={handleTestFbr} disabled={fbrTesting || !fbrSettings.fbr_posid || !fbrSettings.fbr_username || !fbrSettings.fbr_password}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition disabled:opacity-50">
-                  {fbrTesting ? <Loader2 size={16} className="animate-spin" /> : <FileCheck size={16} />}
-                  Test FBR Connection
-                </button>
-                <button onClick={handleSaveFbrSettings} disabled={fbrSaving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
-                  {fbrSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Save Settings
-                </button>
-              </div>
-
-              {/* FBR Logs */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-800">Recent FBR Submissions</h3>
-                  <div className="flex gap-2">
-                    <button onClick={handleRetryFailed} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg transition">
-                      <RefreshCw size={12} /> Retry Failed
-                    </button>
-                    <button onClick={loadFbrLogs} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
-                      <RefreshCw size={12} /> Refresh
-                    </button>
+              {/* ── FBR Section ── */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <FileCheck size={18} className="text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-800">FBR POS Integration</h2>
+                    <p className="text-xs text-gray-500">TIER-1 retailer tax compliance — each sale reported to FBR automatically</p>
                   </div>
                 </div>
-                {fbrLogsLoading ? (
-                  <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
-                ) : fbrLogs.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl">No FBR submissions yet</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="border-b border-gray-200">
-                        <th className="text-left pb-2 text-gray-500 font-medium">Invoice</th>
-                        <th className="text-left pb-2 text-gray-500 font-medium">FBR Invoice #</th>
-                        <th className="text-left pb-2 text-gray-500 font-medium">Status</th>
-                        <th className="text-left pb-2 text-gray-500 font-medium">Date</th>
-                      </tr></thead>
-                      <tbody>
-                        {fbrLogs.map((log: any) => (
-                          <tr key={log.fbr_log_id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-2.5 font-medium">{log.invoice_no || `#${log.sale_id}`}</td>
-                            <td className="py-2.5 text-emerald-700 font-mono text-xs">{log.fbr_invoice_no || '—'}</td>
-                            <td className="py-2.5">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${log.fbr_status === 'sent' ? 'bg-emerald-100 text-emerald-700' : log.fbr_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                {log.fbr_status}
-                              </span>
-                            </td>
-                            <td className="py-2.5 text-gray-400 text-xs">{log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div>
+                    <p className="font-semibold text-gray-800">Enable FBR Reporting</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Auto-report each sale to FBR after checkout</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={fbrSettings.fbr_enabled} onChange={e => setFbrSettings(p => ({ ...p, fbr_enabled: e.target.checked }))} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">API Mode</label>
+                  <div className="flex gap-3">
+                    {(['sandbox', 'live'] as const).map(mode => (
+                      <button key={mode} onClick={() => setFbrSettings(p => ({ ...p, fbr_mode: mode }))}
+                        className={`px-5 py-2.5 rounded-xl font-semibold text-sm border-2 transition ${fbrSettings.fbr_mode === mode ? (mode === 'live' ? 'border-red-500 bg-red-50 text-red-700' : 'border-blue-500 bg-blue-50 text-blue-700') : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                        {mode === 'live' ? '🔴 Live (Production)' : '🔵 Sandbox (Testing)'}
+                      </button>
+                    ))}
+                  </div>
+                  {fbrSettings.fbr_mode === 'live' && (
+                    <p className="text-xs text-red-600 mt-1 font-medium">Live mode reports real sales to FBR. Only enable after testing in sandbox.</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">POSID <span className="text-red-500">*</span></label>
+                    <input type="text" value={fbrSettings.fbr_posid} onChange={e => setFbrSettings(p => ({ ...p, fbr_posid: e.target.value }))}
+                      placeholder="e.g. 123456" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">POS ID issued by FBR upon registration</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Business NTN</label>
+                    <input type="text" value={fbrSettings.fbr_ntn} onChange={e => setFbrSettings(p => ({ ...p, fbr_ntn: e.target.value }))}
+                      placeholder="e.g. 1234567-8" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                    <p className="text-xs text-gray-400 mt-1">Your NTN registered with FBR</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">FBR Username <span className="text-red-500">*</span></label>
+                    <input type="text" value={fbrSettings.fbr_username} onChange={e => setFbrSettings(p => ({ ...p, fbr_username: e.target.value }))}
+                      placeholder="FBR portal username" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">FBR Password <span className="text-red-500">*</span></label>
+                    <input type="password" value={fbrSettings.fbr_password} onChange={e => setFbrSettings(p => ({ ...p, fbr_password: e.target.value }))}
+                      placeholder="FBR portal password" className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none" />
+                  </div>
+                </div>
+
+                {fbrTestResult && (
+                  <div className={`flex items-start gap-3 p-4 rounded-xl border ${fbrTestResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                    {fbrTestResult.ok ? <CheckCircle size={18} className="mt-0.5 shrink-0" /> : <AlertTriangle size={18} className="mt-0.5 shrink-0" />}
+                    <p className="text-sm">{fbrTestResult.message}</p>
                   </div>
                 )}
+
+                <div className="flex gap-3">
+                  <button onClick={handleTestFbr} disabled={fbrTesting || !fbrSettings.fbr_posid || !fbrSettings.fbr_username || !fbrSettings.fbr_password}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded-xl border border-blue-200 transition disabled:opacity-50">
+                    {fbrTesting ? <Loader2 size={16} className="animate-spin" /> : <FileCheck size={16} />}
+                    Test FBR Connection
+                  </button>
+                  <button onClick={handleSaveFbrSettings} disabled={fbrSaving}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition disabled:opacity-50">
+                    {fbrSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save FBR
+                  </button>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800">Recent FBR Submissions</h3>
+                    <div className="flex gap-2">
+                      <button onClick={handleRetryFailed} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg transition">
+                        <RefreshCw size={12} /> Retry Failed
+                      </button>
+                      <button onClick={loadFbrLogs} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+                        <RefreshCw size={12} /> Refresh
+                      </button>
+                    </div>
+                  </div>
+                  {fbrLogsLoading ? (
+                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
+                  ) : fbrLogs.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl">No FBR submissions yet</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead><tr className="border-b border-gray-200">
+                          <th className="text-left pb-2 text-gray-500 font-medium">Invoice</th>
+                          <th className="text-left pb-2 text-gray-500 font-medium">FBR Invoice #</th>
+                          <th className="text-left pb-2 text-gray-500 font-medium">Status</th>
+                          <th className="text-left pb-2 text-gray-500 font-medium">Date</th>
+                        </tr></thead>
+                        <tbody>
+                          {fbrLogs.map((log: any) => (
+                            <tr key={log.fbr_log_id} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2.5 font-medium">{log.invoice_no || `#${log.sale_id}`}</td>
+                              <td className="py-2.5 text-emerald-700 font-mono text-xs">{log.fbr_invoice_no || '—'}</td>
+                              <td className="py-2.5">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${log.fbr_status === 'sent' ? 'bg-emerald-100 text-emerald-700' : log.fbr_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                  {log.fbr_status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 text-gray-400 text-xs">{log.created_at ? new Date(log.created_at).toLocaleDateString() : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
           )}
 
