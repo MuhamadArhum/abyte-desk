@@ -8,7 +8,7 @@ exports.getAll = async (req, res) => {
       FROM announcements a
       ORDER BY a.created_at DESC
     `);
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -60,7 +60,7 @@ exports.getViews = async (req, res) => {
       WHERE v.announcement_id = ?
       ORDER BY v.viewed_at DESC
     `, [req.params.id]);
-    res.json(rows);
+    res.json({ data: rows });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

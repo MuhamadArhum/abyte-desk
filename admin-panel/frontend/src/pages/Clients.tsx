@@ -85,9 +85,16 @@ export default function Clients() {
   const [selected, setSelected]   = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    api.get('/tenants').then(r => setClients(r.data.data)).finally(() => setLoading(false));
+    try {
+      const r = await api.get('/tenants');
+      setClients(r.data.data || []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);

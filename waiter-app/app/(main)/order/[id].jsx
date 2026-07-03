@@ -116,6 +116,11 @@ export default function OrderScreen() {
       const setRes  = results[2].status === 'fulfilled' ? results[2].value : null;
       const saleRes = results[3]?.status === 'fulfilled' ? results[3].value : null;
 
+      // If products failed to load, show an error — menu can't work without them
+      if (results[1].status === 'rejected') {
+        showToast('Failed to load menu items. Check your connection and go back to retry.', 'error');
+      }
+
       const cats  = Array.isArray(catRes?.data?.data)  ? catRes.data.data
                   : Array.isArray(catRes?.data)         ? catRes.data : [];
       const prods = Array.isArray(prodRes?.data?.data) ? prodRes.data.data
@@ -162,7 +167,8 @@ export default function OrderScreen() {
 
   useEffect(() => {
     loadData();
-    return () => clearCart();
+    // clearCart is called explicitly in handleBack, submitOrder success, and offline queue path
+    // Do NOT clear on unmount to avoid losing cart if user temporarily navigates away
   }, []);
 
   const handleBack = () => {

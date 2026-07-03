@@ -85,7 +85,7 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-interface AnnouncementItem { id: number; title: string; message: string; type: string; }
+interface AnnouncementItem { id: number; title: string; message: string; type: 'info' | 'warning' | 'maintenance' | 'success' | 'urgent'; }
 
 const POPUP_CONFIG: Record<string, {
   label: string; icon: any;

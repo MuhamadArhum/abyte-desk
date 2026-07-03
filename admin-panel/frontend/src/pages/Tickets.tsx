@@ -236,6 +236,7 @@ function TicketModal({
 export default function Tickets() {
   const { toast } = useToast();
   const [tickets, setTickets]     = useState<Ticket[]>([]);
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [tenants, setTenants]     = useState<Tenant[]>([]);
   const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState<typeof STATUS_TABS[number]>('all');
@@ -245,8 +246,15 @@ export default function Tickets() {
   const load = useCallback(() => {
     setLoading(true);
     const params = activeTab !== 'all' ? { status: activeTab } : {};
-    api.get('/tickets', { params })
-      .then(r => setTickets(r.data.data || []))
+    Promise.all([
+      api.get('/tickets', { params }),
+      activeTab !== 'all' ? api.get('/tickets') : Promise.resolve(null),
+    ])
+      .then(([filtered, all]) => {
+        setTickets(filtered.data.data || []);
+        if (all) setAllTickets(all.data.data || []);
+        else setAllTickets(filtered.data.data || []);
+      })
       .finally(() => setLoading(false));
   }, [activeTab]);
 
@@ -270,9 +278,9 @@ export default function Tickets() {
     }
   };
 
-  const openCount       = tickets.filter(t => t.status === 'open').length;
-  const inProgressCount = tickets.filter(t => t.status === 'in_progress').length;
-  const resolvedCount   = tickets.filter(t => t.status === 'resolved').length;
+  const openCount       = allTickets.filter(t => t.status === 'open').length;
+  const inProgressCount = allTickets.filter(t => t.status === 'in_progress').length;
+  const resolvedCount   = allTickets.filter(t => t.status === 'resolved').length;
 
   return (
     <div className="p-6 max-w-7xl space-y-5">

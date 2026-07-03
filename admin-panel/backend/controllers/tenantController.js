@@ -12,12 +12,20 @@ const MODULES = {
   hr:        { name: 'HR & Payroll',price: 2999 },
 };
 
+let _priceCache = null;
+let _priceCacheAt = 0;
+const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 async function getModulePrices() {
+  const now = Date.now();
+  if (_priceCache && (now - _priceCacheAt) < PRICE_CACHE_TTL) return _priceCache;
   try {
     const rows = await query("SELECT `key`, value FROM settings WHERE `key` LIKE 'price_%'");
-    if (rows.length === 0) return null;
+    if (rows.length === 0) { _priceCache = null; return null; }
     const prices = {};
     rows.forEach(r => { prices[r.key.replace('price_', '')] = Number(r.value); });
+    _priceCache = prices;
+    _priceCacheAt = now;
     return prices;
   } catch { return null; }
 }
@@ -46,9 +54,9 @@ exports.getAll = async (req, res) => {
            FROM information_schema.tables WHERE table_schema = ? GROUP BY table_schema`,
           [t.db_name]
         );
-        return { ...t, stats: { users: users?.cnt || 0, sales: sales?.cnt || 0 }, db_size_mb: dbSize?.size_mb || 0 };
+        return { ...t, stats: { users: users?.cnt || 0, sales: sales?.cnt || 0 }, db_size_mb: dbSize?.size_mb || 0, db_missing: false };
       } catch {
-        return { ...t, stats: { users: 0, sales: 0 }, db_size_mb: 0 };
+        return { ...t, stats: { users: 0, sales: 0 }, db_size_mb: 0, db_missing: true };
       }
     }));
 
@@ -193,6 +201,10 @@ exports.update = async (req, res) => {
       tenantParams.push(is_active ? 1 : 0);
     }
     if (subscription_ends_at !== undefined) {
+      if (subscription_ends_at) {
+        const d = new Date(subscription_ends_at);
+        if (isNaN(d.getTime())) return res.status(400).json({ message: 'Invalid subscription_ends_at date' });
+      }
       tenantFields.push('subscription_ends_at = ?');
       tenantParams.push(subscription_ends_at || null);
     }

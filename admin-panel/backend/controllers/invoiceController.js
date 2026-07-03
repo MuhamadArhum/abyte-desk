@@ -99,12 +99,21 @@ exports.create = async (req, res) => {
 // POST /api/invoices/auto-generate  — generate for all active tenants for current month
 exports.autoGenerate = async (req, res) => {
   try {
-    const now        = new Date();
+    const now          = new Date();
     const period_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // Load per-module prices (mirrors tenantController pattern)
+    const MODULE_DEFAULTS = { sales: 2250, inventory: 2250, accounts: 2999, hr: 2999 };
+    let customPrices = {};
+    try {
+      const priceRows = await query("SELECT `key`, value FROM settings WHERE `key` LIKE 'price_%'");
+      priceRows.forEach(r => { customPrices[r.key.replace('price_', '')] = Number(r.value); });
+    } catch { /* use defaults */ }
+    const priceOf = (mod) => customPrices[mod] !== undefined ? customPrices[mod] : (MODULE_DEFAULTS[mod] || 0);
 
     const tenants = await query(
       `SELECT t.tenant_id, COALESCE(tc.company_name, t.tenant_name) AS tenant_name,
-              tc.monthly_price
+              tc.modules_enabled
        FROM tenants t
        LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
        WHERE t.is_active = 1`,
@@ -120,7 +129,10 @@ exports.autoGenerate = async (req, res) => {
     let skipped = 0;
     for (const t of tenants) {
       if (existingIds.has(t.tenant_id)) { skipped++; continue; }
-      const amount = Number(t.monthly_price) || 0;
+      const modules = typeof t.modules_enabled === 'string'
+        ? JSON.parse(t.modules_enabled || '[]')
+        : (t.modules_enabled || []);
+      const amount = modules.reduce((sum, m) => sum + priceOf(m), 0);
       if (amount <= 0) { skipped++; continue; }
       const invoice_number = await nextInvoiceNumber();
       await query(

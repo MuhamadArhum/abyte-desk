@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = '@waiter_offline_queue';
+const STORAGE_KEY        = '@waiter_offline_queue';
+const FAILED_STORAGE_KEY = '@waiter_offline_failed_ids';
+
+async function persistQueue(queue) {
+  try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); } catch { /* ignore */ }
+}
+
+async function persistFailed(ids) {
+  try { await AsyncStorage.setItem(FAILED_STORAGE_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
+}
 
 const useOfflineQueue = create((set, get) => ({
   queue: [],
@@ -10,8 +19,13 @@ const useOfflineQueue = create((set, get) => ({
 
   loadQueue: async () => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) set({ queue: JSON.parse(raw) });
+      const [rawQueue, rawFailed] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(FAILED_STORAGE_KEY),
+      ]);
+      const queue     = rawQueue   ? JSON.parse(rawQueue)   : [];
+      const failedIds = rawFailed  ? JSON.parse(rawFailed)  : [];
+      set({ queue, failedIds });
     } catch {
       // ignore
     }
@@ -25,34 +39,24 @@ const useOfflineQueue = create((set, get) => ({
     };
     const queue = [...get().queue, entry];
     set({ queue });
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-    } catch {
-      // ignore
-    }
+    await persistQueue(queue);
     return entry.id;
   },
 
   removeFromQueue: async (id) => {
-    const queue = get().queue.filter((o) => o.id !== id);
+    const queue     = get().queue.filter((o) => o.id !== id);
     const failedIds = get().failedIds.filter((fid) => fid !== id);
     set({ queue, failedIds });
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-    } catch {
-      // ignore
-    }
+    await persistQueue(queue);
+    await persistFailed(failedIds);
   },
 
   clearFailed: async () => {
     const failedIds = get().failedIds;
-    const queue = get().queue.filter((o) => !failedIds.includes(o.id));
+    const queue     = get().queue.filter((o) => !failedIds.includes(o.id));
     set({ queue, failedIds: [] });
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-    } catch {
-      // ignore
-    }
+    await persistQueue(queue);
+    await persistFailed([]);
   },
 
   syncQueue: async (apiInstance) => {
@@ -69,7 +73,7 @@ const useOfflineQueue = create((set, get) => ({
         await get().removeFromQueue(order.id);
       } catch (err) {
         if (!err.response) break; // network down — stop, keep order for next sync
-        // server rejected this order (4xx/5xx) — mark as failed, do NOT delete
+        // server rejected (4xx/5xx) — mark as failed, do NOT delete
         if (!newFailedIds.includes(order.id)) {
           newFailedIds.push(order.id);
         }
@@ -77,6 +81,7 @@ const useOfflineQueue = create((set, get) => ({
     }
 
     set({ syncing: false, failedIds: newFailedIds });
+    await persistFailed(newFailedIds);
   },
 
   get pendingCount() {

@@ -15,7 +15,8 @@ router.get('/active', async (req, res) => {
       ORDER BY created_at DESC
     `, [now, now]);
     res.json(rows);
-  } catch {
+  } catch (err) {
+    console.error('[announcements/active]', err.message);
     res.json([]);
   }
 });
@@ -28,7 +29,8 @@ router.post('/:id/view', authenticate, async (req, res) => {
       [req.params.id, req.tenantId]
     );
     res.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error('[announcements/view]', err.message);
     res.json({ ok: false });
   }
 });

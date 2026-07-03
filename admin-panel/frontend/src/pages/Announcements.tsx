@@ -33,7 +33,7 @@ function ViewsModal({ announcement, onClose }: { announcement: Announcement; onC
 
   useEffect(() => {
     api.get(`/announcements/${announcement.id}/views`)
-      .then(r => setViews(r.data))
+      .then(r => setViews(r.data.data || r.data || []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [announcement.id]);
@@ -105,7 +105,7 @@ export default function Announcements() {
 
   const load = () => {
     setLoading(true);
-    api.get('/announcements').then(r => setItems(r.data)).catch(() => {}).finally(() => setLoading(false));
+    api.get('/announcements').then(r => setItems(r.data.data || [])).catch(() => {}).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

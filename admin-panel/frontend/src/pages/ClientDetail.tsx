@@ -9,6 +9,7 @@ import api from '../api/axios';
 import EditModulesModal from '../components/EditModulesModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import { useToast } from '../context/ToastContext';
+import { usePrices } from '../hooks/usePrices';
 
 interface TenantDetail {
   tenant_id: number; tenant_code: string; tenant_name: string;
@@ -370,6 +371,7 @@ export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { prices } = usePrices();
   const [data, setData]                   = useState<DetailData | null>(null);
   const [loading, setLoading]             = useState(true);
   const [showModules, setShowModules]     = useState(false);
@@ -602,7 +604,7 @@ export default function ClientDetail() {
                 <p className="text-slate-400 text-sm">No modules enabled</p>
               ) : mods.map(m => {
                 const s = MODULE_STYLES[m] || { bg: 'bg-slate-50', text: 'text-slate-600', label: m };
-                const price = ['accounts', 'hr'].includes(m) ? 2999 : 2250;
+                const price = prices[m as keyof typeof prices] ?? (['accounts', 'hr'].includes(m) ? 2999 : 2250);
                 return (
                   <div key={m} className={`flex items-center justify-between px-3 py-2 rounded-xl ${s.bg}`}>
                     <span className={`text-sm font-medium ${s.text}`}>{s.label}</span>

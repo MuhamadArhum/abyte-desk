@@ -117,14 +117,18 @@ export default function RunningScreen() {
   const { user } = useAuthStore();
   const { showToast } = useToastStore();
 
+  const failCountRef = React.useRef(0);
+
   const fetchOrders = useCallback(async () => {
     try {
       const res = await api.get('/sales/pending');
+      failCountRef.current = 0; // reset on success
       const data = res.data?.data || res.data || [];
       const all = Array.isArray(data) ? data : [];
       const myId = user?.user_id;
       setOrders(myId ? all.filter((o) => Number(o.user_id) === Number(myId)) : all);
     } catch (err) {
+      failCountRef.current++;
       console.error('fetchOrders error:', err.message);
     } finally {
       setLoading(false);
@@ -132,11 +136,14 @@ export default function RunningScreen() {
     }
   }, [user]);
 
-  // Auto-refresh every 30s while screen is focused
+  // Auto-refresh every 30s while screen is focused; skip poll after 5 consecutive failures
   useFocusEffect(useCallback(() => {
+    failCountRef.current = 0;
     setLoading(true);
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30000);
+    const interval = setInterval(() => {
+      if (failCountRef.current < 5) fetchOrders();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchOrders]));
 
@@ -422,15 +429,6 @@ export default function RunningScreen() {
                       <Text style={styles.swapBtnText}>Swap Table</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity
-                    style={styles.viewBtn}
-                    onPress={() => handleBillPress(item)}
-                    disabled={billLoading}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="eye-outline" size={15} color="#7C3AED" />
-                    <Text style={styles.viewBtnText}>View</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.billBtn}
                     onPress={() => handleBillPress(item)}
