@@ -5,6 +5,16 @@
 
 set -e
 
+# ── Load Node.js (nvm or system) ──────────────────────────────
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$NVM_DIR/nvm.sh"
+fi
+for NODE_PATH in /usr/local/bin /usr/bin /opt/node/bin; do
+  [ -x "$NODE_PATH/node" ] && export PATH="$NODE_PATH:$PATH" && break
+done
+
 # ── Colors ────────────────────────────────────────────────────
 RED='\033[0;31m';  GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; BOLD='\033[1m';     DIM='\033[2m'; NC='\033[0m'
@@ -29,31 +39,28 @@ echo -e "\n${YELLOW}${BOLD}╔════════════════�
 echo -e "${YELLOW}${BOLD}║      Abyte ERP — Admin Panel Deploy      ║${NC}"
 echo -e "${YELLOW}${BOLD}║      $(date '+%Y-%m-%d  %H:%M:%S')                 ║${NC}"
 echo -e "${YELLOW}${BOLD}╚══════════════════════════════════════════╝${NC}"
-echo -e "  Node: $(node -v)  |  npm: $(npm -v)  |  pwd: $(pwd)"
+echo "  node: $(node --version 2>/dev/null || echo 'NOT FOUND')"
+echo "  npm:  $(npm --version  2>/dev/null || echo 'NOT FOUND')"
+
+command -v node >/dev/null 2>&1 || fail "node not found in PATH. Check nvm/node installation."
+command -v npm  >/dev/null 2>&1 || fail "npm not found in PATH."
 
 # ── Step 1: Git Update ────────────────────────────────────────
 step 1 "Pulling latest code from Git..."
 cd "$ROOT_DIR"
 
-# Clear any stale git lock files from aborted operations
 rm -f .git/index.lock .git/HEAD.lock 2>/dev/null || true
-
-# Discard ALL local tracked changes before fetching
 git checkout -- . 2>/dev/null || true
 
 BEFORE=$(git rev-parse HEAD)
-echo "  Current: $(git rev-parse --short HEAD)"
-
-git fetch origin main 2>&1 || fail "git fetch failed — check network/credentials"
-git reset --hard origin/main || fail "git reset failed"
-
+git fetch origin main 2>&1 || fail "git fetch failed"
+git reset --hard origin/main   || fail "git reset --hard failed"
 AFTER=$(git rev-parse HEAD)
-echo "  After:   $(git rev-parse --short HEAD)"
 
 if [ "$BEFORE" = "$AFTER" ]; then
-  ok "Already up to date"
+  ok "Already up to date ($(git rev-parse --short HEAD))"
 else
-  ok "Updated: $BEFORE → $(git rev-parse --short HEAD)"
+  ok "Updated $(git rev-parse --short "$BEFORE") → $(git rev-parse --short HEAD)"
   git diff --name-only "$BEFORE" "$AFTER" | grep "^admin-panel/" | head -20 | sed 's/^/        /' || true
 fi
 
@@ -68,16 +75,16 @@ ok "Backend packages ready"
 step 3 "Building frontend (React + Vite)..."
 cd "$FRONTEND_DIR"
 
-npm install 2>&1 || fail "Frontend npm install failed"
-npm run build 2>&1 || fail "Frontend build failed"
+npm install 2>&1          || fail "Frontend npm install failed"
+npm run build 2>&1        || fail "Frontend build failed"
 
-ok "Frontend built"
-info "Bundle: $(du -sh dist 2>/dev/null | cut -f1 || echo '?')"
+ok "Frontend built ($(du -sh dist 2>/dev/null | cut -f1 || echo '?'))"
 
 # ── Step 4: Restart PM2 ───────────────────────────────────────
 step 4 "Restarting backend via PM2..."
 cd "$PROJECT_DIR"
 
+command -v pm2 >/dev/null 2>&1 || fail "pm2 not found in PATH"
 pm2 startOrRestart ecosystem.config.js --env production 2>&1 || fail "PM2 restart failed"
 pm2 save --force 2>&1 || true
 sleep 3
@@ -96,15 +103,16 @@ STATUS=$(pm2 jlist 2>/dev/null | node -e "
 " 2>/dev/null || echo "unknown")
 
 if echo "$STATUS" | grep -q "online"; then
-  ok "Process online — PID: $(echo $STATUS | cut -d'|' -f2)"
+  ok "Process online — PID: $(echo "$STATUS" | cut -d'|' -f2)"
 else
-  echo -e "      ${YELLOW}⚠ Status: $STATUS — run: pm2 logs $PM2_APP${NC}"
+  echo -e "      ${YELLOW}⚠ PM2 status: $STATUS — run: pm2 logs $PM2_APP${NC}"
 fi
 
 # ── Done ──────────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}${BOLD}║         ✅  Deploy Successful!  $(elapsed)s     ║${NC}"
+echo -e "${GREEN}${BOLD}║         ✅  Deploy Successful!            ║${NC}"
 echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════╝${NC}"
-echo -e "  Commit: $(git rev-parse --short HEAD)"
-echo -e "  Logs:   pm2 logs $PM2_APP"
+echo "  Time:   $(elapsed)s"
+echo "  Commit: $(git -C "$ROOT_DIR" rev-parse --short HEAD)"
+echo "  Logs:   pm2 logs $PM2_APP"
 echo ""
