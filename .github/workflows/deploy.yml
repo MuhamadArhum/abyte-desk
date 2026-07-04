@@ -30,6 +30,10 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
+            rm -f .git/index.lock .git/HEAD.lock 2>/dev/null || true
+            git checkout -- . 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
             bash main-app/deploy.sh
 
   # ── Deploy Admin Panel (after main, to avoid git race condition) ──
@@ -51,4 +55,8 @@ jobs:
           script: |
             set -e
             cd /var/www/AByte-POS
+            rm -f .git/index.lock .git/HEAD.lock 2>/dev/null || true
+            git checkout -- . 2>/dev/null || true
+            git fetch origin main
+            git reset --hard origin/main
             bash admin-panel/deploy.sh
