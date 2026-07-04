@@ -190,4 +190,56 @@ function getBackupDir() {
   return BACKUP_DIR;
 }
 
-module.exports = { createBackup, restoreBackup, listBackupFiles, deleteBackupFile, getBackupDir };
+// Create a backup for ONE tenant's DB only — used by per-tenant scheduler
+async function createTenantBackup(tenantDbName, type = 'scheduled') {
+  const safeName = tenantDbName.replace(/[^a-zA-Z0-9_]/g, '_');
+  const filename = `backup_${safeName}_${getTimestamp()}.sql`;
+  const filepath = path.join(BACKUP_DIR, filename);
+
+  const dbHost = process.env.DB_HOST || 'localhost';
+  const dbPort = process.env.DB_PORT || '3306';
+  const dbUser = process.env.DB_USER || 'root';
+  const dbPass = process.env.DB_PASSWORD || '';
+
+  const buildArgs = () => [
+    `-h${dbHost}`, `-P${dbPort}`, `-u${dbUser}`,
+    ...(dbPass ? [`-p${dbPass}`] : []),
+    tenantDbName,
+  ];
+
+  const dumpPath = process.env.MARIADB_DUMP_PATH || 'mariadb-dump';
+
+  const runDump = (executable) => new Promise((resolve, reject) => {
+    const proc = spawn(executable, buildArgs(), { shell: false });
+    const out = fs.createWriteStream(filepath);
+    proc.stdout.pipe(out);
+    let stderr = '';
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${executable} failed (code ${code}): ${stderr.slice(0, 200)}`));
+    });
+    proc.on('error', reject);
+  });
+
+  try {
+    try { await runDump(dumpPath); } catch { await runDump('mysqldump'); }
+
+    const stats = fs.statSync(filepath);
+    await queryDb(tenantDbName,
+      'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, ?, NULL, ?, ?)',
+      [filename, stats.size, type, 'completed']
+    );
+    return { filename, filepath };
+  } catch (err) {
+    try {
+      await queryDb(tenantDbName,
+        'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, 0, NULL, ?, ?)',
+        [filename, type, 'failed']
+      );
+    } catch (_e) { /* silent */ }
+    throw err;
+  }
+}
+
+module.exports = { createBackup, createTenantBackup, restoreBackup, listBackupFiles, deleteBackupFile, getBackupDir };

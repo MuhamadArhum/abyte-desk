@@ -1,21 +1,82 @@
-// backupScheduler.js — Dynamic cron job for daily backup
-// Call rescheduleBackup(enabled, hour, minute) to change schedule at runtime.
+// backupScheduler.js — Per-tenant daily backup scheduler
+// Each tenant gets their own backup file uploaded to their own Google Drive.
 
 const cron = require('node-cron');
 const logger = require('../config/logger');
-const emailService = require('./emailService');
+
+const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
 let currentTask = null;
 
+async function runPerTenantBackups() {
+  const { queryDb } = require('../config/database');
+  const backupService = require('./backupService');
+  const gdriveService = require('./googleDriveService');
+
+  let tenants = [];
+  try {
+    tenants = await queryDb(MASTER_DB, 'SELECT db_name, subdomain FROM tenants WHERE is_active = 1');
+  } catch (err) {
+    logger.error('[Backup] Could not fetch tenant list', { error: err.message });
+    return;
+  }
+
+  logger.info(`[Backup] Starting per-tenant backup for ${tenants.length} tenant(s)`);
+
+  for (const tenant of tenants) {
+    const dbName = tenant.db_name;
+    if (!dbName) continue;
+
+    try {
+      // Check if this tenant has backup enabled
+      const schedRows = await queryDb(dbName,
+        'SELECT backup_schedule_enabled FROM store_settings WHERE setting_id = 1'
+      ).catch(() => []);
+
+      const enabled = schedRows.length ? !!schedRows[0].backup_schedule_enabled : true;
+      if (!enabled) {
+        logger.info(`[Backup] Skipping ${dbName} — backup disabled by tenant`);
+        continue;
+      }
+
+      // Create backup for this tenant only
+      logger.info(`[Backup] Backing up tenant: ${dbName}`);
+      const result = await backupService.createTenantBackup(dbName, 'scheduled');
+      logger.info(`[Backup] Backup done: ${result.filename}`);
+
+      // Upload to this tenant's Google Drive
+      const driveSettings = await gdriveService.getTenantDriveSettings(dbName);
+      if (driveSettings) {
+        try {
+          const fileId = await gdriveService.uploadBackupWithSettings(
+            result.filepath, result.filename, driveSettings
+          );
+          logger.info(`[GDrive] Uploaded for ${dbName}`, { fileId, file: result.filename });
+          await gdriveService.recordTenantUploadStatus(dbName, result.filename, 'success');
+        } catch (driveErr) {
+          logger.error(`[GDrive] Upload failed for ${dbName}`, { error: driveErr.message });
+          await gdriveService.recordTenantUploadStatus(dbName, result.filename, `failed: ${driveErr.message.slice(0, 80)}`);
+        }
+      } else {
+        logger.info(`[GDrive] No Drive config for ${dbName} — skipping upload`);
+      }
+
+    } catch (err) {
+      logger.error(`[Backup] Failed for tenant ${dbName}`, { error: err.message });
+    }
+  }
+
+  logger.info('[Backup] Per-tenant backup run complete');
+}
+
 function rescheduleBackup(enabled, hour, minute) {
-  // Destroy existing task
   if (currentTask) {
     currentTask.stop();
     currentTask = null;
   }
 
   if (!enabled) {
-    logger.info(`[Backup] Scheduled backup disabled`);
+    logger.info('[Backup] Scheduled backup disabled');
     return;
   }
 
@@ -23,37 +84,9 @@ function rescheduleBackup(enabled, hour, minute) {
 
   currentTask = cron.schedule(cronExpr, async () => {
     try {
-      logger.info('[Backup] Running scheduled daily backup...');
-      const backupService = require('./backupService');
-      const result = await backupService.createBackup(null, 'scheduled');
-      logger.info('[Backup] Scheduled backup completed', { filename: result.filename });
-
-      // Upload to Google Drive if configured
-      try {
-        const gdriveService = require('./googleDriveService');
-        const fileId = await gdriveService.uploadBackup(result.filepath, result.filename);
-        if (fileId) {
-          logger.info('[GDrive] Backup uploaded to Google Drive', { fileId, filename: result.filename });
-        }
-      } catch (driveErr) {
-        logger.error('[GDrive] Drive upload failed', { error: driveErr.message });
-        try {
-          const gdriveService = require('./googleDriveService');
-          await gdriveService.recordUploadFailure(result.filename, driveErr.message);
-        } catch (_e) { /* silent */ }
-      }
-
-      try {
-        if (emailService.isConfigured() && process.env.BACKUP_NOTIFY_EMAIL) {
-          await emailService.sendBackupNotification({
-            to: process.env.BACKUP_NOTIFY_EMAIL,
-            filename: result.filename,
-            status: 'completed',
-          });
-        }
-      } catch (_e) { /* silent — email optional */ }
+      await runPerTenantBackups();
     } catch (err) {
-      logger.error('[Backup] Scheduled backup failed', { error: err.message });
+      logger.error('[Backup] Scheduler error', { error: err.message });
     }
   });
 

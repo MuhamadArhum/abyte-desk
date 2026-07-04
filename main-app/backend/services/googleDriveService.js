@@ -79,6 +79,23 @@ async function testConnection(serviceAccountJson, folderId) {
   return { folder_id: res.data.id, folder_name: res.data.name };
 }
 
+// Upload using settings object directly (for per-tenant scheduler use)
+async function uploadBackupWithSettings(filePath, filename, settings) {
+  if (!settings.gdrive_enabled) return null;
+  if (!settings.gdrive_service_account_json || !settings.gdrive_folder_id) return null;
+
+  const drive = buildDriveClient(settings.gdrive_service_account_json);
+
+  const res = await drive.files.create({
+    requestBody: { name: filename, parents: [settings.gdrive_folder_id] },
+    media: { mimeType: 'application/octet-stream', body: fs.createReadStream(filePath) },
+    fields: 'id,name',
+  });
+
+  return res.data.id;
+}
+
+// Upload for current tenant (reads settings from tenant's store_settings)
 async function uploadBackup(filePath, filename) {
   const settings = await getSettings();
   if (!settings.gdrive_enabled) return null;
@@ -86,21 +103,7 @@ async function uploadBackup(filePath, filename) {
 
   logger.info('[GDrive] Uploading backup to Google Drive', { filename });
 
-  const drive = buildDriveClient(settings.gdrive_service_account_json);
-
-  const res = await drive.files.create({
-    requestBody: {
-      name: filename,
-      parents: [settings.gdrive_folder_id],
-    },
-    media: {
-      mimeType: 'application/octet-stream',
-      body: fs.createReadStream(filePath),
-    },
-    fields: 'id,name',
-  });
-
-  const fileId = res.data.id;
+  const fileId = await uploadBackupWithSettings(filePath, filename, settings);
   logger.info('[GDrive] Upload complete', { filename, fileId });
 
   await query(
@@ -118,4 +121,33 @@ async function recordUploadFailure(filename, errMsg) {
   ).catch(() => {});
 }
 
-module.exports = { getSettings, saveSettings, testConnection, uploadBackup, recordUploadFailure };
+// Get Drive settings for a specific tenant DB (for scheduler)
+async function getTenantDriveSettings(tenantDbName) {
+  const { queryDb } = require('../config/database');
+  try {
+    const rows = await queryDb(tenantDbName,
+      `SELECT gdrive_enabled, gdrive_folder_id, gdrive_service_account_json FROM store_settings WHERE setting_id = 1`
+    );
+    if (!rows.length) return null;
+    const r = rows[0];
+    if (!r.gdrive_enabled || !r.gdrive_folder_id || !r.gdrive_service_account_json) return null;
+    return { gdrive_enabled: !!r.gdrive_enabled, gdrive_folder_id: r.gdrive_folder_id, gdrive_service_account_json: r.gdrive_service_account_json };
+  } catch (_e) {
+    return null;
+  }
+}
+
+// Update Drive upload status for a specific tenant DB
+async function recordTenantUploadStatus(tenantDbName, filename, status) {
+  const { queryDb } = require('../config/database');
+  await queryDb(tenantDbName,
+    `UPDATE store_settings SET gdrive_last_upload_at = NOW(), gdrive_last_upload_file = ?, gdrive_last_upload_status = ? WHERE setting_id = 1`,
+    [filename, status]
+  ).catch(() => {});
+}
+
+module.exports = {
+  getSettings, saveSettings, testConnection,
+  uploadBackup, uploadBackupWithSettings, recordUploadFailure,
+  getTenantDriveSettings, recordTenantUploadStatus,
+};
