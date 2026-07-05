@@ -238,7 +238,7 @@ exports.deleteDevice = async (req, res) => {
 exports.getMappings = async (req, res) => {
   try {
     const mappings = await query(
-      `SELECT bsm.*, s.name AS staff_name
+      `SELECT bsm.*, s.full_name AS staff_name
        FROM biometric_staff_mapping bsm
        JOIN staff s ON bsm.staff_id = s.staff_id
        ORDER BY bsm.employee_code`
@@ -265,7 +265,7 @@ exports.saveMapping = async (req, res) => {
     );
 
     const [mapping] = await query(
-      `SELECT bsm.*, s.name AS staff_name
+      `SELECT bsm.*, s.full_name AS staff_name
        FROM biometric_staff_mapping bsm
        JOIN staff s ON bsm.staff_id = s.staff_id
        WHERE bsm.employee_code = ?`,
@@ -403,7 +403,7 @@ exports.getLogs = async (req, res) => {
     );
 
     const logs = await query(
-      `SELECT bl.*, bsm.staff_id, s.name AS staff_name
+      `SELECT bl.*, bsm.staff_id, s.full_name AS staff_name
        FROM biometric_logs bl
        LEFT JOIN biometric_staff_mapping bsm ON bl.employee_code = bsm.employee_code
        LEFT JOIN staff s ON bsm.staff_id = s.staff_id

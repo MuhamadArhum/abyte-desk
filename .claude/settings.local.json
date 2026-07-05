@@ -172,7 +172,9 @@
       "Bash(gh run *)",
       "Bash(xargs wc *)",
       "Bash(npx eslint *)",
-      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\"; grep -c \"catch\" {} || true')"
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\"; grep -c \"catch\" {} || true')",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(pkill -f node)"
     ]
   }
 }

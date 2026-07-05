@@ -1386,6 +1386,19 @@ CREATE TABLE IF NOT EXISTS printers (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Shifts: work shift definitions for staff attendance
+CREATE TABLE IF NOT EXISTS shifts (
+    shift_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    grace_minutes INT DEFAULT 0,
+    is_overnight TINYINT(1) DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- ── MANUFACTURING / RECIPE SYSTEM ──────────────────────────────
 
 -- Recipes: defines how to produce a finished_good or semi_finished product

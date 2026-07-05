@@ -5,8 +5,11 @@
 // Falls back to in-memory if DB is unavailable.
 // =============================================================
 
-const { query } = require('../config/database');
-const logger    = require('../config/logger');
+const { queryDb } = require('../config/database');
+const logger      = require('../config/logger');
+
+const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+const q = (sql, params) => queryDb(MASTER_DB, sql, params);
 
 // In-memory fallback (used if DB table not ready yet)
 const memoryFallback = new Set();
@@ -14,7 +17,7 @@ const memoryFallback = new Set();
 // Ensure the blacklist table exists (called once at startup)
 async function ensureTable() {
   try {
-    await query(`
+    await q(`
       CREATE TABLE IF NOT EXISTS token_blacklist (
         id          INT AUTO_INCREMENT PRIMARY KEY,
         token_hash  VARCHAR(64)  NOT NULL UNIQUE,
@@ -24,8 +27,7 @@ async function ensureTable() {
         INDEX idx_hash    (token_hash)
       )
     `);
-    // Clean up already-expired tokens on startup
-    await query('DELETE FROM token_blacklist WHERE expires_at < NOW()');
+    await q('DELETE FROM token_blacklist WHERE expires_at < NOW()');
   } catch (err) {
     logger.warn('[TokenBlacklist] Could not create/clean table, using memory fallback', { error: err.message });
   }
@@ -52,7 +54,7 @@ async function blacklistToken(token) {
   const expiresAt = getTokenExpiry(token);
 
   try {
-    await query(
+    await q(
       'INSERT IGNORE INTO token_blacklist (token_hash, expires_at) VALUES (?, ?)',
       [hash, expiresAt]
     );
@@ -69,7 +71,7 @@ async function isBlacklisted(token) {
   if (memoryFallback.has(hash)) return true;
 
   try {
-    const rows = await query(
+    const rows = await q(
       'SELECT 1 FROM token_blacklist WHERE token_hash = ? AND expires_at > NOW() LIMIT 1',
       [hash]
     );
@@ -84,7 +86,7 @@ async function isBlacklisted(token) {
 // Periodic cleanup — call from server startup (every 1 hour)
 async function cleanExpired() {
   try {
-    const result = await query('DELETE FROM token_blacklist WHERE expires_at < NOW()');
+    const result = await q('DELETE FROM token_blacklist WHERE expires_at < NOW()');
     if (result.affectedRows > 0) {
       logger.info('[TokenBlacklist] Cleaned expired tokens', { count: result.affectedRows });
     }
