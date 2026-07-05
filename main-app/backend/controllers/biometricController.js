@@ -6,56 +6,6 @@ const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 const logger = require('../config/logger');
 
-// ─── Ensure tables exist at module load ──────────────────────────────────────
-
-async function ensureTables() {
-  try {
-    await query(`
-      CREATE TABLE IF NOT EXISTS biometric_devices (
-        device_id     INT PRIMARY KEY AUTO_INCREMENT,
-        device_name   VARCHAR(100) NOT NULL,
-        ip_address    VARCHAR(45)  NOT NULL,
-        port          INT          DEFAULT 80,
-        serial_number VARCHAR(100) NULL,
-        model         VARCHAR(100) NULL,
-        last_sync     DATETIME     NULL,
-        is_active     TINYINT(1)   DEFAULT 1,
-        created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS biometric_logs (
-        log_id        INT PRIMARY KEY AUTO_INCREMENT,
-        device_id     INT          NULL,
-        employee_code VARCHAR(50)  NOT NULL,
-        punch_time    DATETIME     NOT NULL,
-        punch_type    ENUM('in','out','auto') DEFAULT 'auto',
-        raw_data      TEXT         NULL,
-        processed     TINYINT(1)   DEFAULT 0,
-        attendance_id INT          NULL,
-        created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_bio_employee (employee_code),
-        INDEX idx_bio_punch (punch_time),
-        INDEX idx_bio_processed (processed),
-        UNIQUE KEY unique_punch (employee_code, punch_time)
-      )
-    `);
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS biometric_staff_mapping (
-        mapping_id    INT PRIMARY KEY AUTO_INCREMENT,
-        employee_code VARCHAR(50)  NOT NULL UNIQUE,
-        staff_id      INT          NOT NULL,
-        created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (err) {
-    logger.warn('[Biometric] ensureTables failed', { error: err.message });
-  }
-}
-
-ensureTables();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
