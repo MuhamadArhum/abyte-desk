@@ -194,10 +194,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return permissions.includes(`${moduleKey}.${action}`);
   }, [permissions]);
 
-  // Multi-tenant: check if module is enabled for this tenant
+  // Multi-tenant: check if module/sub-module is enabled for this tenant
+  // Handles both old format ["sales"] and new format ["sales.pos", "sales.returns"]
   const hasModule = useCallback((moduleName: string): boolean => {
     if (modules.length === 0) return true; // fallback: allow all if not set
-    return modules.includes(moduleName);
+    if (modules.includes(moduleName)) return true;
+
+    const parent = moduleName.split('.')[0];
+    const isSubKey = moduleName.includes('.');
+
+    if (isSubKey) {
+      // Old format: parent key present but no sub-keys → full access
+      const hasParent = modules.includes(parent);
+      const hasAnySubOfParent = modules.some(m => m.startsWith(parent + '.'));
+      if (hasParent && !hasAnySubOfParent) return true;
+    } else {
+      // Parent key check: true if any sub-module of this parent is enabled
+      if (modules.some(m => m.startsWith(moduleName + '.'))) return true;
+    }
+    return false;
   }, [modules]);
 
   const currentPlan    = modules.length > 0 ? 'active' : 'free';  // B-022: empty modules = free/unset, not enterprise

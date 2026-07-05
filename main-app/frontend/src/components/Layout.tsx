@@ -259,7 +259,7 @@ function AnnouncementBanner() {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, hasPermission, isAdmin, activeBranchId, setActiveBranchId } = useAuth();
+  const { user, logout, hasPermission, hasModule, isAdmin, activeBranchId, setActiveBranchId } = useAuth();
   usePrintQueue();
   const [branches, setBranches] = useState<{ store_id: number; store_name: string }[]>([]);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
@@ -474,7 +474,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return items
       .filter(item => {
         if (item.adminOnly) return isAdmin;
-        return item.moduleKey ? hasPermission(item.moduleKey) : true;
+        if (!item.moduleKey) return true;
+        // Tenant module subscription check (applies to everyone including Admin)
+        if (!hasModule(item.moduleKey)) return false;
+        // Role permission check
+        return hasPermission(item.moduleKey);
       })
       .map(item => ({
         ...item,
