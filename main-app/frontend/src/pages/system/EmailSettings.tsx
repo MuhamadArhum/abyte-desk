@@ -160,7 +160,7 @@ BACKUP_NOTIFY_EMAIL=admin@yourstore.com`}
         <ul className="text-sm text-blue-700 space-y-1">
           <li>✅ Daily backup completion (2:00 AM) — set BACKUP_NOTIFY_EMAIL in .env</li>
           <li>✅ Scheduled backup failure alerts</li>
-          <li>⏳ Sale confirmation emails (coming soon)</li>
+          <li>✅ Invoice email to customer — use the <strong>✉ Email Invoice</strong> button on any completed order in Orders / Done Orders</li>
           <li>⏳ Low stock daily digest (coming soon)</li>
         </ul>
       </div>

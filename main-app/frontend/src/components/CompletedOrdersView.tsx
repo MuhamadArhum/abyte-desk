@@ -10,7 +10,7 @@ import {
   Search, Package, Calendar, User, DollarSign, CreditCard,
   Eye, Printer, RotateCcw, Archive, X, Lock, EyeOff, RefreshCw,
   Clock, CheckCircle, AlertCircle, CloudUpload, Loader2,
-  UtensilsCrossed, Coffee, Truck, ShoppingBag,
+  UtensilsCrossed, Coffee, Truck, ShoppingBag, Mail,
 } from 'lucide-react';
 import DateRangeFilter from './DateRangeFilter';
 import Pagination from './Pagination';
@@ -20,6 +20,7 @@ import api from '../utils/api';
 import { localToday } from '../utils/dateUtils';
 import { useToast } from './Toast';
 import { useConfirm } from './ConfirmDialog';
+import SendInvoiceEmailModal from './SendInvoiceEmailModal';
 
 // ─── Password Gate Modal ────────────────────────────────────────────────────
 const PasswordModal = ({ title, passwordType, onSuccess, onClose }: {
@@ -138,6 +139,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [passwords,    setPasswords]    = useState({ view_completed: false, refund: false });
   const [syncingSaleId, setSyncingSaleId] = useState<number | null>(null);
   const [syncedIds,    setSyncedIds]    = useState<Set<number>>(new Set());
+  const [emailModal,   setEmailModal]   = useState<{ saleId: number; invoiceNo?: string; customerEmail?: string } | null>(null);
 
   // ── Fetch settings ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -642,6 +644,13 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                                 ? <Loader2 size={15} className="animate-spin" />
                                 : <CloudUpload size={15} />}
                             </button>
+                            <button
+                              onClick={() => setEmailModal({ saleId: sale.sale_id, invoiceNo: sale.invoice_no, customerEmail: sale.customer_email || undefined })}
+                              className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                              title="Email Invoice"
+                            >
+                              <Mail size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -689,6 +698,16 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
             setPwModal(null);
           }}
           onClose={() => { if (pwModal.type === 'unlock' && onClose) onClose(); else setPwModal(null); }}
+        />
+      )}
+
+      {emailModal && (
+        <SendInvoiceEmailModal
+          isOpen={!!emailModal}
+          onClose={() => setEmailModal(null)}
+          saleId={emailModal.saleId}
+          invoiceNo={emailModal.invoiceNo}
+          customerEmail={emailModal.customerEmail}
         />
       )}
     </div>

@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const recipeController = require('../controllers/recipeController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('inventory.recipes'));
 
 router.get('/', recipeController.getAll);
 router.get('/:id', recipeController.getById);

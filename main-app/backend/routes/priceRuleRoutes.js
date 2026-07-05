@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/priceRuleController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('sales.price-rules'));
 
 router.get('/stats', controller.getStats);
 router.post('/evaluate', controller.evaluate);

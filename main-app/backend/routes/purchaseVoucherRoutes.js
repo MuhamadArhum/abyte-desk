@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const ctrl = require('../controllers/purchaseVoucherController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('inventory.purchase-orders'));
 router.get('/',                         ctrl.getAll);
 router.get('/po-items/:po_id',          ctrl.getPOItems);
 router.get('/:id',                      ctrl.getById);

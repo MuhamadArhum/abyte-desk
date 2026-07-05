@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bundleController = require('../controllers/bundleController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.get('/', authenticate, bundleController.getAllBundles);
 router.post('/', authenticate, requirePermission('inventory.products'), bundleController.createBundle);

@@ -129,8 +129,21 @@ export default function Clients() {
     try { return JSON.parse(modules); } catch { return []; }
   };
 
-  const getMonthly = (modules: string[]) =>
-    modules.reduce((sum, m) => sum + (prices[m as keyof typeof prices] ?? 0), 0);
+  // Return unique parent module keys from a (possibly sub-module) array
+  const getParentKeys = (modules: string[]): string[] =>
+    [...new Set(modules.map(m => m.split('.')[0]))].filter(k => k in moduleStyles);
+
+  // Sub-module count per parent (undefined = old format / full access)
+  const getSubCount = (modules: string[], parentKey: string): number | null => {
+    const hasSubs = modules.some(m => m.includes('.'));
+    if (!hasSubs) return null; // old format — show no count
+    return modules.filter(m => m.startsWith(parentKey + '.')).length;
+  };
+
+  const getMonthly = (modules: string[]) => {
+    const parents = getParentKeys(modules);
+    return parents.reduce((sum, k) => sum + (prices[k as keyof typeof prices] ?? 0), 0);
+  };
 
   const filtered = clients.filter(c => {
     const q = search.toLowerCase();
@@ -316,11 +329,15 @@ export default function Clients() {
                           <div className="flex flex-wrap gap-1">
                             {mods.length === 0
                               ? <span className="text-slate-300 text-xs">—</span>
-                              : mods.map((m: string) => {
-                                  const style = moduleStyles[m] || { bg: 'bg-slate-50', text: 'text-slate-500', label: m };
+                              : getParentKeys(mods).map((parentKey: string) => {
+                                  const style = moduleStyles[parentKey] || { bg: 'bg-slate-50', text: 'text-slate-500', label: parentKey };
+                                  const count = getSubCount(mods, parentKey);
                                   return (
-                                    <span key={m} className={`px-2 py-0.5 rounded-lg text-xs font-medium ${style.bg} ${style.text}`}>
+                                    <span key={parentKey} className={`px-2 py-0.5 rounded-lg text-xs font-medium ${style.bg} ${style.text} flex items-center gap-1`}>
                                       {style.label}
+                                      {count !== null && count > 0 && (
+                                        <span className="opacity-60 font-normal">·{count}</span>
+                                      )}
                                     </span>
                                   );
                                 })

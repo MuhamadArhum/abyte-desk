@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const variantController = require('../controllers/variantController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.get('/types', authenticate, variantController.getVariantTypes);
 router.post('/types', authenticate, requirePermission('inventory.products'), variantController.createVariantType);

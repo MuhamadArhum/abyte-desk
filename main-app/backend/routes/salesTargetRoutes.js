@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/salesTargetController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('sales.targets'));
 
 router.get('/stats', controller.getStats);
 router.get('/dashboard', controller.getDashboard);

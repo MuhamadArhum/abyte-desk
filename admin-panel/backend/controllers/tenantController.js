@@ -6,10 +6,53 @@ const logger  = require('../config/logger');
 const { logAction } = require('../middleware/auditLogger');
 
 const MODULES = {
-  sales:     { name: 'Sale',        price: 2250 },
-  inventory: { name: 'Inventory',   price: 2250 },
-  accounts:  { name: 'Accounts',    price: 2999 },
-  hr:        { name: 'HR & Payroll',price: 2999 },
+  sales: {
+    name: 'Sale', price: 2250,
+    subModules: [
+      { key: 'sales.pos',         label: 'Point of Sale' },
+      { key: 'sales.orders',      label: 'Orders / Done Orders' },
+      { key: 'sales.returns',     label: 'Sales Returns' },
+      { key: 'sales.credit',      label: 'Credit Sales' },
+      { key: 'sales.quotations',  label: 'Quotations' },
+      { key: 'sales.deliveries',  label: 'Deliveries' },
+      { key: 'sales.price-rules', label: 'Price Rules' },
+      { key: 'sales.targets',     label: 'Sales Targets' },
+      { key: 'sales.loyalty',     label: 'Loyalty & Coupons' },
+    ],
+  },
+  inventory: {
+    name: 'Inventory', price: 2250,
+    subModules: [
+      { key: 'inventory.products',          label: 'Products & Variants' },
+      { key: 'inventory.purchase-orders',   label: 'Purchase Orders' },
+      { key: 'inventory.suppliers',         label: 'Suppliers' },
+      { key: 'inventory.stock-adjustments', label: 'Stock Adjustments' },
+      { key: 'inventory.stock-transfers',   label: 'Stock Transfers' },
+      { key: 'inventory.recipes',           label: 'Recipes / Manufacturing' },
+      { key: 'inventory.issuance',          label: 'Stock Issuance' },
+    ],
+  },
+  accounts: {
+    name: 'Accounts', price: 2999,
+    subModules: [
+      { key: 'accounts.chart',    label: 'Chart of Accounts' },
+      { key: 'accounts.journal',  label: 'Journal Entries' },
+      { key: 'accounts.vouchers', label: 'Payment Vouchers' },
+      { key: 'accounts.bank',     label: 'Bank Accounts' },
+      { key: 'accounts.reports',  label: 'Financial Reports' },
+    ],
+  },
+  hr: {
+    name: 'HR & Payroll', price: 2999,
+    subModules: [
+      { key: 'hr.staff',      label: 'Staff Management' },
+      { key: 'hr.attendance', label: 'Attendance' },
+      { key: 'hr.payroll',    label: 'Payroll' },
+      { key: 'hr.leaves',     label: 'Leave Management' },
+      { key: 'hr.loans',      label: 'Loans' },
+      { key: 'hr.biometric',  label: 'Biometric Integration' },
+    ],
+  },
 };
 
 let _priceCache = null;
@@ -31,8 +74,15 @@ async function getModulePrices() {
 }
 
 function priceOf(mod, prices) {
-  if (prices && prices[mod] !== undefined) return prices[mod];
-  return MODULES[mod]?.price || 0;
+  const parentKey = mod.split('.')[0];
+  if (prices && prices[parentKey] !== undefined) return prices[parentKey];
+  return MODULES[parentKey]?.price || 0;
+}
+
+// Calculate monthly price from a modules array (handles sub-module format)
+function calcMonthlyPrice(modules = [], prices = null) {
+  const uniqueParents = new Set(modules.map(m => m.split('.')[0]));
+  return [...uniqueParents].reduce((sum, k) => sum + priceOf(k, prices), 0);
 }
 
 // GET /api/tenants
@@ -165,7 +215,7 @@ exports.create = async (req, res) => {
 
     // Calculate monthly price
     const prices = await getModulePrices();
-    const monthly = modules.reduce((sum, m) => sum + priceOf(m, prices), 0);
+    const monthly = calcMonthlyPrice(modules, prices);
 
     logAction(req.admin?.admin_id, 'CREATE_TENANT', 'tenant', tenantId, tenant_name, { tenant_code, modules }, req.ip);
 
@@ -306,7 +356,7 @@ exports.getStats = async (req, res) => {
     let monthlyRevenue = 0;
     tenants.forEach(t => {
       const mods = typeof t.modules_enabled === 'string' ? JSON.parse(t.modules_enabled || '[]') : (t.modules_enabled || []);
-      mods.forEach(m => { monthlyRevenue += priceOf(m, prices); });
+      monthlyRevenue += calcMonthlyPrice(mods, prices);
     });
 
     let expiring_soon = 0, expired = 0;
@@ -332,7 +382,7 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// GET /api/modules — Available modules list
+// GET /api/modules — Available modules list with sub-modules
 exports.getModules = async (_req, res) => {
   res.json({
     data: Object.entries(MODULES).map(([key, m]) => ({ key, ...m }))
@@ -374,7 +424,7 @@ exports.getDetails = async (req, res) => {
       total_revenue: Number(revenueRow?.[0]?.total || 0),
       db_size_mb:   Number(dbSizeRow?.[0]?.mb || 0),
       recent_logins: recentLogins || [],
-      monthly_price: await getModulePrices().then(p => mods.reduce((s, m) => s + priceOf(m, p), 0)),
+      monthly_price: await getModulePrices().then(p => calcMonthlyPrice(mods, p)),
     });
   } catch (err) {
     logger.error('getDetails error', { error: err.message });
@@ -395,7 +445,7 @@ exports.getRevenue = async (req, res) => {
     `);
 
     const dbPrices = await getModulePrices();
-    const getPrice = (mods) => mods.reduce((s, m) => s + priceOf(m, dbPrices), 0);
+    const getPrice = (mods) => calcMonthlyPrice(mods, dbPrices);
     const parseMods = (m) => {
       if (!m) return [];
       if (Array.isArray(m)) return m;

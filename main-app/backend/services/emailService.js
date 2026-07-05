@@ -141,6 +141,126 @@ exports.sendLoginAlert = async ({ to, name, ip, time }) => {
   });
 };
 
+exports.sendInvoiceEmail = async ({ to, sale, storeSettings = {} }) => {
+  const currency = storeSettings.currency_symbol || 'Rs.';
+  const fmt = (n) => `${currency} ${parseFloat(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const itemRows = (sale.items || []).map(item => `
+    <tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0">${item.product_name || item.name}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:center">${item.quantity}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right">${fmt(item.unit_price ?? item.price)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;text-align:right">${fmt((item.unit_price ?? item.price) * item.quantity)}</td>
+    </tr>`).join('');
+
+  const subtotal   = parseFloat(sale.total_amount || 0) - parseFloat(sale.tax_amount || 0) - parseFloat(sale.additional_charges_amount || 0) + parseFloat(sale.discount || 0);
+  const discount   = parseFloat(sale.discount || 0);
+  const tax        = parseFloat(sale.tax_amount || 0);
+  const charges    = parseFloat(sale.additional_charges_amount || 0);
+  const total      = parseFloat(sale.total_amount || 0);
+  const amountPaid = parseFloat(sale.amount_paid || 0);
+  const change     = amountPaid > total ? amountPaid - total : 0;
+
+  const totalsRows = [
+    { label: 'Subtotal', value: fmt(subtotal) },
+    ...(discount > 0 ? [{ label: 'Discount', value: `-${fmt(discount)}`, color: '#16a34a' }] : []),
+    ...(tax > 0      ? [{ label: `${storeSettings.tax_name || 'Tax'} (${sale.tax_percent || 0}%)`, value: fmt(tax) }] : []),
+    ...(charges > 0  ? [{ label: 'Additional Charges', value: fmt(charges) }] : []),
+  ].map(r => `
+    <tr>
+      <td colspan="3" style="padding:4px 12px;text-align:right;color:${r.color || '#6b7280'}">${r.label}</td>
+      <td style="padding:4px 12px;text-align:right;color:${r.color || '#374151'}">${r.value}</td>
+    </tr>`).join('');
+
+  const storeName    = storeSettings.store_name    || storeSettings.company_name || 'AByte ERP';
+  const storeAddress = storeSettings.address       || '';
+  const storePhone   = storeSettings.phone         || '';
+  const footerText   = storeSettings.receipt_footer || 'Thank you for your business!';
+  const primaryColor = storeSettings.primary_color || '#10b981';
+  const invoiceNo    = sale.invoice_no || `#${sale.sale_id}`;
+  const saleDate     = sale.sale_date ? new Date(sale.sale_date).toLocaleString('en-PK') : new Date().toLocaleString('en-PK');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Invoice ${invoiceNo}</title></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif">
+  <div style="max-width:620px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+
+    <!-- Header -->
+    <div style="background:${primaryColor};padding:28px 32px">
+      <h1 style="color:#fff;margin:0;font-size:22px">${storeName}</h1>
+      ${storeAddress ? `<p style="color:rgba(255,255,255,0.85);margin:4px 0 0;font-size:13px">${storeAddress}</p>` : ''}
+      ${storePhone   ? `<p style="color:rgba(255,255,255,0.85);margin:2px 0 0;font-size:13px">📞 ${storePhone}</p>` : ''}
+    </div>
+
+    <!-- Invoice Meta -->
+    <div style="padding:24px 32px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:space-between">
+      <div>
+        <p style="margin:0;font-size:13px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px">Invoice</p>
+        <p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#111827">${invoiceNo}</p>
+      </div>
+      <div style="text-align:right">
+        <p style="margin:0;font-size:13px;color:#9ca3af">Date</p>
+        <p style="margin:4px 0 0;font-size:14px;color:#374151">${saleDate}</p>
+        ${sale.cashier_name ? `<p style="margin:2px 0 0;font-size:12px;color:#9ca3af">Served by: ${sale.cashier_name}</p>` : ''}
+      </div>
+    </div>
+
+    ${sale.customer_name ? `
+    <!-- Customer -->
+    <div style="padding:16px 32px;border-bottom:1px solid #f0f0f0;background:#fafafa">
+      <p style="margin:0;font-size:12px;color:#9ca3af;text-transform:uppercase">Customer</p>
+      <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#374151">${sale.customer_name}</p>
+    </div>` : ''}
+
+    <!-- Items Table -->
+    <div style="padding:24px 32px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb">
+            <th style="padding:10px 12px;text-align:left;font-size:12px;color:#6b7280;text-transform:uppercase">Item</th>
+            <th style="padding:10px 12px;text-align:center;font-size:12px;color:#6b7280;text-transform:uppercase">Qty</th>
+            <th style="padding:10px 12px;text-align:right;font-size:12px;color:#6b7280;text-transform:uppercase">Rate</th>
+            <th style="padding:10px 12px;text-align:right;font-size:12px;color:#6b7280;text-transform:uppercase">Amount</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+        <!-- Totals -->
+        ${totalsRows}
+        <tr style="border-top:2px solid #e5e7eb">
+          <td colspan="3" style="padding:12px 12px;text-align:right;font-weight:700;font-size:15px;color:#111827">Total</td>
+          <td style="padding:12px 12px;text-align:right;font-weight:700;font-size:15px;color:${primaryColor}">${fmt(total)}</td>
+        </tr>
+        ${amountPaid > 0 ? `
+        <tr>
+          <td colspan="3" style="padding:4px 12px;text-align:right;color:#6b7280">Paid (${sale.payment_method || 'Cash'})</td>
+          <td style="padding:4px 12px;text-align:right;color:#6b7280">${fmt(amountPaid)}</td>
+        </tr>
+        ${change > 0 ? `
+        <tr>
+          <td colspan="3" style="padding:4px 12px;text-align:right;color:#6b7280">Change</td>
+          <td style="padding:4px 12px;text-align:right;color:#6b7280">${fmt(change)}</td>
+        </tr>` : ''}` : ''}
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #f0f0f0">
+      <p style="margin:0;color:#6b7280;font-size:13px">${footerText}</p>
+      <p style="margin:8px 0 0;color:#d1d5db;font-size:11px">Powered by AByte ERP</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return sendMail({
+    to,
+    subject: `Invoice ${invoiceNo} — ${storeName}`,
+    html,
+    text: `Invoice ${invoiceNo}\n${storeName}\nDate: ${saleDate}\nTotal: ${fmt(total)}\n\n${(sale.items || []).map(i => `${i.product_name || i.name} x${i.quantity}`).join('\n')}\n\n${footerText}`,
+  });
+};
+
 exports.testConnection = async () => {
   const transporter = getTransporter();
   if (!transporter) throw new Error('Email not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');

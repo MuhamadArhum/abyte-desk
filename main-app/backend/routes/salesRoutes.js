@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const salesController = require('../controllers/salesController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('sales.pos'));
 
 router.post('/', requirePermission('sales.pos'), salesController.createSale);
 router.get('/pending', salesController.getPending);

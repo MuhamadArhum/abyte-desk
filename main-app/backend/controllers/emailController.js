@@ -45,6 +45,66 @@ exports.sendTest = async (req, res) => {
   }
 };
 
+exports.sendInvoice = async (req, res) => {
+  try {
+    const { sale_id, email } = req.body;
+    if (!sale_id) return res.status(400).json({ message: 'sale_id is required' });
+
+    const { query } = require('../config/database');
+
+    // Fetch sale with customer email
+    const [sale] = await query(`
+      SELECT s.*, u.name AS cashier_name, c.email AS customer_email,
+             rt.table_name
+      FROM sales s
+      LEFT JOIN customers c  ON s.customer_id  = c.customer_id
+      LEFT JOIN users u      ON s.user_id       = u.user_id
+      LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
+      WHERE s.sale_id = ?
+    `, [sale_id]);
+
+    if (!sale) return res.status(404).json({ message: 'Sale not found' });
+
+    const recipientEmail = (email || sale.customer_email || '').trim();
+    if (!recipientEmail) {
+      return res.status(400).json({ message: 'No email address provided and customer has no email on file' });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+      return res.status(400).json({ message: 'Invalid email address' });
+    }
+
+    const items = await query(`
+      SELECT sd.*, p.product_name
+      FROM sale_details sd
+      JOIN products p ON sd.product_id = p.product_id
+      WHERE sd.sale_id = ?
+    `, [sale_id]);
+
+    // Fetch store settings for branding
+    const [settings] = await query('SELECT * FROM settings LIMIT 1').catch(() => [{}]);
+
+    const result = await emailService.sendInvoiceEmail({
+      to: recipientEmail,
+      sale: { ...sale, items },
+      storeSettings: settings || {},
+    });
+
+    if (result.skipped) {
+      return res.status(503).json({ message: 'Email service is not configured. Please set up email in Settings.' });
+    }
+
+    const { logAction } = require('../services/auditService');
+    await logAction(req.user.user_id, req.user.name, 'EMAIL_INVOICE', 'sales', sale_id, { to: recipientEmail }, req.ip).catch(() => {});
+
+    res.json({ ok: true, message: `Invoice sent to ${recipientEmail}` });
+  } catch (err) {
+    logger.error('Send invoice email error:', { error: err.message });
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.sendLowStockAlert = async (req, res) => {
   try {
     const { to } = req.body;
