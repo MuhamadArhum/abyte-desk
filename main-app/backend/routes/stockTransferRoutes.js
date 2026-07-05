@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('inventory.stock-transfers'));
+router.use(requireModule('inventory.adjustments'));
 
 router.get('/stats', controller.getStats);
 router.get('/', controller.getAll);

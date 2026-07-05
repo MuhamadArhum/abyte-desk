@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('inventory.purchase-orders'));
+router.use(requireModule('inventory.purchases'));
 router.get('/',         ctrl.getAll);
 router.get('/:id',      ctrl.getById);
 router.post('/',        requirePermission('inventory.purchases'), ctrl.create);

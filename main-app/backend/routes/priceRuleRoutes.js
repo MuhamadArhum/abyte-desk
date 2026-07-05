@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('sales.price-rules'));
+router.use(requireModule('sales.pricerules'));
 
 router.get('/stats', controller.getStats);
 router.post('/evaluate', controller.evaluate);

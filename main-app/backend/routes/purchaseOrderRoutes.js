@@ -5,7 +5,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { requireModule } = require('../middleware/moduleGuard');
 
 router.use(authenticate);
-router.use(requireModule('inventory.purchase-orders'));
+router.use(requireModule('inventory.purchases'));
 
 router.get('/stock-alerts/stats', poController.getAlertStats);
 router.get('/stock-alerts', poController.getStockAlerts);
