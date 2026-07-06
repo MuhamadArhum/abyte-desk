@@ -68,7 +68,9 @@ exports.getHealth = async (req, res) => {
     try {
       const rows = await query("SHOW STATUS LIKE 'Threads_connected'");
       dbConnections = parseInt(rows[0]?.Value || '0', 10);
-    } catch {}
+    } catch (e) {
+      logger.warn('Could not fetch DB connections', { error: e.message });
+    }
 
     const [{ active_tenants }] = await query(
       `SELECT COUNT(*) AS active_tenants FROM tenants WHERE is_active = 1`

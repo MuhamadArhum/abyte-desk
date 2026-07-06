@@ -1,8 +1,10 @@
-const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
-const { query } = require('../config/database');
-const logger    = require('../config/logger');
-const { logAction } = require('../middleware/auditLogger');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
+const { query }      = require('../config/database');
+const logger         = require('../config/logger');
+const { logAction }  = require('../middleware/auditLogger');
+const emailService   = require('../services/emailService');
 
 // POST /api/auth/login
 exports.login = async (req, res) => {
@@ -76,6 +78,74 @@ exports.updateProfile = async (req, res) => {
     res.json({ message: 'Profile updated', admin: rows[0] });
   } catch (err) {
     logger.error('updateProfile error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const rows = await query(
+      'SELECT admin_id, name FROM super_admins WHERE email = ? AND is_active = 1',
+      [email.trim().toLowerCase()]
+    );
+
+    if (rows.length > 0) {
+      const admin = rows[0];
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await query(
+        'UPDATE super_admins SET reset_token = ?, reset_token_expires = ? WHERE admin_id = ?',
+        [token, expires, admin.admin_id]
+      );
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+      const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+      await emailService.sendPasswordReset({ to: email.trim(), name: admin.name, resetLink });
+    }
+
+    // Always return success — never reveal whether email exists
+    res.json({ message: 'If that email is registered, a reset link has been sent.' });
+  } catch (err) {
+    logger.error('forgotPassword error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/auth/reset-password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    const rows = await query(
+      'SELECT admin_id FROM super_admins WHERE reset_token = ? AND reset_token_expires > NOW()',
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: 'Invalid or expired reset link. Please request a new one.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await query(
+      'UPDATE super_admins SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE admin_id = ?',
+      [hash, rows[0].admin_id]
+    );
+
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (err) {
+    logger.error('resetPassword error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -8,16 +8,18 @@ const DEFAULT: ModulePrices = { sales: 2250, inventory: 2250, accounts: 2999, hr
 export function usePrices() {
   const [prices, setPrices] = useState<ModulePrices>(DEFAULT);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = () => {
     setLoading(true);
+    setError(false);
     api.get('/settings/prices')
-      .then(r => setPrices({ ...DEFAULT, ...r.data.prices }))
-      .catch(() => {})
+      .then(r => { setPrices({ ...DEFAULT, ...r.data.prices }); })
+      .catch(() => { setError(true); })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
-  return { prices, loading, reload: load };
+  return { prices, loading, error, reload: load };
 }

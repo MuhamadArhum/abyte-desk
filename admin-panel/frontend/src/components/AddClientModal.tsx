@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import { X, AlertCircle, Eye, EyeOff, UserPlus, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, AlertCircle, Eye, EyeOff, UserPlus, Check } from 'lucide-react';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 import { usePrices } from '../hooks/usePrices';
 
 interface SubModule { key: string; label: string; }
-interface ModuleDef  { key: string; label: string; icon: string; price: number; subModules: SubModule[]; }
+interface ModuleDef  { key: string; label: string; icon: string; color: string; check: string; text: string; border: string; price: number; subModules: SubModule[]; }
 
 const MODULE_META = [
   {
     key: 'sales', label: 'Sales', icon: '🛒',
+    color: 'bg-blue-50', check: 'bg-blue-600', text: 'text-blue-700', border: 'border-blue-200',
     subModules: [
       { key: 'sales.pos',        label: 'Point of Sale & Orders' },
       { key: 'sales.orders',     label: 'Done Orders' },
@@ -26,6 +27,7 @@ const MODULE_META = [
   },
   {
     key: 'inventory', label: 'Inventory', icon: '📦',
+    color: 'bg-emerald-50', check: 'bg-emerald-600', text: 'text-emerald-700', border: 'border-emerald-200',
     subModules: [
       { key: 'inventory.products',    label: 'Products & Opening Stock' },
       { key: 'inventory.categories',  label: 'Categories' },
@@ -38,6 +40,7 @@ const MODULE_META = [
   },
   {
     key: 'accounts', label: 'Accounts', icon: '📊',
+    color: 'bg-purple-50', check: 'bg-purple-600', text: 'text-purple-700', border: 'border-purple-200',
     subModules: [
       { key: 'accounts.chart',            label: 'Chart of Accounts' },
       { key: 'accounts.journal',          label: 'Journal Voucher' },
@@ -49,6 +52,7 @@ const MODULE_META = [
   },
   {
     key: 'hr', label: 'HR & Payroll', icon: '👥',
+    color: 'bg-orange-50', check: 'bg-orange-600', text: 'text-orange-700', border: 'border-orange-200',
     subModules: [
       { key: 'hr.staff',             label: 'Staff Management' },
       { key: 'hr.attendance',        label: 'Attendance & Biometric' },
@@ -79,7 +83,6 @@ export default function AddClientModal({ onClose }: Props) {
     admin_name: '', admin_email: '', admin_password: '',
   });
   const [selectedSubs, setSelectedSubs] = useState<string[]>(defaultSelected);
-  const [expandedMods, setExpandedMods] = useState<string[]>(MODULE_META.map(m => m.key));
   const [showPw, setShowPw]             = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
@@ -95,17 +98,13 @@ export default function AddClientModal({ onClose }: Props) {
     return 'some';
   };
 
-  const activeParents = () => MODULES.filter(m => parentStatus(m.key) !== 'none');
-  const totalPrice = activeParents().reduce((sum, m) => sum + m.price, 0);
-
   const toggleParent = (parentKey: string) => {
     const subs = subKeysOf(parentKey);
     const status = parentStatus(parentKey);
-    if (status === 'none') {
-      setSelectedSubs(prev => [...prev, ...subs]);
-      setExpandedMods(prev => prev.includes(parentKey) ? prev : [...prev, parentKey]);
-    } else {
+    if (status === 'all') {
       setSelectedSubs(prev => prev.filter(k => !subs.includes(k)));
+    } else {
+      setSelectedSubs(prev => [...new Set([...prev, ...subs])]);
     }
   };
 
@@ -115,23 +114,23 @@ export default function AddClientModal({ onClose }: Props) {
     );
   };
 
-  const toggleExpand = (parentKey: string) => {
-    setExpandedMods(prev =>
-      prev.includes(parentKey) ? prev.filter(k => k !== parentKey) : [...prev, parentKey]
-    );
-  };
+  const activeParents = () => MODULES.filter(m => parentStatus(m.key) !== 'none');
+  const totalPrice = activeParents().reduce((sum, m) => sum + m.price, 0);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (selectedSubs.length === 0) { setError('Select at least one module feature'); return; }
+    if (selectedSubs.length === 0) { setError('Select at least one feature'); return; }
     setError('');
     setLoading(true);
     try {
       await api.post('/tenants', { ...form, modules: selectedSubs });
       toast('success', `Client "${form.company_name || form.tenant_name}" created successfully`);
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create client');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Failed to create client');
     } finally {
       setLoading(false);
     }
@@ -142,8 +141,10 @@ export default function AddClientModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-200 max-h-[92vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[92vh] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
               <UserPlus size={17} className="text-emerald-600" />
@@ -156,7 +157,7 @@ export default function AddClientModal({ onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="p-5 space-y-4">
+          <div className="p-6 space-y-5">
             {error && (
               <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">
                 <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
@@ -166,7 +167,7 @@ export default function AddClientModal({ onClose }: Props) {
 
             {/* Business Info */}
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Business Info</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Business Info</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Company Code *</label>
@@ -189,7 +190,7 @@ export default function AddClientModal({ onClose }: Props) {
 
             {/* Admin Info */}
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Admin Account</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Admin Account</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Admin Name</label>
@@ -206,8 +207,8 @@ export default function AddClientModal({ onClose }: Props) {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Admin Password *</label>
                 <div className="relative">
                   <input type={showPw ? 'text' : 'password'} className={`${inputCls} pr-10`}
-                    placeholder="Min 6 characters" value={form.admin_password}
-                    onChange={e => set('admin_password', e.target.value)} required minLength={6} />
+                    placeholder="Min 8 characters" value={form.admin_password}
+                    onChange={e => set('admin_password', e.target.value)} required minLength={8} />
                   <button type="button" onClick={() => setShowPw(!showPw)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -218,70 +219,69 @@ export default function AddClientModal({ onClose }: Props) {
 
             {/* Modules */}
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Modules & Features *</p>
-              <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Select Modules & Features *</p>
+              <div className="space-y-4">
                 {MODULES.map(mod => {
                   const status   = parentStatus(mod.key);
-                  const expanded = expandedMods.includes(mod.key);
                   const isActive = status !== 'none';
                   const selCount = selectedSubs.filter(k => k.startsWith(mod.key + '.')).length;
 
                   return (
-                    <div key={mod.key} className={`border-2 rounded-2xl overflow-hidden transition-all ${
-                      isActive ? 'border-emerald-400' : 'border-slate-200'
-                    }`}>
-                      <div className={`flex items-center gap-3 px-4 py-3 ${isActive ? 'bg-emerald-50' : 'bg-white hover:bg-slate-50'}`}>
-                        <button type="button" onClick={() => toggleParent(mod.key)}
-                          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                            status === 'all' ? 'border-emerald-500 bg-emerald-500'
-                            : status === 'some' ? 'border-emerald-500 bg-white'
-                            : 'border-slate-300 bg-white'
-                          }`}>
-                          {status === 'all' && (
-                            <svg viewBox="0 0 12 10" className="w-3 h-3" fill="none">
-                              <path d="M1 5l3.5 3.5L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                          {status === 'some' && <span className="w-2 h-0.5 bg-emerald-500 rounded" />}
-                        </button>
+                    <div key={mod.key} className={`rounded-2xl border-2 overflow-hidden ${isActive ? mod.border : 'border-slate-100'}`}>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">{mod.icon}</span>
-                            <span className={`text-sm font-semibold ${isActive ? 'text-emerald-800' : 'text-slate-700'}`}>
-                              {mod.label}
-                            </span>
-                            {status === 'some' && (
-                              <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
-                                {selCount}/{mod.subModules.length}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-400 mt-0.5">Rs. {mod.price.toLocaleString()}/mo</div>
+                      {/* Module header */}
+                      <div
+                        className={`flex items-center gap-3 px-4 py-3 cursor-pointer select-none ${isActive ? mod.color : 'bg-slate-50 hover:bg-slate-100'}`}
+                        onClick={() => toggleParent(mod.key)}
+                      >
+                        <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          status === 'all'  ? `${mod.check} border-transparent`
+                          : status === 'some' ? `border-current bg-white ${mod.text}`
+                          : 'border-slate-300 bg-white'
+                        }`}>
+                          {status === 'all'  && <Check size={11} strokeWidth={3} className="text-white" />}
+                          {status === 'some' && <span className="w-2 h-0.5 rounded bg-current" />}
                         </div>
-
-                        <button type="button" onClick={() => toggleExpand(mod.key)}
-                          className="p-1 text-slate-400 hover:text-slate-600 transition">
-                          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        </button>
+                        <span className="text-lg">{mod.icon}</span>
+                        <div className="flex-1">
+                          <span className={`text-sm font-bold ${isActive ? mod.text : 'text-slate-600'}`}>{mod.label}</span>
+                          <span className={`text-xs ml-2 ${isActive ? mod.text + ' opacity-70' : 'text-slate-400'}`}>
+                            Rs. {mod.price.toLocaleString()}/mo
+                          </span>
+                        </div>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          isActive ? `${mod.color} ${mod.text} border ${mod.border}` : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {selCount}/{mod.subModules.length} selected
+                        </span>
                       </div>
 
-                      {expanded && (
-                        <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 space-y-1">
-                          {mod.subModules.map(sub => {
-                            const subActive = selectedSubs.includes(sub.key);
-                            return (
-                              <label key={sub.key} className="flex items-center gap-3 py-1.5 cursor-pointer">
-                                <input type="checkbox" className="accent-emerald-600 w-3.5 h-3.5 flex-shrink-0"
-                                  checked={subActive} onChange={() => toggleSub(sub.key)} />
-                                <span className={`text-sm ${subActive ? 'text-slate-700' : 'text-slate-400'}`}>
-                                  {sub.label}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {/* Sub-modules grid */}
+                      <div className="px-4 py-3 grid grid-cols-2 gap-2 bg-white">
+                        {mod.subModules.map(sub => {
+                          const active = selectedSubs.includes(sub.key);
+                          return (
+                            <label
+                              key={sub.key}
+                              onClick={e => { e.stopPropagation(); toggleSub(sub.key); }}
+                              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer transition-all select-none ${
+                                active
+                                  ? `${mod.border} ${mod.color}`
+                                  : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                                active ? `${mod.check} border-transparent` : 'border-slate-300 bg-white'
+                              }`}>
+                                {active && <Check size={9} strokeWidth={3} className="text-white" />}
+                              </div>
+                              <span className={`text-xs font-medium leading-tight ${active ? mod.text : 'text-slate-500'}`}>
+                                {sub.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
@@ -290,15 +290,21 @@ export default function AddClientModal({ onClose }: Props) {
 
             {/* Total */}
             <div className="bg-slate-800 rounded-2xl p-4 flex items-center justify-between">
-              <span className="text-sm text-slate-400">Monthly Total</span>
+              <div>
+                <span className="text-sm text-slate-400">Monthly Total</span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {activeParents().map(m => m.label).join(' + ') || 'No modules selected'}
+                </p>
+              </div>
               <div className="text-right">
-                <span className="text-xl font-bold text-emerald-400">Rs. {totalPrice.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-emerald-400">Rs. {totalPrice.toLocaleString()}</span>
                 <span className="text-slate-500 text-xs ml-1">/mo</span>
               </div>
             </div>
           </div>
 
-          <div className="px-5 pb-5 flex gap-3 flex-shrink-0">
+          {/* Footer */}
+          <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
             <button type="button" onClick={onClose}
               className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
               Cancel

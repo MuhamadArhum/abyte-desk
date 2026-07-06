@@ -1,0 +1,76 @@
+const logger = require('../config/logger');
+
+let nodemailer;
+try {
+  nodemailer = require('nodemailer');
+} catch {
+  logger.warn('[EmailService] nodemailer not installed. Run: npm install nodemailer');
+}
+
+function getTransporter() {
+  if (!nodemailer) return null;
+  if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) return null;
+  return nodemailer.createTransport({
+    host:   process.env.EMAIL_HOST,
+    port:   parseInt(process.env.EMAIL_PORT || '587'),
+    secure: process.env.EMAIL_PORT === '465',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+}
+
+async function sendMail({ to, subject, html, text }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    logger.warn('[EmailService] Not configured — skipping email', { to, subject });
+    return { skipped: true };
+  }
+  const info = await transporter.sendMail({
+    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    to, subject, html, text,
+  });
+  logger.info('[EmailService] Email sent', { to, subject, messageId: info.messageId });
+  return info;
+}
+
+exports.sendPasswordReset = async ({ to, name, resetLink }) => {
+  return sendMail({
+    to,
+    subject: 'Password Reset — AByte Admin Panel',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px 32px">
+          <h1 style="color:#10b981;margin:0;font-size:20px;font-weight:800;letter-spacing:-0.5px">AByte Admin Panel</h1>
+          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Super Admin Password Reset</p>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#1e293b;font-size:15px;margin:0 0 8px">Hi <strong>${name || 'Admin'}</strong>,</p>
+          <p style="color:#475569;font-size:14px;margin:0 0 24px;line-height:1.6">
+            We received a request to reset your AByte Admin Panel password.
+            Click the button below to set a new password. This link will expire in <strong>1 hour</strong>.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="${resetLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:13px 32px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px">
+              Reset Password
+            </a>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;text-align:center;margin:20px 0 0;line-height:1.6">
+            If you did not request this, you can safely ignore this email.<br/>
+            Your password will not be changed.
+          </p>
+          <hr style="border:none;border-top:1px solid #f1f5f9;margin:24px 0" />
+          <p style="color:#cbd5e1;font-size:11px;text-align:center;margin:0">
+            Or copy this link: <span style="color:#64748b;word-break:break-all">${resetLink}</span>
+          </p>
+        </div>
+        <div style="background:#f8fafc;padding:16px 32px;text-align:center">
+          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP — Admin Panel &nbsp;|&nbsp; Powered by AByte</p>
+        </div>
+      </div>`,
+    text: `Hi ${name || 'Admin'},\n\nReset your AByte Admin password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.`,
+  });
+};
+
+exports.isConfigured = () => !!(process.env.EMAIL_HOST && process.env.EMAIL_USER);

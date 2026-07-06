@@ -261,6 +261,44 @@ exports.sendInvoiceEmail = async ({ to, sale, storeSettings = {} }) => {
   });
 };
 
+exports.sendPasswordReset = async ({ to, name, resetLink, companyName }) => {
+  return sendMail({
+    to,
+    subject: `Password Reset — ${companyName || 'AByte ERP'}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+        <div style="background:linear-gradient(135deg,#0f172a,#064e3b);padding:28px 32px">
+          <h1 style="color:#10b981;margin:0;font-size:20px;font-weight:800;letter-spacing:-0.5px">${companyName || 'AByte ERP'}</h1>
+          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Password Reset Request</p>
+        </div>
+        <div style="padding:32px">
+          <p style="color:#1e293b;font-size:15px;margin:0 0 8px">Hi <strong>${name || 'User'}</strong>,</p>
+          <p style="color:#475569;font-size:14px;margin:0 0 24px;line-height:1.6">
+            We received a request to reset your password.
+            Click the button below to set a new password. This link will expire in <strong>1 hour</strong>.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="${resetLink}" style="display:inline-block;background:#10b981;color:#ffffff;text-decoration:none;padding:13px 32px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.3px">
+              Reset My Password
+            </a>
+          </div>
+          <p style="color:#94a3b8;font-size:12px;text-align:center;margin:20px 0 0;line-height:1.6">
+            If you did not request this, you can safely ignore this email.<br/>
+            Your password will not be changed.
+          </p>
+          <hr style="border:none;border-top:1px solid #f1f5f9;margin:24px 0" />
+          <p style="color:#cbd5e1;font-size:11px;text-align:center;margin:0">
+            Or copy this link: <span style="color:#64748b;word-break:break-all">${resetLink}</span>
+          </p>
+        </div>
+        <div style="background:#f8fafc;padding:16px 32px;text-align:center">
+          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP &nbsp;|&nbsp; Powered by AByte</p>
+        </div>
+      </div>`,
+    text: `Hi ${name || 'User'},\n\nReset your password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.`,
+  });
+};
+
 exports.testConnection = async () => {
   const transporter = getTransporter();
   if (!transporter) throw new Error('Email not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');

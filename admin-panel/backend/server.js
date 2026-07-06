@@ -101,6 +101,10 @@ async function runMigrations() {
       value TEXT NOT NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )`,
+
+    // Password reset columns for super_admins
+    `ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64) NULL`,
+    `ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL`,
   ];
 
   for (const sql of migrations) {

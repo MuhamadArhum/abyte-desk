@@ -6,7 +6,8 @@ exports.getLogs = async (req, res) => {
   try {
     const { action, from, to, page = 1 } = req.query;
     const limit  = 50;
-    const offset = (Math.max(1, Number(page)) - 1) * limit;
+    const safePage = Math.min(Math.max(1, Number(page)), 10000);
+    const offset = (safePage - 1) * limit;
 
     const conditions = [];
     const params     = [];
@@ -44,7 +45,7 @@ exports.getLogs = async (req, res) => {
       [...params, limit, offset]
     );
 
-    res.json({ data: logs, total, page: Number(page), pages: Math.ceil(total / limit) });
+    res.json({ data: logs, total, page: safePage, pages: Math.ceil(total / limit) });
   } catch (err) {
     logger.error('getLogs error', { error: err.message });
     res.status(500).json({ message: 'Server error' });

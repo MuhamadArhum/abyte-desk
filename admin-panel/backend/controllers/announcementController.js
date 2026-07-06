@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const logger = require('../config/logger');
 
 exports.getAll = async (req, res) => {
   try {
@@ -10,6 +11,7 @@ exports.getAll = async (req, res) => {
     `);
     res.json({ data: rows });
   } catch (err) {
+    logger.error('getAll announcements error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -26,6 +28,7 @@ exports.getActive = async (req, res) => {
     `, [now, now]);
     res.json(rows);
   } catch (err) {
+    logger.error('getActive announcements error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -44,6 +47,7 @@ exports.recordView = async (req, res) => {
     );
     res.json({ ok: true });
   } catch (err) {
+    logger.error('recordView announcement error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -62,6 +66,7 @@ exports.getViews = async (req, res) => {
     `, [req.params.id]);
     res.json({ data: rows });
   } catch (err) {
+    logger.error('getViews announcement error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -70,12 +75,19 @@ exports.create = async (req, res) => {
   try {
     const { title, message, type = 'info', starts_at = null, ends_at = null } = req.body;
     if (!title?.trim() || !message?.trim()) return res.status(400).json({ message: 'Title and message required' });
+    if (!['info', 'warning', 'maintenance', 'success'].includes(type)) {
+      return res.status(400).json({ message: 'type must be one of: info, warning, maintenance, success' });
+    }
+    if (starts_at && ends_at && new Date(ends_at) <= new Date(starts_at)) {
+      return res.status(400).json({ message: 'ends_at must be after starts_at' });
+    }
     const result = await query(
       `INSERT INTO announcements (title, message, type, starts_at, ends_at) VALUES (?, ?, ?, ?, ?)`,
       [title.trim(), message.trim(), type, starts_at || null, ends_at || null]
     );
     res.status(201).json({ id: result.insertId });
   } catch (err) {
+    logger.error('create announcement error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -86,6 +98,9 @@ exports.update = async (req, res) => {
     const { title, message, type, is_active, starts_at, ends_at } = req.body;
     if (!title?.trim() || !message?.trim()) {
       return res.status(400).json({ message: 'Title and message required' });
+    }
+    if (starts_at && ends_at && new Date(ends_at) <= new Date(starts_at)) {
+      return res.status(400).json({ message: 'ends_at must be after starts_at' });
     }
     // Only update is_active if explicitly provided; default to keeping current value
     const activeVal = is_active !== undefined ? (is_active ? 1 : 0) : undefined;
@@ -102,6 +117,7 @@ exports.update = async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
+    logger.error('update announcement error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -111,6 +127,7 @@ exports.remove = async (req, res) => {
     await query(`DELETE FROM announcements WHERE id = ?`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
+    logger.error('remove announcement error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

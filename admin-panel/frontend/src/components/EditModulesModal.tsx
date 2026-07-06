@@ -139,8 +139,11 @@ export default function EditModulesModal({ tenantId, clientName, currentModules,
       toast('success', `Modules updated for ${clientName}`);
       setSuccess(true);
       setTimeout(onClose, 800);
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Failed to update modules.');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Failed to update modules.');
     } finally {
       setSaving(false);
     }

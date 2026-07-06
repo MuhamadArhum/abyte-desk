@@ -397,6 +397,15 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_name VARCHAR(100) NULL`);
     },
   },
+  {
+    version: 17,
+    name: 'users_password_reset_token',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(64) NULL`);
+      await queryDb(db, `ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires DATETIME NULL`);
+      await queryDb(db, `ALTER TABLE users ADD INDEX IF NOT EXISTS idx_reset_token (reset_token)`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

@@ -64,6 +64,7 @@ export default function AuditLog() {
         setTotal(r.data.total || 0);
         setPages(r.data.pages || 1);
       })
+      .catch(() => { setLogs([]); setTotal(0); setPages(1); })
       .finally(() => setLoading(false));
   }, [search, from, to, page]);
 

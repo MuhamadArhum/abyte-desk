@@ -17,14 +17,17 @@ export default function ResetPasswordModal({ tenantId, clientName, onClose }: Pr
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return; }
     setError('');
     setLoading(true);
     try {
       await api.post(`/tenants/${tenantId}/reset-password`, { new_password: password });
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to reset password');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -80,7 +83,7 @@ export default function ResetPasswordModal({ tenantId, clientName, onClose }: Pr
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     className="w-full border border-slate-300 rounded-xl px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                    placeholder="Min 6 characters"
+                    placeholder="Min 8 characters"
                     required
                     autoFocus
                   />
@@ -92,8 +95,8 @@ export default function ResetPasswordModal({ tenantId, clientName, onClose }: Pr
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                {password.length > 0 && password.length < 6 && (
-                  <p className="text-xs text-red-500 mt-1">{6 - password.length} more characters needed</p>
+                {password.length > 0 && password.length < 8 && (
+                  <p className="text-xs text-red-500 mt-1">{8 - password.length} more characters needed</p>
                 )}
               </div>
               <div className="flex gap-2 pt-1">

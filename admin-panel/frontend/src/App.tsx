@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
@@ -39,7 +41,9 @@ function AppRoutes() {
   const { admin } = useAuth();
   return (
     <Routes>
-      <Route path="/login" element={admin ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login"            element={admin ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/forgot-password"  element={admin ? <Navigate to="/" replace /> : <ForgotPassword />} />
+      <Route path="/reset-password"   element={admin ? <Navigate to="/" replace /> : <ResetPassword />} />
       <Route path="/*" element={
         <PrivateRoute>
           <Layout>

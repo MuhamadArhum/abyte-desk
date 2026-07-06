@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Eye, EyeOff, AlertCircle, ArrowRight,
@@ -29,8 +29,11 @@ export default function Login() {
     try {
       await login(email, password);
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid email or password.');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -142,9 +145,14 @@ export default function Login() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-semibold text-slate-700">
+                  Password
+                </label>
+                <Link to="/forgot-password" className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold transition">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}

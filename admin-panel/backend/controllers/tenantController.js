@@ -153,6 +153,13 @@ exports.create = async (req, res) => {
   if (!/^[a-z0-9_]+$/.test(tenant_code)) {
     return res.status(400).json({ message: 'tenant_code: lowercase letters, numbers, underscore only' });
   }
+  if (tenant_code.length < 3 || tenant_code.length > 32) {
+    return res.status(400).json({ message: 'tenant_code must be between 3 and 32 characters' });
+  }
+  const RESERVED_CODES = ['admin', 'root', 'system', 'master', 'abyte', 'superadmin', 'api', 'app', 'test', 'demo'];
+  if (RESERVED_CODES.includes(tenant_code)) {
+    return res.status(400).json({ message: `tenant_code "${tenant_code}" is reserved and cannot be used` });
+  }
   if (modules.length === 0) {
     return res.status(400).json({ message: 'At least one module required' });
   }
@@ -328,8 +335,8 @@ exports.renew = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { new_password } = req.body;
-    if (!new_password || new_password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (!new_password || new_password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
     const tenants = await query('SELECT db_name, admin_email FROM tenants WHERE tenant_id = ?', [req.params.id]);
@@ -645,6 +652,9 @@ exports.createBranch = async (req, res) => {
     if (!store_name || !store_code) {
       return res.status(400).json({ message: 'store_name and store_code are required' });
     }
+    if (!/^[A-Z0-9_]+$/.test(store_code.toUpperCase()) || store_code.length < 2 || store_code.length > 20) {
+      return res.status(400).json({ message: 'store_code must be 2-20 uppercase letters, numbers or underscores' });
+    }
 
     await ensureStoresTable(db_name);
 
@@ -751,6 +761,9 @@ exports.createUser = async (req, res) => {
     }
     if (password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ message: 'Invalid email format' });
     }
 
     try {
@@ -914,6 +927,12 @@ exports.bulkUpdate = async (req, res) => {
     const { ids, action } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ message: 'ids array required' });
+    }
+    if (ids.length > 500) {
+      return res.status(400).json({ message: 'Cannot update more than 500 clients at once' });
+    }
+    if (!ids.every(id => Number.isInteger(Number(id)) && Number(id) > 0)) {
+      return res.status(400).json({ message: 'ids must be valid positive integers' });
     }
     if (!['activate', 'deactivate'].includes(action)) {
       return res.status(400).json({ message: 'action must be activate or deactivate' });

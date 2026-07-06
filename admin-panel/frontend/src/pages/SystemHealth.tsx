@@ -79,7 +79,7 @@ export default function SystemHealth() {
   const fetch = useCallback(() => {
     api.get('/system/health')
       .then(r => { setData(r.data); setLastUpdate(new Date()); })
-      .catch(() => {})
+      .catch(() => { setData(null); })
       .finally(() => setLoading(false));
   }, []);
 

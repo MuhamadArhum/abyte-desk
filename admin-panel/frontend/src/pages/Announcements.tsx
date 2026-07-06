@@ -105,7 +105,10 @@ export default function Announcements() {
 
   const load = () => {
     setLoading(true);
-    api.get('/announcements').then(r => setItems(r.data.data || [])).catch(() => {}).finally(() => setLoading(false));
+    api.get('/announcements')
+      .then(r => setItems(r.data.data || []))
+      .catch(() => { toast('error', 'Failed to load announcements'); setItems([]); })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

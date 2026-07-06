@@ -91,7 +91,8 @@ export default function Clients() {
       const r = await api.get('/tenants');
       setClients(r.data.data || []);
     } catch {
-      // ignore
+      toast('error', 'Failed to load clients');
+      setClients([]);
     } finally {
       setLoading(false);
     }

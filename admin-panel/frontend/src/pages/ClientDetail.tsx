@@ -92,8 +92,11 @@ function BranchModal({ branch, tenantId, onClose, onSave }: {
         await api.post(`/tenants/${tenantId}/branches`, form);
       }
       onSave();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save branch');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Failed to save branch');
     } finally {
       setSaving(false);
     }
@@ -225,8 +228,11 @@ function UserModal({ user, tenantId, branches, onClose, onSave }: {
         await api.post(`/tenants/${tenantId}/users`, payload);
       }
       onSave();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save user');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Failed to save user');
     } finally {
       setSaving(false);
     }
@@ -414,13 +420,13 @@ export default function ClientDetail() {
     api.get(`/tenants/${id}/details`)
       .then(r => {
         setData(r.data);
-        // Prefill subscription form
         const t = r.data.tenant;
         setSubForm({
           ends_at: t.subscription_ends_at ? t.subscription_ends_at.split('T')[0] : '',
           status:  t.subscription_status || 'trial',
         });
       })
+      .catch(() => { setData(null); })
       .finally(() => setLoading(false));
     loadBranches();
     loadUsers();
@@ -432,8 +438,11 @@ export default function ClientDetail() {
     try {
       await api.delete(`/tenants/${id}/branches/${branch.store_id}`);
       loadBranches();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete branch');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to delete branch');
     }
   };
 
@@ -443,8 +452,11 @@ export default function ClientDetail() {
     try {
       await api.delete(`/tenants/${id}/users/${user.user_id}`);
       loadUsers();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete user');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to delete user');
     } finally {
       setDeletingUserId(null);
     }

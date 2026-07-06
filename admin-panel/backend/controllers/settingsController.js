@@ -37,13 +37,18 @@ exports.updatePrices = async (req, res) => {
     if (!prices || typeof prices !== 'object') {
       return res.status(400).json({ message: 'prices object required' });
     }
+    const ALLOWED_MODULES = ['sales', 'inventory', 'accounts', 'hr'];
     for (const [mod, price] of Object.entries(prices)) {
-      if (typeof price !== 'number' || price < 0) {
-        return res.status(400).json({ message: `Invalid price for ${mod}` });
+      if (!ALLOWED_MODULES.includes(mod)) {
+        return res.status(400).json({ message: `Unknown module: ${mod}` });
       }
+      if (typeof price !== 'number' || price < 0 || price > 999999) {
+        return res.status(400).json({ message: `Invalid price for ${mod}: must be between 0 and 999999` });
+      }
+      const rounded = Math.round(price * 100) / 100;
       await query(
         'INSERT INTO settings (`key`, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?',
-        [`price_${mod}`, String(price), String(price)]
+        [`price_${mod}`, String(rounded), String(rounded)]
       );
     }
     res.json({ message: 'Prices updated' });

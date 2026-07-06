@@ -2,12 +2,14 @@
 // authController.js - Multi-Tenant Authentication
 // =============================================================
 
-const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
 const { queryDb, tenantStorage } = require('../config/database');
 const { logAction }              = require('../services/auditService');
 const { blacklistToken }         = require('../services/tokenBlacklist');
 const logger                     = require('../config/logger');
+const emailService               = require('../services/emailService');
 
 const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
@@ -242,6 +244,104 @@ exports.updateProfile = async (req, res) => {
     res.json({ message: 'Profile updated successfully', user: updated });
   } catch (err) {
     logger.error('Profile update error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Forgot Password ---
+// POST /api/auth/forgot-password
+// Body: { company_code, email }
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { company_code, email } = req.body;
+    if (!company_code || !email) {
+      return res.status(400).json({ message: 'Company code and email are required' });
+    }
+
+    const tenants = await queryDb(
+      MASTER_DB,
+      'SELECT tenant_id, db_name, is_active FROM tenants WHERE tenant_code = ?',
+      [company_code.trim().toLowerCase()]
+    );
+
+    if (tenants.length > 0 && tenants[0].is_active) {
+      const tenantDb = tenants[0].db_name;
+      const rows = await queryDb(
+        tenantDb,
+        'SELECT user_id, name FROM users WHERE email = ? AND is_active = 1',
+        [email.trim().toLowerCase()]
+      );
+
+      if (rows.length > 0) {
+        const user = rows[0];
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+        await queryDb(
+          tenantDb,
+          'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE user_id = ?',
+          [token, expires, user.user_id]
+        );
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const resetLink = `${frontendUrl}/reset-password?token=${token}&company=${encodeURIComponent(company_code.trim().toLowerCase())}`;
+
+        await emailService.sendPasswordReset({ to: email.trim(), name: user.name, resetLink });
+      }
+    }
+
+    // Always return success — never reveal if company/email exists
+    res.json({ message: 'If that email is registered, a reset link has been sent.' });
+  } catch (err) {
+    logger.error('forgotPassword error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// --- Reset Password ---
+// POST /api/auth/reset-password
+// Body: { token, company_code, password }
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, company_code, password } = req.body;
+    if (!token || !company_code || !password) {
+      return res.status(400).json({ message: 'Token, company code, and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    const tenants = await queryDb(
+      MASTER_DB,
+      'SELECT tenant_id, db_name, is_active FROM tenants WHERE tenant_code = ?',
+      [company_code.trim().toLowerCase()]
+    );
+
+    if (tenants.length === 0 || !tenants[0].is_active) {
+      return res.status(400).json({ message: 'Invalid or expired reset link.' });
+    }
+
+    const tenantDb = tenants[0].db_name;
+    const rows = await queryDb(
+      tenantDb,
+      'SELECT user_id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: 'Invalid or expired reset link. Please request a new one.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await queryDb(
+      tenantDb,
+      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE user_id = ?',
+      [hash, rows[0].user_id]
+    );
+
+    res.json({ message: 'Password reset successfully. You can now sign in.' });
+  } catch (err) {
+    logger.error('resetPassword error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
   }
 };

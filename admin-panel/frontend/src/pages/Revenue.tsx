@@ -66,6 +66,7 @@ export default function Revenue() {
   useEffect(() => {
     api.get('/tenants/revenue')
       .then(r => setData(r.data))
+      .catch(() => { setData(null); })
       .finally(() => setLoading(false));
   }, []);
 

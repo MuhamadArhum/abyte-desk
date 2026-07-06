@@ -14,6 +14,7 @@ export default function ResetPassword() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get('token') || '';
+  const companyCode = params.get('company') || '';
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -34,10 +35,13 @@ export default function ResetPassword() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/reset-password', { token, password });
+      await api.post('/auth/reset-password', { token, company_code: companyCode, password });
       setDone(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid or expired reset link. Please request a new one.');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      setError(msg || 'Invalid or expired reset link. Please request a new one.');
     } finally {
       setLoading(false);
     }
@@ -147,7 +151,7 @@ export default function ResetPassword() {
                     <p className="text-gray-400 mt-1 text-sm">Must be different from your previous password</p>
                   </div>
 
-                  {!token && (
+                  {(!token || !companyCode) && (
                     <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-4 mb-5 text-sm">
                       Invalid reset link. Please request a new password reset.
                     </div>
@@ -206,7 +210,7 @@ export default function ResetPassword() {
                     </div>
 
                     <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
-                      type="submit" disabled={loading || !token}
+                      type="submit" disabled={loading || !token || !companyCode}
                       className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm mt-2">
                       {loading ? <><Loader2 className="animate-spin" size={17} /> Updating...</> : 'Update Password'}
                     </motion.button>

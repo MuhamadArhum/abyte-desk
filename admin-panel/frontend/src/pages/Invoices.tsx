@@ -410,6 +410,7 @@ export default function Invoices() {
     const params = activeTab !== 'all' ? { status: activeTab } : {};
     api.get('/invoices', { params })
       .then(r => setInvoices(r.data.data || []))
+      .catch(() => { setInvoices([]); })
       .finally(() => setLoading(false));
     loadStats();
   }, [activeTab, loadStats]);

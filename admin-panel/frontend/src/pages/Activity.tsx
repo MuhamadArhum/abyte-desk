@@ -70,7 +70,10 @@ export default function ActivityPage() {
 
   const load = () => {
     setLoading(true);
-    api.get('/tenants/activity').then(r => setData(r.data.data)).finally(() => setLoading(false));
+    api.get('/tenants/activity')
+      .then(r => setData(r.data.data || []))
+      .catch(() => { setData([]); })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);

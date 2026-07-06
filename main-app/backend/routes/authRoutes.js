@@ -17,6 +17,10 @@ const { validateLogin, handleValidation } = require('../middleware/validate');
 // POST /api/auth/login - validate input before controller
 router.post('/login', validateLogin, handleValidation, authController.login);
 
+// Password reset (public — no auth required)
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password',  authController.resetPassword);
+
 // GET /api/auth/verify - Requires valid JWT token (authenticate middleware checks it)
 router.get('/verify', authenticate, authController.verify);
 

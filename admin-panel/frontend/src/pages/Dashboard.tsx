@@ -61,10 +61,12 @@ export default function Dashboard() {
   useEffect(() => {
     api.get('/tenants/stats')
       .then(r => setStats(r.data))
+      .catch(() => { setStats(null); })
       .finally(() => setLoading(false));
 
     api.get('/tenants')
       .then(r => setRecent((r.data.data as Tenant[]).slice(0, 6)))
+      .catch(() => { setRecent([]); })
       .finally(() => setRecentLoading(false));
   }, []);
 

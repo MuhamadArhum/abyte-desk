@@ -94,8 +94,11 @@ function TicketModal({
       }
       onSaved();
       onClose();
-    } catch (err: any) {
-      toast('error', err?.response?.data?.message || 'Failed to save ticket');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to save ticket');
     } finally {
       setSaving(false);
     }
@@ -255,13 +258,16 @@ export default function Tickets() {
         if (all) setAllTickets(all.data.data || []);
         else setAllTickets(filtered.data.data || []);
       })
+      .catch(() => { setTickets([]); setAllTickets([]); })
       .finally(() => setLoading(false));
   }, [activeTab]);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    api.get('/tenants').then(r => setTenants(r.data.data || []));
+    api.get('/tenants')
+      .then(r => setTenants(r.data.data || []))
+      .catch(() => { setTenants([]); });
   }, []);
 
   const deleteTicket = async (id: number) => {
