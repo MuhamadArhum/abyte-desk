@@ -57,6 +57,14 @@ git fetch origin main 2>&1 || fail "git fetch failed"
 git reset --hard origin/main   || fail "git reset --hard failed"
 AFTER=$(git rev-parse HEAD)
 
+# Restore env files from backup (git reset --hard deletes them)
+if [ -f /root/env-backup/admin-panel.env ]; then
+  cp /root/env-backup/admin-panel.env "$BACKEND_DIR/.env.production"
+  ok "Restored .env.production from backup"
+else
+  echo -e "      ${YELLOW}⚠ No env backup found at /root/env-backup/admin-panel.env${NC}"
+fi
+
 if [ "$BEFORE" = "$AFTER" ]; then
   ok "Already up to date ($(git rev-parse --short HEAD))"
 else
