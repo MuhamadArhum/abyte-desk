@@ -38,17 +38,18 @@ async function sendMail({ to, subject, html, text }) {
 exports.sendPasswordReset = async ({ to, name, resetLink }) => {
   return sendMail({
     to,
-    subject: 'Password Reset — AByte Admin Panel',
+    subject: 'Password Reset — AByte ERP',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px 32px">
-          <h1 style="color:#10b981;margin:0;font-size:20px;font-weight:800;letter-spacing:-0.5px">AByte Admin Panel</h1>
-          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Super Admin Password Reset</p>
+        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px 32px;text-align:center">
+          <img src="https://erp.abytesol.com/logo.png" alt="AByte ERP" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:12px;padding:4px;margin-bottom:12px" />
+          <h1 style="color:#10b981;margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">AByte ERP</h1>
+          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Admin Password Reset</p>
         </div>
         <div style="padding:32px">
           <p style="color:#1e293b;font-size:15px;margin:0 0 8px">Hi <strong>${name || 'Admin'}</strong>,</p>
           <p style="color:#475569;font-size:14px;margin:0 0 24px;line-height:1.6">
-            We received a request to reset your AByte Admin Panel password.
+            We received a request to reset your AByte ERP admin password.
             Click the button below to set a new password. This link will expire in <strong>1 hour</strong>.
           </p>
           <div style="text-align:center;margin:28px 0">
@@ -66,10 +67,10 @@ exports.sendPasswordReset = async ({ to, name, resetLink }) => {
           </p>
         </div>
         <div style="background:#f8fafc;padding:16px 32px;text-align:center">
-          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP — Admin Panel &nbsp;|&nbsp; Powered by AByte</p>
+          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
         </div>
       </div>`,
-    text: `Hi ${name || 'Admin'},\n\nReset your AByte Admin password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.`,
+    text: `Hi ${name || 'Admin'},\n\nReset your AByte ERP password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.\n\nPowered by AbyteSol`,
   });
 };
 

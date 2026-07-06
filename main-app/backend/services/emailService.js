@@ -264,11 +264,12 @@ exports.sendInvoiceEmail = async ({ to, sale, storeSettings = {} }) => {
 exports.sendPasswordReset = async ({ to, name, resetLink, companyName }) => {
   return sendMail({
     to,
-    subject: `Password Reset — ${companyName || 'AByte ERP'}`,
+    subject: `Password Reset — AByte ERP`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-        <div style="background:linear-gradient(135deg,#0f172a,#064e3b);padding:28px 32px">
-          <h1 style="color:#10b981;margin:0;font-size:20px;font-weight:800;letter-spacing:-0.5px">${companyName || 'AByte ERP'}</h1>
+        <div style="background:linear-gradient(135deg,#0f172a,#064e3b);padding:28px 32px;text-align:center">
+          <img src="https://erp.abytesol.com/logo.png" alt="AByte ERP" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:12px;padding:4px;margin-bottom:12px" />
+          <h1 style="color:#10b981;margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">AByte ERP</h1>
           <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Password Reset Request</p>
         </div>
         <div style="padding:32px">
@@ -292,10 +293,10 @@ exports.sendPasswordReset = async ({ to, name, resetLink, companyName }) => {
           </p>
         </div>
         <div style="background:#f8fafc;padding:16px 32px;text-align:center">
-          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP &nbsp;|&nbsp; Powered by AByte</p>
+          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
         </div>
       </div>`,
-    text: `Hi ${name || 'User'},\n\nReset your password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.`,
+    text: `Hi ${name || 'User'},\n\nReset your password:\n${resetLink}\n\nExpires in 1 hour. If you didn't request this, ignore this email.\n\nPowered by AbyteSol`,
   });
 };
 
