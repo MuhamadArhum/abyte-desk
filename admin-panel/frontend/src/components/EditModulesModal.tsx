@@ -100,10 +100,7 @@ export default function EditModulesModal({ tenantId, clientName, currentModules,
   }));
 
   const [selectedSubs, setSelectedSubs] = useState<string[]>(() => normalizeModules(currentModules));
-  const [expandedMods, setExpandedMods] = useState<string[]>(() => {
-    const normalized = normalizeModules(currentModules);
-    return MODULE_META.filter(m => normalized.some(k => k.startsWith(m.key + '.'))).map(m => m.key);
-  });
+  const [expandedMods, setExpandedMods] = useState<string[]>(MODULE_META.map(m => m.key));
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState(false);

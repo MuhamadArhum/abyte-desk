@@ -79,7 +79,7 @@ export default function AddClientModal({ onClose }: Props) {
     admin_name: '', admin_email: '', admin_password: '',
   });
   const [selectedSubs, setSelectedSubs] = useState<string[]>(defaultSelected);
-  const [expandedMods, setExpandedMods] = useState<string[]>(['sales']);
+  const [expandedMods, setExpandedMods] = useState<string[]>(MODULE_META.map(m => m.key));
   const [showPw, setShowPw]             = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
