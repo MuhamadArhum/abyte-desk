@@ -198,9 +198,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Handles both old format ["sales"] and new format ["sales.pos", "sales.returns"]
   const hasModule = useCallback((moduleName: string): boolean => {
     if (modules.length === 0) return true; // fallback: allow all if not set
+
+    // Non-purchasable modules are always available (system, dashboard, restaurant)
+    const parent = moduleName.split('.')[0];
+    const ALWAYS_ALLOWED = new Set(['system', 'dashboard', 'restaurant']);
+    if (ALWAYS_ALLOWED.has(parent)) return true;
+
     if (modules.includes(moduleName)) return true;
 
-    const parent = moduleName.split('.')[0];
     const isSubKey = moduleName.includes('.');
 
     if (isSubKey) {
