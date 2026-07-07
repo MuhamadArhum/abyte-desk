@@ -17,9 +17,11 @@ const CRUD = [
 ] as const;
 
 // ─── Module tree ──────────────────────────────────────────────────────────────
+// moduleKey: null = always visible; otherwise must match tenant's enabled modules
 const MODULE_TREE = [
   {
     section: 'Dashboard',
+    moduleKey: null,
     Icon: LayoutDashboard,
     color: 'bg-blue-500',
     lightColor: 'bg-blue-50 border-blue-200',
@@ -30,6 +32,7 @@ const MODULE_TREE = [
   },
   {
     section: 'Sales',
+    moduleKey: 'sales',
     Icon: ShoppingCart,
     color: 'bg-emerald-500',
     lightColor: 'bg-emerald-50 border-emerald-200',
@@ -50,6 +53,7 @@ const MODULE_TREE = [
   },
   {
     section: 'Restaurant',
+    moduleKey: 'restaurant',
     Icon: UtensilsCrossed,
     color: 'bg-pink-500',
     lightColor: 'bg-pink-50 border-pink-200',
@@ -60,6 +64,7 @@ const MODULE_TREE = [
   },
   {
     section: 'Inventory',
+    moduleKey: 'inventory',
     Icon: Package,
     color: 'bg-orange-500',
     lightColor: 'bg-orange-50 border-orange-200',
@@ -80,6 +85,7 @@ const MODULE_TREE = [
   },
   {
     section: 'HR',
+    moduleKey: 'hr',
     Icon: UserCheck,
     color: 'bg-purple-500',
     lightColor: 'bg-purple-50 border-purple-200',
@@ -105,6 +111,7 @@ const MODULE_TREE = [
   },
   {
     section: 'Accounts',
+    moduleKey: 'accounts',
     Icon: Calculator,
     color: 'bg-teal-500',
     lightColor: 'bg-teal-50 border-teal-200',
@@ -126,6 +133,7 @@ const MODULE_TREE = [
   },
   {
     section: 'System',
+    moduleKey: null,
     Icon: Settings,
     color: 'bg-slate-500',
     lightColor: 'bg-slate-50 border-slate-200',
@@ -154,7 +162,7 @@ const subKeys = (base: string) => CRUD.map(c => `${base}.${c.action}`);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const AccessControl = () => {
-  const { user, refreshPermissions } = useAuth();
+  const { user, refreshPermissions, hasModule } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [roles, setRoles]               = useState<string[]>([]);
@@ -329,12 +337,15 @@ const AccessControl = () => {
 
   // ── Filtered tree ─────────────────────────────────────────────────────────
   const filteredTree = useMemo(() => {
-    if (!search.trim()) return MODULE_TREE;
+    const moduleFiltered = MODULE_TREE.filter(s =>
+      s.moduleKey === null || hasModule(s.moduleKey)
+    );
+    if (!search.trim()) return moduleFiltered;
     const q = search.toLowerCase();
-    return MODULE_TREE
+    return moduleFiltered
       .map(s => ({ ...s, keys: s.keys.filter(k => k.label.toLowerCase().includes(q) || k.key.includes(q)) }))
       .filter(s => s.keys.length > 0);
-  }, [search]);
+  }, [search, hasModule]);
 
   // ── Role stats (count base modules with view access) ──────────────────────
   const roleStats = useCallback((role: string) => {
