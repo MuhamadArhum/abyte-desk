@@ -22,7 +22,8 @@ const MODULE_META = [
       { key: 'sales.pricerules', label: 'Price Rules' },
       { key: 'sales.targets',    label: 'Sales Targets' },
       { key: 'sales.reports',    label: 'Reports & Analytics' },
-      { key: 'sales.customers',  label: 'Customers' },
+      { key: 'sales.customers',    label: 'Customers' },
+      { key: 'restaurant.tables',  label: 'Table Management' },
     ],
   },
   {
@@ -48,13 +49,6 @@ const MODULE_META = [
       { key: 'accounts.ledger',           label: 'Ledger, Trial Balance & Reports' },
       { key: 'accounts.bank',             label: 'Bank Accounts' },
       { key: 'accounts.analytics',        label: 'Analytics & Reports' },
-    ],
-  },
-  {
-    key: 'restaurant', label: 'Restaurant', icon: '🍽️',
-    color: 'bg-pink-50', check: 'bg-pink-600', text: 'text-pink-700', border: 'border-pink-200',
-    subModules: [
-      { key: 'restaurant.tables', label: 'Table Management' },
     ],
   },
   {
