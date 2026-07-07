@@ -264,14 +264,20 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isBranchOpen, setIsBranchOpen] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);
 
-  // Load branches for admin branch selector
+  // Load branches for admin branch selector — auto-select first branch on login
   useEffect(() => {
     if (!isAdmin) return;
     const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
     const token = localStorage.getItem('token');
     fetch(`${apiBase}/stores`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : { data: [] })
-      .then(d => setBranches((d.data || []).filter((s: any) => s.is_active)))
+      .then(d => {
+        const active = (d.data || []).filter((s: any) => s.is_active);
+        setBranches(active);
+        if (active.length > 0 && activeBranchId === null) {
+          setActiveBranchId(active[0].store_id);
+        }
+      })
       .catch(() => {});
   }, [isAdmin]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);

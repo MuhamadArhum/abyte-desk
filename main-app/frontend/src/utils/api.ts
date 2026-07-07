@@ -27,10 +27,22 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
 
+    const method = config.method?.toLowerCase();
+
     // Inject branch filter on GET requests when admin has selected one
-    if (branchFilter.id !== null && config.method?.toLowerCase() === 'get') {
+    if (branchFilter.id !== null && method === 'get') {
       config.params = { ...config.params, filter_branch: branchFilter.id };
     }
+
+    // Inject branch_id into POST/PUT/PATCH bodies when admin has a branch selected
+    if (branchFilter.id !== null && (method === 'post' || method === 'put' || method === 'patch')) {
+      if (config.data && typeof config.data === 'object' && !Array.isArray(config.data)) {
+        if (!('branch_id' in config.data)) {
+          config.data = { ...config.data, branch_id: branchFilter.id };
+        }
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
