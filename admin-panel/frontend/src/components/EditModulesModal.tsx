@@ -51,6 +51,13 @@ const MODULE_META = [
     ],
   },
   {
+    key: 'restaurant', label: 'Restaurant', icon: '🍽️',
+    color: 'bg-pink-50', check: 'bg-pink-600', text: 'text-pink-700', border: 'border-pink-200',
+    subModules: [
+      { key: 'restaurant.tables', label: 'Table Management' },
+    ],
+  },
+  {
     key: 'hr', label: 'HR & Payroll', icon: '👥',
     color: 'bg-orange-50', check: 'bg-orange-600', text: 'text-orange-700', border: 'border-orange-200',
     subModules: [

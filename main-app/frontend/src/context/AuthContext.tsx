@@ -199,9 +199,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const hasModule = useCallback((moduleName: string): boolean => {
     if (modules.length === 0) return true; // fallback: allow all if not set
 
-    // Non-purchasable modules are always available (system, dashboard, restaurant)
+    // Non-purchasable modules always available
     const parent = moduleName.split('.')[0];
-    const ALWAYS_ALLOWED = new Set(['system', 'dashboard', 'restaurant']);
+    const ALWAYS_ALLOWED = new Set(['system', 'dashboard']);
     if (ALWAYS_ALLOWED.has(parent)) return true;
 
     if (modules.includes(moduleName)) return true;
