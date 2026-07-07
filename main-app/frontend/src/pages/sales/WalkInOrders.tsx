@@ -110,9 +110,12 @@ const WalkInOrders = () => {
   );
   const switchLayout = (l: 'card' | 'table') => { setLayout(l); localStorage.setItem('walkin_layout', l); };
 
+  const [posMode, setPosMode] = useState<'simple' | 'category'>('simple');
+
   useEffect(() => {
     api.get('/settings').then(res => {
       setCs(res.data.currency_symbol || 'Rs.');
+      setPosMode(res.data.pos_mode === 'category' ? 'category' : 'simple');
     }).catch(() => {});
   }, []);
 
@@ -264,9 +267,11 @@ const WalkInOrders = () => {
             <Filter size={14} className="text-gray-400 shrink-0" />
             {[
               { key: 'all',      label: 'All Orders',  icon: Package,        color: 'gray'    },
-              { key: 'dine_in',  label: 'Dine-In',     icon: UtensilsCrossed,color: 'orange'  },
-              { key: 'takeaway', label: 'Takeaway',     icon: Coffee,         color: 'yellow'  },
-              { key: 'delivery', label: 'Delivery',     icon: Truck,          color: 'blue'    },
+              ...(posMode === 'category' ? [
+                { key: 'dine_in',  label: 'Dine-In',     icon: UtensilsCrossed,color: 'orange'  },
+                { key: 'takeaway', label: 'Takeaway',     icon: Coffee,         color: 'yellow'  },
+                { key: 'delivery', label: 'Delivery',     icon: Truck,          color: 'blue'    },
+              ] : []),
               { key: 'on_spot',  label: 'Walk-In',      icon: ShoppingBag,    color: 'emerald' },
             ].map(f => {
               const Icon = f.icon;
@@ -355,28 +360,23 @@ const WalkInOrders = () => {
                         </div>
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-200">Active</span>
-                          {/* Order type badge */}
-                          {sale.order_type === 'dine_in' && (
+                          {/* Order type badge — only in category mode */}
+                          {posMode === 'category' && sale.order_type === 'dine_in' && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-orange-100 text-orange-700 border border-orange-200">
                               <UtensilsCrossed size={10} /> Dine-In {sale.table_name ? `· ${sale.table_name}` : ''}
                             </span>
                           )}
-                          {sale.order_type === 'takeaway' && (
+                          {posMode === 'category' && sale.order_type === 'takeaway' && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-yellow-100 text-yellow-700 border border-yellow-200">
                               <Coffee size={10} /> Takeaway
                             </span>
                           )}
-                          {sale.order_type === 'delivery' && (
+                          {posMode === 'category' && sale.order_type === 'delivery' && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-blue-100 text-blue-700 border border-blue-200">
                               <Truck size={10} /> Delivery
                             </span>
                           )}
-                          {(!sale.order_type || sale.order_type === 'on_spot') && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 bg-gray-100 text-gray-600 border border-gray-200">
-                              <ShoppingBag size={10} /> Walk-In
-                            </span>
-                          )}
-                          {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
+                          {posMode === 'category' && (sale.order_type === 'dine_in' || sale.order_type === 'takeaway') && (
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 ${
                               sale.kot_printed ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'
                             }`}>
@@ -455,13 +455,13 @@ const WalkInOrders = () => {
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Token</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
+                          {posMode === 'category' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>}
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Invoice</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Customer</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Waiter</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Cashier</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">KOT</th>
+                          {posMode === 'category' && <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">KOT</th>}
                           <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
@@ -473,12 +473,14 @@ const WalkInOrders = () => {
                                 ? <span className="font-bold text-emerald-600">{sale.token_no}</span>
                                 : <span className="text-gray-400 text-sm">—</span>}
                             </td>
-                            <td className="px-4 py-3">
-                              {sale.order_type === 'dine_in' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700 flex items-center gap-1 w-fit"><UtensilsCrossed size={9}/> Dine</span>}
-                              {sale.order_type === 'takeaway' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-100 text-yellow-700 flex items-center gap-1 w-fit"><Coffee size={9}/> TA</span>}
-                              {sale.order_type === 'delivery' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700 flex items-center gap-1 w-fit"><Truck size={9}/> DL</span>}
-                              {(!sale.order_type || sale.order_type === 'on_spot') && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600 flex items-center gap-1 w-fit"><ShoppingBag size={9}/> WI</span>}
-                            </td>
+                            {posMode === 'category' && (
+                              <td className="px-4 py-3">
+                                {sale.order_type === 'dine_in' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700 flex items-center gap-1 w-fit"><UtensilsCrossed size={9}/> Dine</span>}
+                                {sale.order_type === 'takeaway' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-yellow-100 text-yellow-700 flex items-center gap-1 w-fit"><Coffee size={9}/> TA</span>}
+                                {sale.order_type === 'delivery' && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700 flex items-center gap-1 w-fit"><Truck size={9}/> DL</span>}
+                                {(!sale.order_type || sale.order_type === 'on_spot') && <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-600 flex items-center gap-1 w-fit"><ShoppingBag size={9}/> WI</span>}
+                              </td>
+                            )}
                             <td className="px-4 py-3 text-sm text-gray-600 font-medium">{sale.invoice_no || `#${sale.sale_id}`}</td>
                             <td className="px-4 py-3 text-sm text-gray-800">{sale.customer_name || 'Walk-in'}</td>
                             <td className="px-4 py-3">
@@ -491,15 +493,17 @@ const WalkInOrders = () => {
                               {new Date(sale.sale_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </td>
                             <td className="px-4 py-3 text-xs text-gray-500 max-w-[150px] truncate">{sale.note || '—'}</td>
-                            <td className="px-4 py-3">
-                              {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') ? (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit ${
-                                  sale.kot_printed ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                }`}>
-                                  <UtensilsCrossed size={10} />{sale.kot_printed ? 'Sent' : 'Pending'}
-                                </span>
-                              ) : <span className="text-gray-300 text-xs">—</span>}
-                            </td>
+                            {posMode === 'category' && (
+                              <td className="px-4 py-3">
+                                {(sale.order_type === 'dine_in' || sale.order_type === 'takeaway') ? (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit ${
+                                    sale.kot_printed ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                  }`}>
+                                    <UtensilsCrossed size={10} />{sale.kot_printed ? 'Sent' : 'Pending'}
+                                  </span>
+                                ) : <span className="text-gray-300 text-xs">—</span>}
+                              </td>
+                            )}
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button onClick={() => navigate('/pos', { state: { editOrder: sale } })}

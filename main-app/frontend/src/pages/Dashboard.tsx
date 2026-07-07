@@ -123,7 +123,7 @@ const Dashboard = () => {
       const startDate = new Date(Date.now() - daysBack * 86400000).toISOString().split('T')[0];
       const [dashRes, inventoryRes, customersRes, recentOrdersRes, productReportRes, lowStockRes, attendanceRes, deliveriesRes] = await Promise.all([
         api.get(`/reports/dashboard?chart_start=${startDate}`),
-        api.get('/inventory-reports/summary'),
+        api.get('/inventory-reports/summary').catch(() => ({ data: {} })),
         api.get('/customers?page=1&limit=1'),
         api.get('/sales?page=1&limit=5'),
         api.get('/reports/product').catch(() => ({ data: { data: [] } })),

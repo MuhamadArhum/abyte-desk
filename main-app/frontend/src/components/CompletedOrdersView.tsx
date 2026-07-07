@@ -140,12 +140,14 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
   const [syncingSaleId, setSyncingSaleId] = useState<number | null>(null);
   const [syncedIds,    setSyncedIds]    = useState<Set<number>>(new Set());
   const [emailModal,   setEmailModal]   = useState<{ saleId: number; invoiceNo?: string; customerEmail?: string } | null>(null);
+  const [posMode,      setPosMode]      = useState<'simple' | 'category'>('simple');
 
   // ── Fetch settings ──────────────────────────────────────────────────────
   useEffect(() => {
     api.get('/settings').then(res => {
       setCs(res.data.currency_symbol || 'Rs.');
       setPasswords({ view_completed: !!res.data.view_completed_orders_password_set, refund: !!res.data.refund_password_set });
+      setPosMode(res.data.pos_mode === 'category' ? 'category' : 'simple');
       if (isOverlay && res.data.view_completed_orders_password_set) setPwModal({ type: 'unlock' });
     }).catch(() => {});
   }, [isOverlay]);
@@ -347,26 +349,28 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
             </button>
           </div>
 
-          {/* Type filter — always shown */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-wrap">
-            {([
-              { key: 'all',      label: 'All',       Icon: Package,         activeClass: 'bg-emerald-600 text-white' },
-              { key: 'dine_in',  label: 'Dine-In',   Icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white' },
-              { key: 'takeaway', label: 'Takeaway',   Icon: Coffee,          activeClass: 'bg-yellow-500 text-white' },
-              { key: 'delivery', label: 'Delivery',   Icon: Truck,           activeClass: 'bg-blue-600 text-white'   },
-              { key: 'on_spot',  label: 'Walk-In',    Icon: ShoppingBag,     activeClass: 'bg-indigo-600 text-white' },
-            ] as const).map(({ key, label, Icon, activeClass }) => (
-              <button
-                key={key}
-                onClick={() => setTypeFilter(key)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  typeFilter === key ? activeClass + ' shadow-sm' : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <Icon size={11} /> {label}
-              </button>
-            ))}
-          </div>
+          {/* Type filter — only in category mode */}
+          {posMode === 'category' && (
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl flex-wrap">
+              {([
+                { key: 'all',      label: 'All',       Icon: Package,         activeClass: 'bg-emerald-600 text-white' },
+                { key: 'dine_in',  label: 'Dine-In',   Icon: UtensilsCrossed, activeClass: 'bg-orange-500 text-white' },
+                { key: 'takeaway', label: 'Takeaway',   Icon: Coffee,          activeClass: 'bg-yellow-500 text-white' },
+                { key: 'delivery', label: 'Delivery',   Icon: Truck,           activeClass: 'bg-blue-600 text-white'   },
+                { key: 'on_spot',  label: 'Walk-In',    Icon: ShoppingBag,     activeClass: 'bg-indigo-600 text-white' },
+              ] as const).map(({ key, label, Icon, activeClass }) => (
+                <button
+                  key={key}
+                  onClick={() => setTypeFilter(key)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    typeFilter === key ? activeClass + ' shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  <Icon size={11} /> {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Refresh */}
           {!isOverlay && (
@@ -480,7 +484,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                     <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">
                       <div className="flex items-center gap-1"><User size={13} /> Customer</div>
                     </th>
-                    <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Type</th>
+                    {posMode === 'category' && <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Type</th>}
                     <th className="px-3 py-3 font-bold border-b border-gray-200 whitespace-nowrap bg-gray-50">Cashier</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Sub Total</th>
                     <th className="px-3 py-3 font-bold border-b border-gray-200 text-right whitespace-nowrap bg-gray-50">Tax</th>
@@ -502,7 +506,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                 {summary && (
                   <tfoot className="bg-emerald-50 border-t-2 border-emerald-200">
                     <tr>
-                      <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={5}>
+                      <td className="px-3 py-2.5 font-bold text-emerald-800 text-xs" colSpan={posMode === 'category' ? 5 : 4}>
                         {summary.order_count} orders
                       </td>
                       <td className="px-3 py-2.5 text-right font-bold text-gray-700 text-xs">
@@ -552,11 +556,13 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                         <td className="px-3 py-2.5 text-gray-700 font-medium text-xs whitespace-nowrap">
                           <div className="max-w-[110px] truncate">{sale.customer_name || 'Walk-in'}</div>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold border ${tc.cls}`}>
-                            {tc.label}
-                          </span>
-                        </td>
+                        {posMode === 'category' && (
+                          <td className="px-3 py-2.5 whitespace-nowrap">
+                            <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold border ${tc.cls}`}>
+                              {tc.label}
+                            </span>
+                          </td>
+                        )}
                         <td className="px-3 py-2.5 text-gray-500 text-xs whitespace-nowrap">
                           <div className="max-w-[90px] truncate">{sale.cashier_name || '—'}</div>
                         </td>
