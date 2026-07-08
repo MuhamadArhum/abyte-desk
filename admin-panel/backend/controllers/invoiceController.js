@@ -232,12 +232,14 @@ exports.sendEmail = async (req, res) => {
     const emailService = require('../services/emailService');
     for (const email of to) {
       await emailService.sendInvoiceEmail({
-        to:         email,
-        clientName: inv.tenant_name,
-        invoiceNo:  inv.invoice_number,
-        amount:     inv.amount,
-        period:     inv.period_month,
-        notes:      inv.notes,
+        to:          email,
+        clientName:  inv.tenant_name,
+        invoiceNo:   inv.invoice_number,
+        amount:      inv.amount,
+        period:      inv.period_month,
+        status:      inv.status,
+        invoiceDate: inv.created_at,
+        notes:       inv.notes,
       });
     }
 

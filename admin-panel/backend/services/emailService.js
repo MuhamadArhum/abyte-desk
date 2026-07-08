@@ -74,40 +74,92 @@ exports.sendPasswordReset = async ({ to, name, resetLink }) => {
   });
 };
 
-exports.sendInvoiceEmail = async ({ to, clientName, invoiceNo, amount, period, dueDate, notes }) => {
+exports.sendInvoiceEmail = async ({ to, clientName, invoiceNo, amount, period, status, invoiceDate, notes }) => {
+  function formatPeriod(p) {
+    if (!p) return p || '';
+    const [y, m] = p.split('-');
+    const d = new Date(Number(y), Number(m) - 1, 1);
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  const periodLabel   = formatPeriod(period);
+  const amountFmt     = Number(amount || 0).toLocaleString();
+  const statusLabel   = (status || 'draft').toUpperCase();
+  const dateFmt       = invoiceDate
+    ? new Date(invoiceDate).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '';
+
   return sendMail({
     to,
     subject: `Invoice ${invoiceNo} — AByte ERP`,
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:28px 32px;text-align:center">
-          <img src="https://erp.abytesol.com/logo.png" alt="AByte ERP" style="width:56px;height:56px;object-fit:contain;background:#fff;border-radius:12px;padding:4px;margin-bottom:12px" />
-          <h1 style="color:#10b981;margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px">AByte ERP</h1>
-          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px">Invoice</p>
-        </div>
-        <div style="padding:32px">
-          <p style="color:#1e293b;font-size:15px;margin:0 0 8px">Hi <strong>${clientName}</strong>,</p>
-          <p style="color:#475569;font-size:14px;margin:0 0 24px;line-height:1.6">
-            Please find your invoice details below for the period <strong>${period || ''}</strong>.
-          </p>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin-bottom:24px">
-            <table style="width:100%;border-collapse:collapse;font-size:13px">
-              <tr><td style="color:#64748b;padding:6px 0">Invoice No</td><td style="color:#1e293b;font-weight:700;text-align:right">${invoiceNo}</td></tr>
-              <tr><td style="color:#64748b;padding:6px 0">Period</td><td style="color:#1e293b;text-align:right">${period || '—'}</td></tr>
-              ${dueDate ? `<tr><td style="color:#64748b;padding:6px 0">Due Date</td><td style="color:#1e293b;text-align:right">${dueDate}</td></tr>` : ''}
-              <tr style="border-top:1px solid #e2e8f0"><td style="color:#1e293b;font-weight:700;padding:10px 0 6px">Amount Due</td><td style="color:#10b981;font-weight:800;font-size:16px;text-align:right">Rs. ${Number(amount || 0).toLocaleString()}</td></tr>
-            </table>
-          </div>
-          ${notes ? `<p style="color:#64748b;font-size:13px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:20px">${notes}</p>` : ''}
-          <p style="color:#94a3b8;font-size:12px;text-align:center;margin:20px 0 0">
-            For any queries please contact us at ${process.env.EMAIL_USER || 'contact@abytesol.com'}
-          </p>
-        </div>
-        <div style="background:#f8fafc;padding:16px 32px;text-align:center">
-          <p style="color:#94a3b8;font-size:11px;margin:0">AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
-        </div>
-      </div>`,
-    text: `Hi ${clientName},\n\nInvoice: ${invoiceNo}\nPeriod: ${period || '—'}\nAmount Due: Rs. ${Number(amount || 0).toLocaleString()}\n${notes ? `\nNote: ${notes}` : ''}\n\nPowered by AbyteSol`,
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+
+  <!-- Header -->
+  <div style="padding:32px 40px 24px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1 style="color:#059669;font-size:26px;margin:0;font-weight:800;">AByte ERP</h1>
+      <p style="color:#94a3b8;font-size:12px;margin:4px 0 0;">Powered by AbyteSol</p>
+    </div>
+    <div style="text-align:right;">
+      <p style="font-size:22px;font-weight:800;color:#1e293b;margin:0;">${invoiceNo}</p>
+      <p style="color:#94a3b8;font-size:12px;margin:4px 0 0;">Status: <strong style="color:#059669;">${statusLabel}</strong></p>
+    </div>
+  </div>
+
+  <!-- Bill To / Dates -->
+  <div style="padding:24px 40px;display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9;">
+    <div>
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:0 0 4px;">Bill To</p>
+      <p style="font-weight:700;color:#1e293b;margin:0;font-size:15px;">${clientName}</p>
+    </div>
+    <div style="text-align:right;">
+      ${dateFmt ? `<p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:0 0 2px;">Invoice Date</p><p style="color:#1e293b;margin:0 0 10px;font-size:13px;">${dateFmt}</p>` : ''}
+      <p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:0 0 2px;">Billing Period</p>
+      <p style="color:#1e293b;margin:0;font-size:13px;">${periodLabel}</p>
+    </div>
+  </div>
+
+  <!-- Line Items Table -->
+  <div style="padding:24px 40px;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e8f0;">
+          <th style="text-align:left;padding:8px 0;font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Description</th>
+          <th style="text-align:right;padding:8px 0;font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:14px 0;color:#1e293b;font-size:14px;">ERP Subscription — ${periodLabel}</td>
+          <td style="padding:14px 0;text-align:right;color:#1e293b;font-size:14px;">Rs. ${amountFmt}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr style="border-top:2px solid #e2e8f0;">
+          <td style="padding:12px 0 0;font-weight:700;font-size:16px;color:#1e293b;">Total</td>
+          <td style="padding:12px 0 0;text-align:right;font-weight:800;font-size:18px;color:#059669;">Rs. ${amountFmt}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Notes -->
+  ${notes ? `<div style="padding:0 40px 24px;"><p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:16px;margin:0;">Notes: ${notes}</p></div>` : ''}
+
+  <!-- Footer -->
+  <div style="background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">Thank you for your business — AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
+    <p style="color:#cbd5e1;font-size:10px;margin:6px 0 0;">Queries: ${process.env.EMAIL_USER || 'contact@abytesol.com'}</p>
+  </div>
+
+</div>
+</body>
+</html>`,
+    text: `AByte ERP — Invoice ${invoiceNo}\n\nBill To: ${clientName}\nPeriod: ${periodLabel}\nDate: ${dateFmt}\nStatus: ${statusLabel}\n\nERP Subscription — ${periodLabel}: Rs. ${amountFmt}\nTotal: Rs. ${amountFmt}\n${notes ? `\nNotes: ${notes}` : ''}\n\nThank you for your business.\nPowered by AbyteSol`,
   });
 };
 
