@@ -341,31 +341,25 @@ function GenerateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onC
 }
 
 // ─── Email Invoice Modal ──────────────────────────────────────────────────────
-interface AdminUser { admin_id: number; name: string; email: string; }
-
 function EmailInvoiceModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
   const { toast } = useToast();
-  const [admins, setAdmins]       = useState<AdminUser[]>([]);
-  const [selected, setSelected]   = useState<string[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [sending, setSending]     = useState(false);
+  const [toEmail, setToEmail] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    api.get('/auth/admins')
-      .then(r => { setAdmins(r.data.data || []); })
-      .catch(() => toast('error', 'Failed to load admin list'))
+    api.get(`/tenants/${inv.tenant_id}`)
+      .then(r => { setToEmail(r.data.data?.admin_email || ''); })
+      .catch(() => toast('error', 'Failed to load client email'))
       .finally(() => setLoading(false));
-  }, []);
-
-  const toggle = (email: string) =>
-    setSelected(prev => prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]);
+  }, [inv.tenant_id]);
 
   const handleSend = async () => {
-    if (selected.length === 0) { toast('error', 'Select at least one recipient'); return; }
+    if (!toEmail.trim()) { toast('error', 'Recipient email is required'); return; }
     setSending(true);
     try {
-      await api.post(`/invoices/${inv.invoice_id}/send-email`, { to: selected });
-      toast('success', `Invoice emailed to ${selected.length} recipient(s)`);
+      await api.post(`/invoices/${inv.invoice_id}/send-email`, { to: [toEmail.trim()] });
+      toast('success', 'Invoice emailed successfully');
       onClose();
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -397,56 +391,34 @@ function EmailInvoiceModal({ inv, onClose }: { inv: Invoice; onClose: () => void
         </div>
         <div className="p-6 space-y-4">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Select Recipients</p>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Send To</label>
             {loading ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : admins.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">No active admins found</p>
+              <div className="h-10 bg-slate-100 rounded-xl animate-pulse" />
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {admins.map(a => {
-                  const checked = selected.includes(a.email);
-                  return (
-                    <label
-                      key={a.admin_id}
-                      onClick={() => toggle(a.email)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all select-none ${
-                        checked ? 'border-blue-200 bg-blue-50' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                        checked ? 'bg-blue-600 border-transparent' : 'border-slate-300 bg-white'
-                      }`}>
-                        {checked && (
-                          <svg viewBox="0 0 10 8" fill="none" className="w-2.5 h-2.5">
-                            <path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${checked ? 'text-blue-700' : 'text-slate-700'}`}>{a.name}</p>
-                        <p className={`text-xs truncate ${checked ? 'text-blue-500' : 'text-slate-400'}`}>{a.email}</p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+              <input
+                type="email"
+                value={toEmail}
+                onChange={e => setToEmail(e.target.value)}
+                placeholder="client@example.com"
+                className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             )}
+            <p className="text-xs text-slate-400 mt-1.5">Client ka registered admin email. Zaroorat ho to change kar saktay hain.</p>
           </div>
-          {selected.length > 0 && (
-            <p className="text-xs text-blue-600 font-medium">{selected.length} recipient(s) selected</p>
-          )}
+
+          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 space-y-1.5 text-xs text-slate-500">
+            <div className="flex justify-between"><span>Invoice</span><span className="font-semibold text-slate-700">{inv.invoice_number}</span></div>
+            <div className="flex justify-between"><span>Period</span><span className="font-semibold text-slate-700">{formatPeriod(inv.period_month)}</span></div>
+            <div className="flex justify-between"><span>Amount</span><span className="font-bold text-emerald-600">Rs. {Number(inv.amount).toLocaleString()}</span></div>
+          </div>
+
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
               Cancel
             </button>
             <button
               onClick={handleSend}
-              disabled={sending || selected.length === 0}
+              disabled={sending || loading || !toEmail.trim()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-60"
             >
               <Mail size={13} />
