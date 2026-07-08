@@ -210,3 +210,41 @@ exports.delete = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// POST /api/invoices/:id/send-email
+exports.sendEmail = async (req, res) => {
+  try {
+    const { to } = req.body;
+    if (!to || !Array.isArray(to) || to.length === 0) {
+      return res.status(400).json({ message: 'At least one recipient required' });
+    }
+    const rows = await query(
+      `SELECT i.*, COALESCE(tc.company_name, t.tenant_name) AS tenant_name
+       FROM invoices i
+       JOIN tenants t ON t.tenant_id = i.tenant_id
+       LEFT JOIN tenant_configs tc ON tc.tenant_id = i.tenant_id
+       WHERE i.invoice_id = ?`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'Invoice not found' });
+    const inv = rows[0];
+
+    const emailService = require('../services/emailService');
+    for (const email of to) {
+      await emailService.sendInvoiceEmail({
+        to:         email,
+        clientName: inv.tenant_name,
+        invoiceNo:  inv.invoice_number,
+        amount:     inv.amount,
+        period:     inv.period_month,
+        notes:      inv.notes,
+      });
+    }
+
+    logger.info('[Invoice] Email sent', { invoice_id: req.params.id, to });
+    res.json({ message: `Email sent to ${to.length} recipient(s)` });
+  } catch (err) {
+    logger.error('invoice sendEmail error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};

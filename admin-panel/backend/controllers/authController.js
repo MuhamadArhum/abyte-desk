@@ -183,3 +183,16 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// GET /api/auth/admins
+exports.getAdmins = async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT admin_id, name, email FROM super_admins WHERE is_active = 1 ORDER BY name'
+    );
+    res.json({ data: rows });
+  } catch (err) {
+    logger.error('getAdmins error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};

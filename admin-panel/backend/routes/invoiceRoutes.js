@@ -12,6 +12,7 @@ router.post('/',                    ctrl.create);
 router.post('/auto-generate',       ctrl.autoGenerate);
 router.put('/:id/status',           ctrl.updateStatus);
 router.put('/:id/payment',          ctrl.recordPayment);
+router.post('/:id/send-email',      ctrl.sendEmail);
 router.delete('/:id',               ctrl.delete);
 
 module.exports = router;
