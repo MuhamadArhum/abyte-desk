@@ -9,3 +9,5 @@ cd /var/www/AByte-POS && bash admin-panel/deploy.sh
 
 
 
+
+
