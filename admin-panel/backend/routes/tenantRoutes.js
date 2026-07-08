@@ -18,6 +18,7 @@ router.get('/:id/activity',       tenantController.getTenantActivity);
 router.get('/:id/details',        tenantController.getDetails);
 router.post('/',                  tenantController.create);
 router.put('/:id',                tenantController.update);
+router.post('/:id/send-invoice-email', tenantController.sendInvoiceEmail);
 router.post('/:id/reset-password',     tenantController.resetPassword);
 router.post('/:id/renew',              tenantController.renew);
 router.get('/:id/branches',            tenantController.getBranches);

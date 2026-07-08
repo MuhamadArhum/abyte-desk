@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw, Mail, X, Send, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AddClientModal from '../components/AddClientModal';
@@ -19,6 +19,7 @@ interface Tenant {
 
 interface ResetTarget  { id: number; name: string; }
 interface ModuleTarget { id: number; name: string; modules: string[]; }
+interface EmailTarget  { id: number; name: string; email: string; }
 
 const avatarGradients = [
   'from-emerald-500 to-teal-600',
@@ -77,6 +78,9 @@ export default function Clients() {
   const [showModal, setShowModal] = useState(false);
   const [resetTarget, setResetTarget]   = useState<ResetTarget | null>(null);
   const [moduleTarget, setModuleTarget] = useState<ModuleTarget | null>(null);
+  const [emailTarget, setEmailTarget]   = useState<EmailTarget | null>(null);
+  const [emailForm, setEmailForm]       = useState({ to: '', invoiceNo: '', amount: '', period: '', notes: '' });
+  const [emailSending, setEmailSending] = useState(false);
   const [search, setSearch]       = useState('');
   const [toggling, setToggling]   = useState<number | null>(null);
   const [renewing, setRenewing]   = useState<number | null>(null);
@@ -445,6 +449,13 @@ export default function Clients() {
                             >
                               <Key size={15} />
                             </button>
+                            <button
+                              onClick={() => { setEmailTarget({ id: c.tenant_id, name: c.company_name || c.tenant_name, email: c.admin_email }); setEmailForm({ to: c.admin_email, invoiceNo: '', amount: '', period: '', notes: '' }); }}
+                              title="Send Invoice Email"
+                              className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition"
+                            >
+                              <Mail size={15} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -494,6 +505,99 @@ export default function Clients() {
           currentModules={moduleTarget.modules}
           onClose={() => { setModuleTarget(null); load(); }}
         />
+      )}
+
+      {emailTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-slate-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Send Invoice Email</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{emailTarget.name}</p>
+              </div>
+              <button onClick={() => setEmailTarget(null)} className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">To (Email)</label>
+                <input
+                  type="email"
+                  value={emailForm.to}
+                  onChange={e => setEmailForm(f => ({ ...f, to: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Invoice No</label>
+                  <input
+                    type="text"
+                    value={emailForm.invoiceNo}
+                    onChange={e => setEmailForm(f => ({ ...f, invoiceNo: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="INV-001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1.5">Amount (Rs.)</label>
+                  <input
+                    type="number"
+                    value={emailForm.amount}
+                    onChange={e => setEmailForm(f => ({ ...f, amount: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Period</label>
+                <input
+                  type="text"
+                  value={emailForm.period}
+                  onChange={e => setEmailForm(f => ({ ...f, period: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="July 2026"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Notes (optional)</label>
+                <textarea
+                  value={emailForm.notes}
+                  onChange={e => setEmailForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="Any additional message..."
+                />
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex gap-3">
+              <button onClick={() => setEmailTarget(null)} className="flex-1 border border-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button
+                disabled={emailSending || !emailForm.to}
+                onClick={async () => {
+                  setEmailSending(true);
+                  try {
+                    await api.post(`/tenants/${emailTarget.id}/send-invoice-email`, emailForm);
+                    toast('success', 'Invoice email sent successfully');
+                    setEmailTarget(null);
+                  } catch (err: any) {
+                    toast('error', err.response?.data?.message || 'Failed to send email');
+                  } finally {
+                    setEmailSending(false);
+                  }
+                }}
+                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                {emailSending ? <><Loader2 size={15} className="animate-spin" /> Sending...</> : <><Send size={15} /> Send Email</>}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

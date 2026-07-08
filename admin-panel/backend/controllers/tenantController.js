@@ -3,7 +3,8 @@ const fs      = require('fs');
 const path    = require('path');
 const { query, getConnection, tenantQuery, getTenantConnection } = require('../config/database');
 const logger  = require('../config/logger');
-const { logAction } = require('../middleware/auditLogger');
+const { logAction }    = require('../middleware/auditLogger');
+const emailService     = require('../services/emailService');
 
 const MODULES = {
   sales: {
@@ -1015,5 +1016,38 @@ exports.getExpiring = async (req, res) => {
   } catch (err) {
     logger.error('getExpiring error', { error: err.message });
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+// POST /api/tenants/:id/send-invoice-email
+exports.sendInvoiceEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { to, invoiceNo, amount, period, dueDate, notes } = req.body;
+    if (!to) return res.status(400).json({ message: 'Recipient email is required' });
+
+    const rows = await query(
+      `SELECT COALESCE(tc.company_name, t.tenant_name) AS client_name
+       FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+       WHERE t.tenant_id = ?`, [id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'Client not found' });
+
+    await emailService.sendInvoiceEmail({
+      to,
+      clientName: rows[0].client_name,
+      invoiceNo: invoiceNo || '—',
+      amount: amount || 0,
+      period: period || '',
+      dueDate: dueDate || null,
+      notes: notes || '',
+    });
+
+    logAction(req.admin?.admin_id, 'SEND_INVOICE_EMAIL', 'tenant', id, rows[0].client_name, { to, invoiceNo }, req.ip);
+    res.json({ message: 'Invoice email sent successfully' });
+  } catch (err) {
+    logger.error('sendInvoiceEmail error', { error: err.message });
+    res.status(500).json({ message: 'Failed to send email' });
   }
 };
