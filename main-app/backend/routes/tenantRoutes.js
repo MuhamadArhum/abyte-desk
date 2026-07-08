@@ -19,7 +19,7 @@
 
 const express = require('express');
 const router  = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, requireSuperAdmin } = require('../middleware/auth');
 const tenantController            = require('../controllers/tenantController');
 
 // ── Public (no auth) ──────────────────────────────────────────
@@ -29,12 +29,12 @@ router.get('/config/public', tenantController.getPublicConfig);
 router.get('/config',  authenticate, tenantController.getConfig);
 router.put('/config',  authenticate, authorize('Admin'), tenantController.updateConfig);
 
-// ── Admin only ────────────────────────────────────────────────
-router.get('/plans',   authenticate, authorize('Admin'), tenantController.getPlans);
-router.get('/',        authenticate, authorize('Admin'), tenantController.getAll);
-router.post('/',       authenticate, authorize('Admin'), tenantController.create);
-router.put('/:id',     authenticate, authorize('Admin'), tenantController.update);
-router.delete('/:id',  authenticate, authorize('Admin'), tenantController.remove);
-router.post('/:id/reset-password', authenticate, authorize('Admin'), tenantController.resetAdminPassword);
+// ── Super-admin only (cross-tenant operations) ───────────────
+router.get('/plans',   authenticate, requireSuperAdmin, tenantController.getPlans);
+router.get('/',        authenticate, requireSuperAdmin, tenantController.getAll);
+router.post('/',       authenticate, requireSuperAdmin, tenantController.create);
+router.put('/:id',     authenticate, requireSuperAdmin, tenantController.update);
+router.delete('/:id',  authenticate, requireSuperAdmin, tenantController.remove);
+router.post('/:id/reset-password', authenticate, requireSuperAdmin, tenantController.resetAdminPassword);
 
 module.exports = router;

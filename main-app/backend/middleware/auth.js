@@ -127,4 +127,25 @@ const requirePermission = (moduleKey) => async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate, authorize, requirePermission };
+// --- requireSuperAdmin ---
+// Cross-checks the master DB's super_admins table.
+// Prevents tenant-level Admin users from accessing cross-tenant management routes.
+const requireSuperAdmin = async (req, res, next) => {
+  try {
+    const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+    const rows = await queryDb(
+      MASTER_DB,
+      'SELECT admin_id FROM super_admins WHERE email = ? AND is_active = 1',
+      [req.user.email]
+    );
+    if (rows.length === 0) {
+      return res.status(403).json({ message: 'Super admin access required' });
+    }
+    next();
+  } catch (err) {
+    logger.error('requireSuperAdmin check error', { error: err.message });
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { authenticate, authorize, requirePermission, requireSuperAdmin };

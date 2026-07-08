@@ -227,8 +227,10 @@ app.use(cors({
 
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 app.use(express.json());
-app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 500 }));
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, skipSuccessfulRequests: true }));
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/login',           rateLimit({ windowMs: 15 * 60 * 1000, max: 10, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/forgot-password', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
+app.use('/api/auth/reset-password',  rateLimit({ windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false }));
 
 app.get('/api/ping', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth',          authRoutes);

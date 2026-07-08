@@ -95,16 +95,17 @@ exports.forgotPassword = async (req, res) => {
 
     if (rows.length > 0) {
       const admin = rows[0];
-      const token = crypto.randomBytes(32).toString('hex');
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const rawToken  = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expires   = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
       await query(
         'UPDATE super_admins SET reset_token = ?, reset_token_expires = ? WHERE admin_id = ?',
-        [token, expires, admin.admin_id]
+        [tokenHash, expires, admin.admin_id]
       );
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
-      const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+      const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
 
       await emailService.sendPasswordReset({ to: email.trim(), name: admin.name, resetLink });
     }
@@ -128,9 +129,10 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const rows = await query(
       'SELECT admin_id FROM super_admins WHERE reset_token = ? AND reset_token_expires > NOW()',
-      [token]
+      [tokenHash]
     );
 
     if (rows.length === 0) {

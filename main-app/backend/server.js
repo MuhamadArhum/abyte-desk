@@ -130,10 +130,10 @@ const corsOptions = {
 };
 
 // ── Rate Limiters ────────────────────────────────────────────
-// General API limiter: 2000 requests per 15 minutes per IP
+// General API limiter: 500 requests per 15 minutes per IP
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 2000,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests. Please try again later.' },
@@ -185,9 +185,20 @@ app.use(morgan('combined', {
 }));
 app.use(express.json({ limit: '10mb' }));
 
+// Sensitive operation limiter: 5 per 15 min (password reset, etc.)
+const sensitiveOpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests. Please try again later.' },
+});
+
 // Apply rate limiting
 app.use('/api/', apiLimiter);
-app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/login',           authLimiter);
+app.use('/api/auth/forgot-password', sensitiveOpLimiter);
+app.use('/api/auth/reset-password',  sensitiveOpLimiter);
 app.use('/api/reports',           heavyLimiter);
 app.use('/api/sales-reports',     heavyLimiter);
 app.use('/api/inventory-reports', heavyLimiter);

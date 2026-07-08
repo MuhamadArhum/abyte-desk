@@ -11,6 +11,7 @@ const { URL } = require('url');
 const { query } = require('../config/database');
 const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
+const { encrypt, decrypt } = require('../services/cryptoService');
 
 // ----------------------------------------------------------------
 // Schema bootstrap
@@ -119,11 +120,11 @@ exports.getSettings = async (req, res) => {
 
     const row = rows[0];
 
-    // Mask token
+    // Decrypt then mask token — never expose raw value to frontend
     let maskedToken = '';
     if (row.whatsapp_api_token) {
-      const t = row.whatsapp_api_token;
-      maskedToken = t.length > 8 ? t.slice(0, 4) + '***...' + t.slice(-4) : '***';
+      const plain = decrypt(row.whatsapp_api_token);
+      maskedToken = plain.length > 8 ? plain.slice(0, 4) + '***...' + plain.slice(-4) : '***';
     }
 
     res.json({
@@ -156,11 +157,11 @@ exports.saveSettings = async (req, res) => {
       [whatsapp_enabled ? 1 : 0, whatsapp_api_url || null, whatsapp_id_instance || null]
     );
 
-    // Only update token if a real (non-masked) value was supplied
+    // Only update token if a real (non-masked) value was supplied — encrypt before storing
     if (whatsapp_api_token && !whatsapp_api_token.includes('***')) {
       await query(
         `UPDATE store_settings SET whatsapp_api_token = ? WHERE setting_id = 1`,
-        [whatsapp_api_token]
+        [encrypt(whatsapp_api_token)]
       );
     }
 
@@ -191,7 +192,8 @@ exports.testConnection = async (req, res) => {
       return res.status(400).json({ ok: false, message: 'API URL, Instance ID and Token are required. Save settings first.' });
     }
 
-    const { whatsapp_api_url, whatsapp_id_instance, whatsapp_api_token } = rows[0];
+    const { whatsapp_api_url, whatsapp_id_instance } = rows[0];
+    const whatsapp_api_token = decrypt(rows[0].whatsapp_api_token);
 
     const url = `${greenBase(whatsapp_api_url, whatsapp_id_instance)}/getStateInstance/${whatsapp_api_token}`;
     const { statusCode, body } = await makeRequest(url);
@@ -232,6 +234,7 @@ exports.sendInvoice = async (req, res) => {
     if (!settingsRows.length) return res.status(500).json({ message: 'Store settings not found' });
 
     const cfg = settingsRows[0];
+    cfg.whatsapp_api_token = decrypt(cfg.whatsapp_api_token); // decrypt before use
     if (!cfg.whatsapp_enabled) return res.status(400).json({ message: 'WhatsApp is not enabled. Enable it in Settings → WhatsApp & FBR.' });
     if (!cfg.whatsapp_api_url || !cfg.whatsapp_id_instance || !cfg.whatsapp_api_token) {
       return res.status(400).json({ message: 'WhatsApp is not fully configured. Set API URL, Instance ID and Token in Settings.' });

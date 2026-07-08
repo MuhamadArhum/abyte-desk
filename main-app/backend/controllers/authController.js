@@ -81,7 +81,7 @@ exports.login = async (req, res) => {
         branch_id:  user.branch_id || null,
       },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
     );
 
     // Fetch role permissions (null = Admin full access)
@@ -274,17 +274,18 @@ exports.forgotPassword = async (req, res) => {
 
       if (rows.length > 0) {
         const user = rows[0];
-        const token = crypto.randomBytes(32).toString('hex');
-        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        const rawToken  = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expires   = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
         await queryDb(
           tenantDb,
           'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE user_id = ?',
-          [token, expires, user.user_id]
+          [tokenHash, expires, user.user_id]
         );
 
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const resetLink = `${frontendUrl}/reset-password?token=${token}&company=${encodeURIComponent(company_code.trim().toLowerCase())}`;
+        const resetLink = `${frontendUrl}/reset-password?token=${rawToken}&company=${encodeURIComponent(company_code.trim().toLowerCase())}`;
 
         await emailService.sendPasswordReset({ to: email.trim(), name: user.name, resetLink });
       }
@@ -322,10 +323,11 @@ exports.resetPassword = async (req, res) => {
     }
 
     const tenantDb = tenants[0].db_name;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const rows = await queryDb(
       tenantDb,
       'SELECT user_id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
-      [token]
+      [tokenHash]
     );
 
     if (rows.length === 0) {

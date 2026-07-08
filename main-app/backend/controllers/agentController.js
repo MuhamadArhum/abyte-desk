@@ -11,6 +11,7 @@
 //   Agent prints, then PATCH /api/agent/print-queue/:id → done|failed
 // =============================================================
 
+const crypto         = require('crypto');
 const { queryDb }    = require('../config/database');
 const { masterQuery } = require('../config/masterDatabase');
 const logger         = require('../config/logger');
@@ -40,7 +41,14 @@ async function resolveAndAuth(req, res) {
   const settings = await queryDb(tenantDb, 'SELECT agent_token FROM store_settings WHERE setting_id = 1');
   const stored = settings && settings[0] ? settings[0].agent_token : null;
 
-  if (!stored || stored !== agentToken) {
+  if (!stored) {
+    res.status(401).json({ message: 'Invalid agent token' });
+    return null;
+  }
+  const storedBuf = Buffer.from(stored, 'utf8');
+  const tokenBuf  = Buffer.from(agentToken, 'utf8');
+  if (storedBuf.length !== tokenBuf.length ||
+      !crypto.timingSafeEqual(storedBuf, tokenBuf)) {
     res.status(401).json({ message: 'Invalid agent token' });
     return null;
   }

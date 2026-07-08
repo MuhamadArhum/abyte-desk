@@ -11,7 +11,16 @@ function getBranch(req) {
 }
 
 // ============ HELPERS ============
+const NEXT_NUMBER_WHITELIST = {
+  stock_issues:        'issue_number',
+  stock_issue_returns: 'return_number',
+  raw_sales:           'sale_number',
+};
+
 async function nextNumber(prefix, table, column) {
+  if (NEXT_NUMBER_WHITELIST[table] !== column) {
+    throw new Error(`nextNumber: disallowed table/column: ${table}.${column}`);
+  }
   const [last] = await query(`SELECT ${column} FROM ${table} ORDER BY ${column} DESC LIMIT 1`);
   if (last?.[column]) {
     const m = last[column].match(/\d+$/);
