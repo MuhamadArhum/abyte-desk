@@ -188,10 +188,10 @@ const Dashboard = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6 p-6"
+      className="space-y-6 p-4 sm:p-6"
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">Abyte ERP Dashboard Overview</h1>
           <p className="text-sm text-gray-500 mt-0.5">

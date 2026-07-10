@@ -317,7 +317,7 @@ const ProfitLoss = () => {
           </div>
 
           {/* Net Profit/Loss Bar */}
-          <div className={`rounded-xl px-6 py-5 flex items-center justify-between shadow-lg ${data.net_profit >= 0 ? 'bg-gradient-to-r from-emerald-600 to-emerald-700' : 'bg-gradient-to-r from-red-600 to-red-700'} text-white`}>
+          <div className={`rounded-xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg ${data.net_profit >= 0 ? 'bg-gradient-to-r from-emerald-600 to-emerald-700' : 'bg-gradient-to-r from-red-600 to-red-700'} text-white`}>
             <div className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${data.net_profit >= 0 ? 'bg-white/20' : 'bg-white/20'}`}>
                 {data.net_profit >= 0

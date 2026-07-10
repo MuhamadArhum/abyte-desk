@@ -55,8 +55,8 @@ const StockReconciliation = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <RefreshCw size={20} className="text-cyan-600" /> Stock Reconciliation
@@ -65,7 +65,7 @@ const StockReconciliation = () => {
         </div>
         <button onClick={fetchReport}
           className="flex items-center gap-2 px-5 py-2.5 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700">
-          <RefreshCw size={15} /> Reload
+          <RefreshCw size={15} /> <span className="hidden sm:inline">Reload</span>
         </button>
       </div>
 
@@ -92,7 +92,7 @@ const StockReconciliation = () => {
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600" /></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>

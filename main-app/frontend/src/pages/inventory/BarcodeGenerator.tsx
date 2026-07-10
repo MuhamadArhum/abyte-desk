@@ -235,9 +235,9 @@ export default function BarcodeGenerator() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">Barcode Label Generator</h1>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           {/* Left Panel */}
-          <div className="w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col" style={{ maxHeight: '75vh' }}>
+          <div className="w-full sm:w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col" style={{ maxHeight: '75vh' }}>
             <div className="p-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-700 mb-3">Product Selector</h2>
               <input
@@ -316,7 +316,7 @@ export default function BarcodeGenerator() {
           </div>
 
           {/* Right Panel */}
-          <div className="w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col" style={{ maxHeight: '75vh' }}>
+          <div className="w-full sm:w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col" style={{ maxHeight: '75vh' }}>
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-700">Label Queue</h2>

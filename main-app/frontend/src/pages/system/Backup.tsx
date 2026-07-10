@@ -210,9 +210,9 @@ const Backup = () => {
   const lastBackup = backups.length > 0 ? backups[0] : null;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <Database className="text-emerald-600" size={20} />
@@ -226,7 +226,7 @@ const Backup = () => {
           className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
         >
           {creating ? <Loader2 className="animate-spin" size={20} /> : <HardDrive size={20} />}
-          Create Backup Now
+          <span className="hidden sm:inline">Create Backup Now</span>
         </button>
       </div>
 
@@ -469,7 +469,8 @@ const Backup = () => {
             </button>
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[800px]">
             <thead className="bg-gray-50 text-gray-600 font-medium">
               <tr>
                 <th className="p-4">Filename</th>
@@ -537,6 +538,7 @@ const Backup = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <Pagination
           currentPage={currentPage}

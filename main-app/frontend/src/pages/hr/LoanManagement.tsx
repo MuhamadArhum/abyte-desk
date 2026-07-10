@@ -97,7 +97,7 @@ const LoanManagement = () => {
       {/* Gradient Header */}
       <div className="relative overflow-hidden bg-gradient-to-r from-purple-50 via-white to-white border-b border-gray-100 px-4 md:px-8 py-4 md:py-6 -mx-4 md:-mx-8 -mt-4 md:-mt-8 mb-6 md:mb-8">
         <div className="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23000%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-200">
               <DollarSign size={22} className="text-white" />
@@ -160,10 +160,11 @@ const LoanManagement = () => {
         <SkeletonTable rows={6} cols={7} />
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50">
               <tr className="border-b border-gray-100">
-                <th className="text-left p-4 font-semibold text-gray-700">Staff</th>
+                <th className="text-left p-4 font-semibold text-gray-700 whitespace-nowrap">Staff</th>
                 <th className="text-right p-4 font-semibold text-gray-700">Loan Amount</th>
                 <th className="text-right p-4 font-semibold text-gray-700">Repaid</th>
                 <th className="text-right p-4 font-semibold text-gray-700">Remaining</th>
@@ -246,6 +247,7 @@ const LoanManagement = () => {
               )}
             </tbody>
           </table>
+          </div>
 
           <Pagination
             currentPage={pagination.page}

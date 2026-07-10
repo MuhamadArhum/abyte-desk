@@ -344,7 +344,7 @@ const BalanceSheet = () => {
       {!loading && data && (
         <>
           {/* Balance Status */}
-          <div className={`mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border-2 ${
+          <div className={`mb-6 flex flex-wrap items-center gap-3 px-5 py-3 rounded-xl border-2 ${
             isBalanced ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
           }`}>
             {isBalanced
@@ -432,7 +432,7 @@ const BalanceSheet = () => {
           </div>
 
           {/* Grand Total Bar */}
-          <div className="bg-gray-900 text-white rounded-xl px-6 py-4 flex justify-between items-center shadow-lg">
+          <div className="bg-gray-900 text-white rounded-xl px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-lg">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Total Liabilities + Equity</p>
               <p className="text-sm text-gray-300">As of {asOfDate}</p>

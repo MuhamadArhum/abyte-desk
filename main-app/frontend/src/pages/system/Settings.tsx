@@ -542,7 +542,7 @@ const Settings = () => {
   ];
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-xl font-semibold tracking-tight text-gray-900 mb-2 flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -575,7 +575,7 @@ const Settings = () => {
           })}
         </div>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-6">
 
           {/* ========== STORE INFO TAB ========== */}
           {activeTab === 'store' && (
@@ -905,7 +905,7 @@ const Settings = () => {
                   <h3 className="text-sm font-bold text-orange-800 uppercase tracking-wider">Tax Rates by Payment Method (%)</h3>
                 </div>
                 <p className="text-xs text-gray-600 mb-4">Set the GST/Tax percentage applied per payment method. Checkout will automatically use the correct rate.</p>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[
                     { key: 'tax_on_cash',   label: 'Tax on Cash',   color: 'orange' },
                     { key: 'tax_on_card',   label: 'Tax on Card',   color: 'blue' },
@@ -1165,7 +1165,7 @@ const Settings = () => {
                     </div>
 
                     {agentStatus === 'available' && agentInfo && (
-                      <div className="mt-3 grid grid-cols-3 gap-3">
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="bg-white rounded-lg p-3 border border-emerald-200 text-center">
                           <div className="text-2xl font-bold text-emerald-600">{agentInfo.printers}</div>
                           <div className="text-xs text-gray-500 mt-0.5">Total Printers</div>

@@ -37,7 +37,7 @@ const IssuanceReports = () => {
   const fmtQty = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <ClipboardList size={20} className="text-emerald-600" /> Stock Issuance Report
@@ -66,7 +66,7 @@ const IssuanceReports = () => {
       ) : summary ? (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ArrowUpRight size={16} className="text-emerald-600" />
@@ -105,13 +105,14 @@ const IssuanceReports = () => {
                 <h2 className="font-semibold text-gray-800">Top Issued Products</h2>
                 <span className="text-xs text-gray-400 ml-1">by quantity</span>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="bg-gray-800 text-white">
-                    <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                    <th className="px-4 py-3 text-left font-semibold">Product</th>
-                    <th className="px-4 py-3 text-right font-semibold w-40">Total Qty Issued</th>
-                    <th className="px-4 py-3 text-right font-semibold w-36">Total Cost</th>
+                    <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                    <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total Qty Issued</th>
+                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total Cost</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -125,6 +126,7 @@ const IssuanceReports = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center text-gray-400">

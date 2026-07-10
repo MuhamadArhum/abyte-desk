@@ -172,8 +172,8 @@ const RawMaterialItems = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <FlaskConical className="text-orange-500" size={20} /> Raw Materials
@@ -181,12 +181,12 @@ const RawMaterialItems = () => {
           <p className="text-sm text-gray-500 mt-0.5">Input items used to produce finished goods</p>
         </div>
         <button onClick={openAdd} className="bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
-          <Plus size={18} /> Add Raw Material
+          <Plus size={18} /> <span className="hidden sm:inline">Add Raw Material</span>
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
           <div className="p-2.5 bg-orange-50 rounded-xl"><Package size={20} className="text-orange-500" /></div>
           <div><p className="text-xl font-bold text-gray-800">{stats.total}</p><p className="text-xs text-gray-500">Total Items</p></div>
@@ -317,7 +317,7 @@ const RawMaterialItems = () => {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}
@@ -335,7 +335,7 @@ const RawMaterialItems = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price</label>
                   <input type="number" min="0" step="0.01" value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: e.target.value }))}
@@ -348,7 +348,7 @@ const RawMaterialItems = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Min Stock Level</label>
                   <input type="number" min="0" value={form.min_stock_level} onChange={e => setForm(f => ({ ...f, min_stock_level: e.target.value }))}

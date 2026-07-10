@@ -135,9 +135,9 @@ const StaffReports = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <BarChart3 className="text-emerald-600" size={20} />
           <div>
@@ -253,10 +253,11 @@ const StaffReports = () => {
           {/* Table */}
           {attendanceData.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50">
                   <tr className="border-b">
-                    <th className="text-left p-4 font-semibold text-gray-700">Name</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 whitespace-nowrap">Name</th>
                     <th className="text-left p-4 font-semibold text-gray-700">Department</th>
                     <th className="text-center p-4 font-semibold text-gray-700">Present</th>
                     <th className="text-center p-4 font-semibold text-gray-700">Absent</th>
@@ -292,6 +293,7 @@ const StaffReports = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
@@ -357,10 +359,11 @@ const StaffReports = () => {
           {/* Table */}
           {salaryData.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px]">
                 <thead className="bg-gray-50">
                   <tr className="border-b">
-                    <th className="text-left p-4 font-semibold text-gray-700">Department</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 whitespace-nowrap">Department</th>
                     <th className="text-center p-4 font-semibold text-gray-700">Staff</th>
                     <th className="text-center p-4 font-semibold text-gray-700">Paid</th>
                     <th className="text-right p-4 font-semibold text-gray-700">Base</th>
@@ -403,6 +406,7 @@ const StaffReports = () => {
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 

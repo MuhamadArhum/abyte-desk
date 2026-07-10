@@ -191,9 +191,9 @@ const StockAdjustments = () => {
   const afterQty = calculateAfter();
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <ClipboardList className="text-emerald-600" size={20} />
@@ -206,7 +206,7 @@ const StockAdjustments = () => {
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
         >
           <Plus size={20} />
-          New Adjustment
+          <span className="hidden sm:inline">New Adjustment</span>
         </button>
       </div>
 
@@ -302,7 +302,7 @@ const StockAdjustments = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 font-medium">
                 <tr>
                   <th className="p-4">Date</th>

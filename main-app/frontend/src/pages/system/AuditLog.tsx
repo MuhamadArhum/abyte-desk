@@ -232,8 +232,8 @@ const AuditLog = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <ScrollText className="text-emerald-600" size={20} />
@@ -286,7 +286,8 @@ const AuditLog = () => {
           </div>
         ) : (
           <>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[800px]">
               <thead className="bg-gray-50 text-gray-600 font-medium">
                 <tr>
                   <th className="p-4 w-8"></th>
@@ -360,6 +361,7 @@ const AuditLog = () => {
                 )}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
             <Pagination

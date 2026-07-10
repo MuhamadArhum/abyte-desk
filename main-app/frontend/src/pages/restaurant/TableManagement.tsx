@@ -134,9 +134,9 @@ const TableManagement = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <UtensilsCrossed className="text-emerald-600" size={22} />
           <div>
@@ -161,7 +161,7 @@ const TableManagement = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <p className="text-gray-600 text-sm">Total Tables</p>
           <p className="text-3xl font-bold text-gray-800 mt-2">{stats.total}</p>

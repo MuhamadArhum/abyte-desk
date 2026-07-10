@@ -37,7 +37,7 @@ const SupplierWisePurchase = () => {
   const toggle = (id: any) => setCollapsed(c => ({ ...c, [id]: !c[id] }));
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <Truck size={20} className="text-teal-600" /> Supplier Wise Purchase
@@ -50,7 +50,7 @@ const SupplierWisePurchase = () => {
       </div>
 
       {data.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
             <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide">Total Items Amount</p>
             <p className="text-2xl font-bold text-indigo-900 mt-1">{fmt(grandItems)}</p>
@@ -72,18 +72,19 @@ const SupplierWisePurchase = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold">Item Description</th>
-                <th className="px-3 py-3 text-center font-semibold w-16">Unit</th>
-                <th className="px-3 py-3 text-right font-semibold w-24">Qty</th>
-                <th className="px-3 py-3 text-right font-semibold w-28">Rate</th>
-                <th className="px-3 py-3 text-right font-semibold w-28">Amount</th>
-                <th className="px-3 py-3 text-right font-semibold w-24">Discount</th>
-                <th className="px-3 py-3 text-right font-semibold w-24">Tax</th>
-                <th className="px-3 py-3 text-right font-semibold w-24">Carriage</th>
-                <th className="px-3 py-3 text-right font-semibold w-28">Net Amount</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Item Description</th>
+                <th className="px-3 py-3 text-center font-semibold whitespace-nowrap">Unit</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Qty</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Rate</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Amount</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Discount</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Tax</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Carriage</th>
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">Net Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +163,7 @@ const SupplierWisePurchase = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

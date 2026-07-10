@@ -97,8 +97,8 @@ export default function OpeningStock() {
   const changedCount = Object.values(entries).filter(v => v.qty && Number(v.qty) > 0).length;
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <PackageOpen size={22} className="text-teal-600" /> Opening Stock Entry
@@ -138,7 +138,8 @@ export default function OpeningStock() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Product</th>
@@ -193,6 +194,7 @@ export default function OpeningStock() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* History Modal */}

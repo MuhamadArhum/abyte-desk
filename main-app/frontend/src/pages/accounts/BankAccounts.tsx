@@ -183,8 +183,8 @@ const BankAccounts = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Building2 className="text-emerald-600" size={20} />
           <div>
@@ -193,8 +193,8 @@ const BankAccounts = () => {
           </div>
         </div>
         <button onClick={() => { setSelectedAccount(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg">
-          <Plus size={20} /> Add Bank Account
+          className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow-lg text-sm">
+          <Plus size={16} /> <span className="hidden sm:inline">Add Bank Account</span><span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -213,7 +213,7 @@ const BankAccounts = () => {
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Bank Name</th>

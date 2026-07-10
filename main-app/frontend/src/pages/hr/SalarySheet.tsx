@@ -309,10 +309,10 @@ const SalarySheet = () => {
   const th = 'px-3 py-3 font-semibold uppercase tracking-wider whitespace-nowrap text-xs';
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
-        <div className="relative flex items-center justify-between">
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-white to-white border-b border-gray-100 px-4 sm:px-8 py-4 sm:py-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-6 sm:mb-8">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
               <FileText size={22} className="text-white" />
@@ -324,10 +324,10 @@ const SalarySheet = () => {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={exportCSV} className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:bg-gray-50 transition text-sm font-medium">
-              <Download size={15} /> CSV
+              <Download size={15} /> <span className="hidden sm:inline">Export </span>CSV
             </button>
             <button onClick={printSheet} className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl hover:from-emerald-600 hover:to-emerald-700 shadow-md shadow-emerald-200 font-medium text-sm">
-              <Printer size={15} /> Print
+              <Printer size={15} /> <span className="hidden sm:inline">Print</span>
             </button>
           </div>
         </div>
@@ -396,7 +396,7 @@ const SalarySheet = () => {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs min-w-[1000px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   {/* Identity */}

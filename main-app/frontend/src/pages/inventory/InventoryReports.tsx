@@ -79,7 +79,7 @@ const InventoryReports = () => {
   const maxUnitsSold = topProducts.length > 0 ? topProducts[0].units_sold : 1;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">

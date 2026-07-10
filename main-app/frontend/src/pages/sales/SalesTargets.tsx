@@ -506,9 +506,9 @@ const SalesTargets = () => {
 
   // ---------- Render ----------
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Target className="text-emerald-600" size={20} />
           <div>
@@ -522,13 +522,13 @@ const SalesTargets = () => {
             className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition"
           >
             <Printer size={18} />
-            Print
+            <span className="hidden sm:inline">Print</span>
           </button>
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg"
           >
-            <Plus size={20} /> Create Target
+            <Plus size={20} /> <span className="hidden sm:inline">Create Target</span>
           </button>
         </div>
       </div>
@@ -750,7 +750,8 @@ const SalesTargets = () => {
 
           {/* Targets Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50">
                 <tr className="border-b">
                   <th className="text-left p-4 font-semibold text-gray-700">User</th>
@@ -835,6 +836,7 @@ const SalesTargets = () => {
                 )}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
             <Pagination

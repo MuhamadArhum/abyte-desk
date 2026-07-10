@@ -141,9 +141,9 @@ const SalaryVoucher = () => {
   );
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-white to-white border-b border-gray-100 px-4 sm:px-8 py-4 sm:py-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-6 sm:mb-8">
         <div className="relative flex items-center gap-4">
           <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
             <FileText size={22} className="text-white" />
@@ -297,7 +297,7 @@ const SalaryVoucher = () => {
           </div>
 
           {/* Signature area */}
-          <div className="px-6 py-4 border-t border-gray-100 grid grid-cols-3 gap-8 bg-gray-50/60">
+          <div className="px-6 py-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-8 bg-gray-50/60">
             {['Prepared By', 'Approved By', 'Employee Signature'].map(label => (
               <div key={label} className="text-center">
                 <div className="border-t-2 border-gray-300 pt-2 mt-8">

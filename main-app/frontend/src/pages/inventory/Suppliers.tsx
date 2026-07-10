@@ -106,9 +106,9 @@ const Suppliers = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">Suppliers</h1>
           <p className="text-gray-600 mt-1">Manage your suppliers and vendors</p>
@@ -118,7 +118,7 @@ const Suppliers = () => {
           className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition-colors"
         >
           <Plus size={20} />
-          Add Supplier
+          <span className="hidden sm:inline">Add Supplier</span>
         </button>
       </div>
 
@@ -145,7 +145,7 @@ const Suppliers = () => {
       {/* Table Container */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         {/* Search and Filter */}
-        <div className="p-6 border-b border-gray-100 flex gap-4 items-center">
+        <div className="p-6 border-b border-gray-100 flex flex-wrap gap-4 items-center">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input

@@ -192,11 +192,11 @@ const TrialBalance = () => {
               <table className="w-full text-sm min-w-[500px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-400">
-                    <th className="text-left px-4 py-3 font-semibold w-28">Code</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Code</th>
                     <th className="text-left px-4 py-3 font-semibold">Account Name</th>
-                    <th className="text-center px-3 py-3 font-semibold w-24">Type</th>
-                    <th className="text-right px-4 py-3 font-semibold w-36 text-emerald-600">Debit</th>
-                    <th className="text-right px-4 py-3 font-semibold w-36 text-gray-500">Credit</th>
+                    <th className="text-center px-3 py-3 font-semibold whitespace-nowrap">Type</th>
+                    <th className="text-right px-4 py-3 font-semibold whitespace-nowrap text-emerald-600">Debit</th>
+                    <th className="text-right px-4 py-3 font-semibold whitespace-nowrap text-gray-500">Credit</th>
                   </tr>
                 </thead>
                 <tbody>

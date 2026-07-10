@@ -30,7 +30,7 @@ const AccountPicker = ({ value, onChange, accounts }: {
   const clear   = (e: React.MouseEvent) => { e.stopPropagation(); onChange('', ''); };
 
   return (
-    <div ref={ref} className="relative min-w-[280px]">
+    <div ref={ref} className="relative w-full sm:min-w-[280px]">
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-left">
         <span className={selected ? 'font-medium text-gray-900' : 'text-gray-400'}>
@@ -46,7 +46,7 @@ const AccountPicker = ({ value, onChange, accounts }: {
         </div>
       </button>
       {open && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl">
+        <div className="absolute z-50 left-0 top-full mt-1 w-full sm:w-96 bg-white border border-gray-200 rounded-xl shadow-2xl">
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={13} className="text-gray-400" />
@@ -375,9 +375,9 @@ const TrialBalance6Col = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
             <LayoutGrid size={18} className="text-emerald-700" />
@@ -391,11 +391,11 @@ const TrialBalance6Col = () => {
           <div className="flex gap-2">
             <button onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
-              <Printer size={15} /> Print
+              <Printer size={15} /> <span className="hidden sm:inline">Print</span>
             </button>
             <button onClick={exportCSV}
               className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition">
-              <Download size={15} /> Export CSV
+              <Download size={15} /> <span className="hidden sm:inline">Export CSV</span>
             </button>
           </div>
         )}
@@ -519,12 +519,12 @@ const TrialBalance6Col = () => {
                   </th>
                 </tr>
                 <tr className="bg-gray-700 text-gray-200 text-xs">
-                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 w-32">Debit</th>
-                  <th className="px-3 py-2 text-right font-medium w-32">Credit</th>
-                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 w-32">Debit</th>
-                  <th className="px-3 py-2 text-right font-medium w-32">Credit</th>
-                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 w-32">Debit</th>
-                  <th className="px-3 py-2 text-right font-medium w-32">Credit</th>
+                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 whitespace-nowrap">Debit</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Credit</th>
+                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 whitespace-nowrap">Debit</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Credit</th>
+                  <th className="px-3 py-2 text-right font-medium border-l border-gray-600 whitespace-nowrap">Debit</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Credit</th>
                 </tr>
               </thead>
               <tbody>
@@ -549,26 +549,26 @@ const TrialBalance6Col = () => {
                     </td>
 
                     {/* Opening Balance */}
-                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 whitespace-nowrap">
                       {fmt(row.agg_opening_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium whitespace-nowrap">
                       {fmt(row.agg_opening_cr)}
                     </td>
 
                     {/* Current (Period) */}
-                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-medium border-l border-gray-100 whitespace-nowrap">
                       {fmt(row.agg_period_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-medium whitespace-nowrap">
                       {fmt(row.agg_period_cr)}
                     </td>
 
                     {/* Closing Balance */}
-                    <td className="px-3 py-2.5 text-right text-emerald-700 font-semibold border-l border-gray-100 w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-emerald-700 font-semibold border-l border-gray-100 whitespace-nowrap">
                       {fmt(row.agg_closing_dr)}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-gray-600 font-semibold w-32 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-right text-gray-600 font-semibold whitespace-nowrap">
                       {fmt(row.agg_closing_cr)}
                     </td>
                   </tr>

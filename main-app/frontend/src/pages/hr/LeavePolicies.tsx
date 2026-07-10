@@ -78,11 +78,11 @@ const LeavePolicies = () => {
   const typeInfo = (leaveType: string) => LEAVE_TYPES.find(t => t.key === leaveType);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Gradient page header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-teal-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-teal-50 via-white to-white border-b border-gray-100 px-4 sm:px-8 py-4 sm:py-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-6 sm:mb-8">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%2314b8a6%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-5" />
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-200">
               <BookOpen size={22} className="text-white" />
@@ -98,7 +98,8 @@ const LeavePolicies = () => {
             className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white px-5 py-2.5 rounded-xl hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             <RefreshCw size={16} className={carrying ? 'animate-spin' : ''} />
-            {carrying ? 'Processing...' : 'Run Year-End Carry-Forward'}
+            <span className="hidden sm:inline">{carrying ? 'Processing...' : 'Run Year-End Carry-Forward'}</span>
+            <span className="sm:hidden">{carrying ? 'Processing...' : 'Carry-Forward'}</span>
           </button>
         </div>
       </div>

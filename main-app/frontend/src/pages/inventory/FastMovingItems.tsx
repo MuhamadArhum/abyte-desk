@@ -31,7 +31,7 @@ const FastMovingItems = () => {
   const totalIssued    = data.reduce((s, r) => s + Number(r.total_issued    || 0), 0);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <TrendingUp size={20} className="text-indigo-600" /> Fast Moving Items
@@ -48,7 +48,7 @@ const FastMovingItems = () => {
       </div>
 
       {data.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
             <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">Total Products</p>
             <p className="text-2xl font-bold text-indigo-900 mt-1">{data.length}</p>
@@ -68,18 +68,19 @@ const FastMovingItems = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold">Product</th>
-                <th className="px-4 py-3 text-left font-semibold">Category</th>
-                <th className="px-4 py-3 text-center font-semibold w-16">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Purchased Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-24">PV Count</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Issued Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Issue Txns</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Total Movement</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Unit</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Purchased Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">PV Count</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Issued Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Issue Txns</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total Movement</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -115,6 +116,7 @@ const FastMovingItems = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

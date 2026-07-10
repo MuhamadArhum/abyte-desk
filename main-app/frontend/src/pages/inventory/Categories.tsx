@@ -278,9 +278,9 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
         </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
               {currentTab.icon && React.cloneElement(currentTab.icon, { size: 20, className: currentTab.color } as any)}
@@ -294,12 +294,12 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
             onClick={() => openAdd(tab)}
             className={`${currentTab.btn} text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors`}
           >
-            <Plus size={18} /> Add Category
+            <Plus size={18} /> <span className="hidden sm:inline">Add Category</span>
           </button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
             <div className="p-2.5 bg-gray-50 rounded-xl"><Tag size={20} className="text-gray-500" /></div>
             <div>
@@ -326,7 +326,7 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
         {/* Table */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Search */}
-          <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+          <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
               <input

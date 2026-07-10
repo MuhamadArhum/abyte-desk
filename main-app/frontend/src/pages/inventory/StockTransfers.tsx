@@ -176,9 +176,9 @@ const StockTransfers = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <ArrowLeftRight className="text-emerald-600" size={20} />
@@ -191,7 +191,7 @@ const StockTransfers = () => {
           className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors"
         >
           <Plus size={20} />
-          New Transfer
+          <span className="hidden sm:inline">New Transfer</span>
         </button>
       </div>
 
@@ -262,7 +262,7 @@ const StockTransfers = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 font-medium">
                 <tr>
                   <th className="p-4">Date</th>
@@ -337,7 +337,7 @@ const StockTransfers = () => {
               {formError && (
                 <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">{formError}</div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">From Store *</label>
                   <select value={formFrom} onChange={(e) => setFormFrom(e.target.value)}

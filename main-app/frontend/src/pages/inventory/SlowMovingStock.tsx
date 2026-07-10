@@ -38,7 +38,7 @@ const SlowMovingStock = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <Clock size={20} className="text-orange-600" /> Slow Moving / Dead Stock
@@ -57,7 +57,7 @@ const SlowMovingStock = () => {
       </div>
 
       {data.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
             <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">Items Found</p>
             <p className="text-2xl font-bold text-orange-900 mt-1">{data.length}</p>
@@ -77,17 +77,18 @@ const SlowMovingStock = () => {
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold">Product</th>
-                <th className="px-4 py-3 text-left font-semibold">Category</th>
-                <th className="px-4 py-3 text-center font-semibold w-16">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Current Stock</th>
-                <th className="px-4 py-3 text-left font-semibold w-36">Last Activity</th>
-                <th className="px-4 py-3 text-center font-semibold w-36">Days Inactive</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Value at Risk</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Unit</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Current Stock</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Last Activity</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Days Inactive</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Value at Risk</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -118,6 +119,7 @@ const SlowMovingStock = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

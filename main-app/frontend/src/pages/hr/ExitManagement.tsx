@@ -43,7 +43,7 @@ const ExitModal = ({ staffList, onClose, onSuccess }: any) => {
       </div>
       <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Staff Member *</label>
               <select value={form.staff_id} onChange={e => setForm({ ...form, staff_id: e.target.value })}
@@ -60,7 +60,7 @@ const ExitModal = ({ staffList, onClose, onSuccess }: any) => {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Notice Date *</label>
               <input type="date" value={form.notice_date} onChange={e => setForm({ ...form, notice_date: e.target.value })}
@@ -77,7 +77,7 @@ const ExitModal = ({ staffList, onClose, onSuccess }: any) => {
             <textarea value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 bg-gray-50/50 outline-none transition resize-none" rows={2} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Final Settlement ({currency})</label>
               <input type="number" min={0} step="0.01" value={form.final_settlement} onChange={e => setForm({ ...form, final_settlement: e.target.value })}
@@ -208,11 +208,11 @@ const ExitManagement = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Gradient page header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-rose-50 via-white to-white border-b border-gray-100 px-8 py-6 -mx-8 -mt-8 mb-8">
+      <div className="relative overflow-hidden bg-gradient-to-r from-rose-50 via-white to-white border-b border-gray-100 px-4 sm:px-8 py-4 sm:py-6 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-6 sm:mb-8">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=%2260%22 height=%2260%22 viewBox=%220 0 60 60%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cg fill=%22none%22 fill-rule=%22evenodd%22%3E%3Cg fill=%22%23f43f5e%22 fill-opacity=%221%22%3E%3Cpath d=%22M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-5" />
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200">
               <LogOut size={22} className="text-white" />
@@ -224,7 +224,7 @@ const ExitManagement = () => {
           </div>
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-rose-600 text-white px-5 py-2.5 rounded-xl hover:from-rose-600 hover:to-rose-700 shadow-md shadow-rose-200 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium text-sm">
-            <Plus size={16} /> New Exit Request
+            <Plus size={16} /> <span className="hidden sm:inline">New </span>Exit Request
           </button>
         </div>
       </div>
@@ -248,10 +248,11 @@ const ExitManagement = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-gray-50/80 border-b border-gray-100">
             <tr>
-              <th className="text-left p-4 font-semibold text-gray-700">Staff</th>
+              <th className="text-left p-4 font-semibold text-gray-700 whitespace-nowrap">Staff</th>
               <th className="text-center p-4 font-semibold text-gray-700">Exit Type</th>
               <th className="text-center p-4 font-semibold text-gray-700">Notice Date</th>
               <th className="text-center p-4 font-semibold text-gray-700">Last Day</th>
@@ -298,6 +299,7 @@ const ExitManagement = () => {
             )}
           </tbody>
         </table>
+        </div>
         <Pagination currentPage={pagination.page} totalPages={pagination.totalPages}
           onPageChange={p => setPagination(prev => ({ ...prev, page: p }))}
           totalItems={pagination.total} itemsPerPage={pagination.limit}

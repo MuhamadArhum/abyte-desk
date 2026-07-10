@@ -517,9 +517,9 @@ const ChartOfAccounts = () => {
   }, [allAccounts]);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-100 rounded-xl"><BookOpen className="text-emerald-600" size={20} /></div>
           <div>
@@ -536,7 +536,7 @@ const ChartOfAccounts = () => {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
         {Object.entries(TYPE_CONFIG).map(([type, cfg]) => (
           <button
             key={type}
@@ -587,13 +587,14 @@ const ChartOfAccounts = () => {
 
       {/* Tree Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Account</th>
-              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Type / Level</th>
-              <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Balance</th>
-              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">Actions</th>
+              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Type / Level</th>
+              <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Balance</th>
+              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -622,6 +623,7 @@ const ChartOfAccounts = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal */}

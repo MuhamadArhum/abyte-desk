@@ -99,14 +99,14 @@ const RawSale = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><ShoppingBag size={20} className="text-orange-600" /> Raw Sale</h1>
           <p className="text-sm text-gray-500 mt-0.5">Sell raw materials / section-wise</p>
         </div>
         <button onClick={() => { fetchSections(); setShowForm(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium">
-          <Plus size={18} /> New Raw Sale
+          <Plus size={18} /> <span className="hidden sm:inline">New Raw Sale</span>
         </button>
       </div>
 
@@ -119,7 +119,7 @@ const RawSale = () => {
               <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-4 gap-4 mb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
                   <select value={formSection} onChange={e => setFormSection(e.target.value)}
@@ -229,7 +229,7 @@ const RawSale = () => {
               </div>
             </div>
             <div className="p-5">
-              <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-sm">
                 {viewSale.section_name && <div><span className="text-gray-500">Section:</span> <span className="font-medium">{viewSale.section_name}</span></div>}
                 {viewSale.customer_name && <div><span className="text-gray-500">Customer:</span> <span className="font-medium">{viewSale.customer_name}</span></div>}
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewSale.sale_date}</span></div>
@@ -272,7 +272,8 @@ const RawSale = () => {
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" /></div> : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sale #</th>
@@ -301,6 +302,7 @@ const RawSale = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={20} onItemsPerPageChange={() => {}} />
       </div>

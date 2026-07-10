@@ -299,7 +299,7 @@ const RuleModal = ({
           </div>
 
           {/* Dynamic Fields Based on Rule Type */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             {formData.rule_type === 'buy_x_get_y' && (
               <>
                 <div>
@@ -413,7 +413,7 @@ const RuleModal = ({
           </div>
 
           {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
               <input
@@ -435,7 +435,7 @@ const RuleModal = ({
           </div>
 
           {/* Priority, Max Uses, Applies To */}
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
               <input
@@ -711,9 +711,9 @@ const PriceRules = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <Percent className="text-emerald-600" size={20} />
@@ -832,7 +832,7 @@ const PriceRules = () => {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left text-sm min-w-[800px]">
                 <thead className="bg-gray-50 text-gray-600 font-medium">
                   <tr>
                     <th className="p-4">Rule Name</th>

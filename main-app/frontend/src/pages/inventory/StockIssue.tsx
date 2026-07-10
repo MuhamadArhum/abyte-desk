@@ -153,14 +153,14 @@ const StockIssue = () => {
   const fmt = (n: any) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2"><ArrowUpFromLine size={20} className="text-emerald-600" /> Stock Issue</h1>
           <p className="text-sm text-gray-500 mt-0.5">Issue stock to sections / departments</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium">
-          <Plus size={18} /> New Issue
+          <Plus size={18} /> <span className="hidden sm:inline">New Issue</span>
         </button>
       </div>
 
@@ -175,7 +175,7 @@ const StockIssue = () => {
               <button onClick={() => setShowForm(false)}><X size={20} className="text-gray-400" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-3 gap-4 mb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
                   <select value={formSection} onChange={e => setFormSection(e.target.value)}
@@ -287,7 +287,7 @@ const StockIssue = () => {
               </div>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 text-sm">
                 <div><span className="text-gray-500">Section:</span> <span className="font-medium">{viewIssue.section_name}</span></div>
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewIssue.issue_date}</span></div>
                 <div><span className="text-gray-500">By:</span> <span className="font-medium">{viewIssue.created_by_name}</span></div>
@@ -333,7 +333,8 @@ const StockIssue = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue #</th>
@@ -368,6 +369,7 @@ const StockIssue = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} totalItems={totalItems} itemsPerPage={20} onItemsPerPageChange={() => {}} />
       </div>

@@ -326,7 +326,7 @@ export default function HelpSupport() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
 
       {/* Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 rounded-3xl px-10 py-12 mb-10 shadow-2xl">
@@ -365,7 +365,7 @@ export default function HelpSupport() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         {[
           { icon: BookOpen, label: 'Documentation', desc: 'Full user manual & guides', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
           { icon: Video, label: 'Video Tutorials', desc: 'Step-by-step walkthroughs', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },

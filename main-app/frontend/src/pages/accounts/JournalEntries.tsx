@@ -179,7 +179,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
 
       {/* Top bar: Back + Balance badge */}
       <div className="mb-5 flex items-center justify-between">
@@ -211,7 +211,7 @@ const JVForm = ({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => vo
         </div>
 
         {/* Date + Narration row */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-4">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 shrink-0">
             <Calendar size={14} className="text-gray-400" />
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
@@ -547,10 +547,10 @@ const JournalEntries = () => {
   const totalCr = entries.reduce((s, e) => s + Number(e.total_credit || 0), 0);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
 
       {/* Header */}
-      <div className="mb-5 flex items-start justify-between">
+      <div className="mb-5 flex flex-col sm:flex-row items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <BookOpen size={20} className="text-emerald-600" /> Journal Vouchers
@@ -559,7 +559,7 @@ const JournalEntries = () => {
         </div>
         <button onClick={() => setView('new')}
           className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
-          <Plus size={14} /> New Journal Voucher
+          <Plus size={14} /> <span className="hidden sm:inline">New Journal Voucher</span><span className="sm:hidden">New JV</span>
         </button>
       </div>
 
@@ -594,7 +594,7 @@ const JournalEntries = () => {
 
       {/* Summary Cards */}
       {hasLoaded && entries.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Entries</p>
             <p className="text-2xl font-bold text-gray-800 mt-1">{pagination.total}</p>

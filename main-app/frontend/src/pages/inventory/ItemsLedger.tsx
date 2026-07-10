@@ -62,7 +62,7 @@ const ItemsLedger = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <BookOpen size={20} className="text-purple-600" /> Items Ledger
@@ -99,7 +99,7 @@ const ItemsLedger = () => {
 
       {/* Product info + summary */}
       {productInfo && ledger.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 col-span-1">
             <div className="flex items-center gap-2 mb-1">
               <Package size={16} className="text-purple-600" />
@@ -135,17 +135,18 @@ const ItemsLedger = () => {
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold">Date</th>
-                <th className="px-4 py-3 text-left font-semibold">Type</th>
-                <th className="px-4 py-3 text-left font-semibold">Ref #</th>
-                <th className="px-4 py-3 text-left font-semibold">Party</th>
-                <th className="px-4 py-3 text-center font-semibold w-16">Dir</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Amount</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Balance</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Date</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Type</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Ref #</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Party</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Dir</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Amount</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -191,6 +192,7 @@ const ItemsLedger = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

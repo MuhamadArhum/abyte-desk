@@ -51,7 +51,7 @@ const PurchaseVsIssuance = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <ArrowLeftRight size={20} className="text-teal-600" /> Purchase vs Issuance
@@ -68,7 +68,7 @@ const PurchaseVsIssuance = () => {
       </div>
 
       {data.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
             <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide">Total Products</p>
             <p className="text-2xl font-bold text-teal-900 mt-1">{data.length}</p>
@@ -92,18 +92,19 @@ const PurchaseVsIssuance = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold">Product</th>
-                <th className="px-4 py-3 text-left font-semibold">Category</th>
-                <th className="px-4 py-3 text-center font-semibold w-16">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Purchased Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Purchase Amount</th>
-                <th className="px-4 py-3 text-right font-semibold w-24">Issued Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Issue Amount</th>
-                <th className="px-4 py-3 text-right font-semibold w-36">Difference</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Unit</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Purchased Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Purchase Amount</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Issued Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Issue Amount</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Difference</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -139,6 +140,7 @@ const PurchaseVsIssuance = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

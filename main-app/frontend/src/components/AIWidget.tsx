@@ -145,7 +145,7 @@ const AIWidgetInner = () => {
       {/* Chat Window */}
       {isOpen && (
         <div className={`mb-4 bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 flex flex-col overflow-hidden transition-all duration-300 ${
-          isMinimized ? 'w-80 h-16' : 'w-[450px] h-[650px]'
+          isMinimized ? 'w-80 h-16' : 'w-[95vw] sm:w-[450px] max-w-[450px] h-[85vh] sm:h-[650px] max-h-[85vh]'
         } animate-in fade-in slide-in-from-bottom-10 duration-300`}>
 
           {/* Header */}

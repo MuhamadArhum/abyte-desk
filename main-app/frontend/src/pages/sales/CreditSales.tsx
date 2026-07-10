@@ -150,14 +150,14 @@ const CreditSales = () => {
   return (
     <>
     {receiptViewData && <ReceiptModal data={receiptViewData} onClose={() => setReceiptViewData(null)} />}
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><CreditCard className="text-rose-600" size={20} /> Credit Sales</h1>
           <p className="text-gray-500 mt-1">Manage customer credit accounts and payments</p>
         </div>
         <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition" disabled={sales.length === 0}>
-          <Printer size={16} /> Print
+          <Printer size={16} /> <span className="hidden sm:inline">Print</span>
         </button>
       </div>
 

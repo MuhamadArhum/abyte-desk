@@ -89,7 +89,7 @@ const StockAlerts = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
@@ -170,7 +170,7 @@ const StockAlerts = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>

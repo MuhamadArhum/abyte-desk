@@ -240,9 +240,9 @@ const Bundles = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Product Bundles</h1>
           <p className="text-sm text-gray-500 mt-1">Create combo deals and bundle discounts for the POS</p>
@@ -252,12 +252,12 @@ const Bundles = () => {
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-200 transition-all"
         >
           <Plus size={18} />
-          New Bundle
+          <span className="hidden sm:inline">New Bundle</span>
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Bundles', value: stats.total, icon: Gift, color: 'indigo' },
           { label: 'Active', value: stats.active, icon: ToggleRight, color: 'emerald' },
@@ -279,7 +279,7 @@ const Bundles = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex gap-3">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
@@ -465,7 +465,7 @@ const Bundles = () => {
               </div>
 
               {/* Discount */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type *</label>
                   <select
@@ -493,7 +493,7 @@ const Bundles = () => {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                   <input

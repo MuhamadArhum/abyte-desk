@@ -212,8 +212,8 @@ const Returns = () => {
   return (
     <>
     {receiptViewData && <ReceiptModal data={receiptViewData} onClose={() => setReceiptViewData(null)} />}
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <RotateCcw className="text-emerald-600" size={20} />
@@ -455,7 +455,8 @@ const Returns = () => {
         <div className="mt-8">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Recent Returns</h3>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm min-w-[600px]">
               <thead className="bg-gray-50 text-gray-600 font-medium">
                 <tr>
                   <th className="p-4">Return ID</th>
@@ -479,6 +480,7 @@ const Returns = () => {
                 ))}
               </tbody>
             </table>
+            </div>
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

@@ -126,7 +126,7 @@ const CashRegister = () => {
   // No register open - show open form
   if (!register) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6">
         <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3 mb-8">
           <Wallet className="text-emerald-600" size={20} />
           Cash Register
@@ -178,7 +178,8 @@ const CashRegister = () => {
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-800 mb-4">Shift History</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <table className="w-full text-left text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm min-w-[600px]">
                 <thead className="bg-gray-50 text-gray-600 font-medium">
                   <tr>
                     <th className="p-4">Opened</th>
@@ -214,6 +215,7 @@ const CashRegister = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -240,8 +242,8 @@ const CashRegister = () => {
   const cashOut = parseFloat(register.total_cash_out || '0');
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3">
             <Wallet className="text-emerald-600" size={20} />
@@ -315,7 +317,8 @@ const CashRegister = () => {
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-800">Cash Movements</h3>
           </div>
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm min-w-[600px]">
             <thead className="bg-gray-50 text-gray-600 font-medium">
               <tr>
                 <th className="p-4">Time</th>
@@ -343,6 +346,7 @@ const CashRegister = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

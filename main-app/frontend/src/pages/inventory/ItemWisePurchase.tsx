@@ -37,7 +37,7 @@ const ItemWisePurchase = () => {
   const totalVouchers = data.reduce((s, r) => s + Number(r.voucher_count || 0), 0);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <PackageSearch size={20} className="text-indigo-600" /> Item Wise Purchase
@@ -50,7 +50,7 @@ const ItemWisePurchase = () => {
       </div>
 
       {totals && (
-        <div className="grid grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-1">
               <Hash size={15} className="text-indigo-600" />
@@ -86,16 +86,17 @@ const ItemWisePurchase = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold">Product</th>
-                <th className="px-4 py-3 text-left font-semibold">Type</th>
-                <th className="px-4 py-3 text-right font-semibold w-24">Vouchers</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Total Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Avg Price</th>
-                <th className="px-4 py-3 text-right font-semibold w-36">Total Amount</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Type</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Vouchers</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Avg Price</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Total Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -127,6 +128,7 @@ const ItemWisePurchase = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

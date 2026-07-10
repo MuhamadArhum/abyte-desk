@@ -65,7 +65,7 @@ const RateHistory = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <History size={20} className="text-violet-600" /> Item Rate History
@@ -109,7 +109,7 @@ const RateHistory = () => {
       </div>
 
       {data.length > 0 && productInfo && (
-        <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
           <div className="bg-violet-50 border border-violet-100 rounded-xl p-4">
             <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Total Purchases</p>
             <p className="text-2xl font-bold text-violet-900 mt-1">{data.length}</p>
@@ -130,16 +130,17 @@ const RateHistory = () => {
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold w-32">Date</th>
-                <th className="px-4 py-3 text-left font-semibold w-28">PV #</th>
-                <th className="px-4 py-3 text-left font-semibold">Supplier</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Qty</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Rate</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Amount</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Date</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">PV #</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Supplier</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Qty</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Rate</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -173,6 +174,7 @@ const RateHistory = () => {
               </tfoot>
             )}
           </table>
+          </div>
         )}
       </div>
     </div>

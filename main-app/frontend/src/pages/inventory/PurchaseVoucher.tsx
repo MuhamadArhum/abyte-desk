@@ -314,8 +314,8 @@ const PurchaseVoucher = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <ShoppingCart size={20} className="text-indigo-600" /> Purchase Voucher
@@ -324,7 +324,7 @@ const PurchaseVoucher = () => {
         </div>
         <button onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
-          <Plus size={18} /> New Voucher
+          <Plus size={18} /> <span className="hidden sm:inline">New Voucher</span>
         </button>
       </div>
 
@@ -367,7 +367,7 @@ const PurchaseVoucher = () => {
               )}
 
               {/* ── Double-Entry Accounts ─────────────────────────────── */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
                 <div>
                   <label className="block text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-1.5">
                     Purchase Account <span className="bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded text-xs ml-1">DR</span>
@@ -395,7 +395,7 @@ const PurchaseVoucher = () => {
               </div>
 
               {/* Date + Notes */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Date *</label>
                   <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)}
@@ -485,7 +485,7 @@ const PurchaseVoucher = () => {
               {/* Charges + Tax/Discount */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Charges, Discount & Tax</p>
-                <div className="grid grid-cols-3 gap-4 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
                   {[
                     { label: 'Shipping Cost', value: formShipping, set: setFormShipping, cls: 'focus:ring-indigo-500 border-gray-300' },
                     { label: 'Extra Charges', value: formExtra,    set: setFormExtra,    cls: 'focus:ring-indigo-500 border-gray-300' },
@@ -551,7 +551,7 @@ const PurchaseVoucher = () => {
               </div>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm">
                 <div><span className="text-gray-500">Date:</span> <span className="font-medium">{viewVoucher.voucher_date}</span></div>
                 <div><span className="text-gray-500">By:</span> <span className="font-medium">{viewVoucher.created_by_name}</span></div>
                 {viewVoucher.po_number && (
@@ -562,7 +562,7 @@ const PurchaseVoucher = () => {
                 )}
               </div>
               {/* Journal Entry summary */}
-              <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
                   <p className="text-xs font-semibold text-indigo-500 uppercase mb-1">Purchase Account <span className="bg-indigo-200 text-indigo-800 px-1.5 py-0.5 rounded ml-1">DR</span></p>
                   <p className="font-bold text-indigo-900 text-sm">{purchaseAccName(viewVoucher)}</p>
@@ -626,7 +626,8 @@ const PurchaseVoucher = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Voucher #</th>
@@ -671,6 +672,7 @@ const PurchaseVoucher = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
         <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage}
           totalItems={totalItems} itemsPerPage={20} onItemsPerPageChange={() => {}} />

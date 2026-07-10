@@ -66,7 +66,7 @@ const StoreModal = ({ store, users, onClose, onSave }: {
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">{error}</div>}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Branch Name *</label>
               <input value={form.store_name} onChange={e => f('store_name', e.target.value)}
@@ -86,7 +86,7 @@ const StoreModal = ({ store, users, onClose, onSave }: {
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
               placeholder="123 Main Street, City" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Phone</label>
               <input value={form.phone} onChange={e => f('phone', e.target.value)}
@@ -100,7 +100,7 @@ const StoreModal = ({ store, users, onClose, onSave }: {
                 placeholder="branch@example.com" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Branch Manager</label>
               <select value={form.manager_id} onChange={e => f('manager_id', e.target.value)}
@@ -340,10 +340,10 @@ const Stores = () => {
     consolidated.find(c => c.store_id === storeId);
 
   return (
-    <div className="p-6 max-w-[1400px] mx-auto">
+    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Building2 className="text-emerald-600" size={22} />

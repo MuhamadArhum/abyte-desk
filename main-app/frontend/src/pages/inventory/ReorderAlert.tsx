@@ -66,31 +66,31 @@ const ReorderAlert = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-5 flex items-start justify-between">
+    <div className="p-4 sm:p-6">
+      <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <AlertTriangle size={20} className="text-red-600" /> Reorder / Stock Alert
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Products at or below reorder level</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={exportCSV} disabled={loading || data.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
-            <Download size={14} /> Export CSV
+            <Download size={14} /> <span className="hidden sm:inline">Export CSV</span>
           </button>
           <button onClick={() => window.print()} disabled={loading || data.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
-            <Printer size={14} /> Print
+            <Printer size={14} /> <span className="hidden sm:inline">Print</span>
           </button>
           <button onClick={fetchReport} disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Reload
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> <span className="hidden sm:inline">Reload</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4">
           <p className="text-xs font-semibold text-yellow-600 uppercase tracking-wide">Below Reorder Level</p>
           <p className="text-2xl font-bold text-yellow-900 mt-1">{belowReorder}</p>
@@ -109,18 +109,19 @@ const ReorderAlert = () => {
         {loading ? (
           <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600" /></div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="bg-gray-800 text-white">
-                <th className="px-4 py-3 text-left font-semibold w-10">#</th>
-                <th className="px-4 py-3 text-left font-semibold">Product</th>
-                <th className="px-4 py-3 text-left font-semibold">Category</th>
-                <th className="px-4 py-3 text-center font-semibold w-16">Unit</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Current Stock</th>
-                <th className="px-4 py-3 text-right font-semibold w-28">Reorder Level</th>
-                <th className="px-4 py-3 text-right font-semibold w-32">Avg Daily Usage</th>
-                <th className="px-4 py-3 text-center font-semibold w-28">Days Remaining</th>
-                <th className="px-4 py-3 text-center font-semibold w-28">Status</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">#</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Product</th>
+                <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Unit</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Current Stock</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Reorder Level</th>
+                <th className="px-4 py-3 text-right font-semibold whitespace-nowrap">Avg Daily Usage</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Days Remaining</th>
+                <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -146,6 +147,7 @@ const ReorderAlert = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -175,7 +175,7 @@ const UserSelectInput = ({
     <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-          <User size={12} /> Waiter
+          <User size={12} /> User
           {saving && <span className="text-gray-400 font-normal normal-case ml-1">Saving...</span>}
         </span>
         {showPill && (

@@ -338,11 +338,11 @@ const PayrollProcessing = () => {
                 <Download size={15} /> Export CSV
               </button>
             </div>
-            <div className="max-h-96 overflow-y-auto">
-              <table className="w-full">
+            <div className="max-h-96 overflow-y-auto overflow-x-auto">
+              <table className="w-full min-w-[600px]">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr className="border-b border-gray-100">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Employee</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Base Salary</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Deductions</th>
                     <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Bonuses</th>

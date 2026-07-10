@@ -159,9 +159,9 @@ export default function Users() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage application login accounts</p>
@@ -236,6 +236,7 @@ export default function Users() {
             <p className="text-sm">No users found</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
@@ -297,6 +298,7 @@ export default function Users() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         <Pagination
@@ -325,7 +327,7 @@ export default function Users() {
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{formError}</div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Full Name *</label>
                   <input

@@ -124,8 +124,8 @@ const DailyAttendance = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <Calendar className="text-emerald-600" size={20} />
           <div>
@@ -133,20 +133,20 @@ const DailyAttendance = () => {
             <p className="text-gray-600 text-sm mt-1">All employees attendance for a specific day</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button onClick={exportCSV} className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition border border-gray-200">
-            <Download size={18} /> Export
+            <Download size={18} /> <span className="hidden sm:inline">Export</span>
           </button>
           {summary.unmarked > 0 && (
             <button onClick={markAllPresent} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition shadow">
-              <UserCheck size={18} /> Mark All Present ({summary.unmarked})
+              <UserCheck size={18} /> <span className="hidden sm:inline">Mark All Present ({summary.unmarked})</span><span className="sm:hidden">Mark All ({summary.unmarked})</span>
             </button>
           )}
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-lg"
+            className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -171,7 +171,8 @@ const DailyAttendance = () => {
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead className="bg-gray-50">
             <tr className="border-b">
               <th className="text-left p-4 font-semibold text-gray-700">Emp. ID</th>
@@ -244,6 +245,7 @@ const DailyAttendance = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

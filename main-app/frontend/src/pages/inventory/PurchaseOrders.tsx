@@ -91,12 +91,12 @@ const PurchaseOrders = () => {
     }
   };
 
-  if (loading && orders.length === 0) return <div className="p-8">Loading...</div>;
+  if (loading && orders.length === 0) return <div className="p-4 sm:p-6">Loading...</div>;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
           <FileText className="text-emerald-600" size={20} />
           <h1 className="text-xl font-semibold tracking-tight text-gray-900">Purchase Orders</h1>
@@ -106,7 +106,7 @@ const PurchaseOrders = () => {
           className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition shadow-lg hover:shadow-xl"
         >
           <Plus size={20} />
-          Create Purchase Order
+          <span className="hidden sm:inline">Create Purchase Order</span>
         </button>
       </div>
 
@@ -162,7 +162,8 @@ const PurchaseOrders = () => {
 
       {/* Orders Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[800px] text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left p-4 font-semibold text-gray-700">PO Number</th>
@@ -222,6 +223,7 @@ const PurchaseOrders = () => {
             )}
           </tbody>
         </table>
+        </div>
 
         <Pagination
           currentPage={pagination.page}

@@ -55,7 +55,7 @@ const EmailSettings = () => {
   const isConfigured = status?.configured;
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-6 max-w-3xl">
       <div className="mb-8">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">

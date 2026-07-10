@@ -177,20 +177,20 @@ const StockCount = () => {
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Physical Stock Count</h1>
           <p className="text-sm text-gray-500 mt-1">Compare system stock with physical counts and apply corrections</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm"
           >
             <Download size={15} />
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
           <button
             onClick={fetchProducts}
@@ -198,7 +198,7 @@ const StockCount = () => {
             className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
             onClick={applyAdjustments}
@@ -220,7 +220,7 @@ const StockCount = () => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Products', value: totalItems, color: 'gray', icon: Package },
           { label: 'Counted', value: `${countedItems}/${totalItems}`, color: 'blue', icon: ClipboardCheck },
@@ -281,7 +281,7 @@ const StockCount = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
           <input
@@ -318,7 +318,7 @@ const StockCount = () => {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>

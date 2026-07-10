@@ -60,8 +60,8 @@ const SalesReports = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-3"><BarChart3 className="text-emerald-600" size={20} /> Sales Reports</h1>
           <p className="text-gray-500 mt-1">Comprehensive sales analytics and insights</p>
@@ -193,7 +193,7 @@ const SalesReports = () => {
               <p className="text-center text-gray-400 py-8">No completed sales in this period</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[800px]">
                   <thead className="bg-gray-50 rounded-xl">
                     <tr>
                       <th className="px-4 py-3 text-left font-semibold text-gray-600">Category</th>

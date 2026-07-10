@@ -188,7 +188,7 @@ const CRVForm = ({ onBack, onRefresh, editVoucherNumber }: { onBack: () => void;
   const fmt = (n: number) => n.toLocaleString('en-PK', { minimumFractionDigits: 2 });
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Back header */}
       <div className="mb-5 flex items-center gap-3">
         <button onClick={() => { onRefresh(); onBack(); }}
@@ -423,10 +423,10 @@ const ReceiptVouchers = () => {
   const totalAmt = vouchers.reduce((s, v) => s + Number(v.total_amount), 0);
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
 
       {/* Header */}
-      <div className="mb-5 flex items-start justify-between">
+      <div className="mb-5 flex flex-col sm:flex-row items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
             <ArrowDownLeft size={20} className="text-emerald-600" /> Cash Receipt Vouchers
@@ -436,11 +436,11 @@ const ReceiptVouchers = () => {
         <div className="flex gap-2">
           <button onClick={exportCSV} disabled={vouchers.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-40">
-            <Download size={14} /> Export
+            <Download size={14} /> <span className="hidden sm:inline">Export</span>
           </button>
           <button onClick={() => setView('new')}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition">
-            <Plus size={14} /> New CRV
+            <Plus size={14} /> <span className="hidden sm:inline">New CRV</span>
           </button>
         </div>
       </div>
