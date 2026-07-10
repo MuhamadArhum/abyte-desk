@@ -141,11 +141,11 @@ const AIWidgetInner = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end">
       {/* Chat Window */}
       {isOpen && (
         <div className={`mb-4 bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 flex flex-col overflow-hidden transition-all duration-300 ${
-          isMinimized ? 'w-80 h-16' : 'w-[95vw] sm:w-[450px] max-w-[450px] h-[85vh] sm:h-[650px] max-h-[85vh]'
+          isMinimized ? 'w-72 sm:w-80 h-16' : 'w-[calc(100vw-32px)] sm:w-[450px] h-[80vh] sm:h-[650px] max-h-[80vh] sm:max-h-[85vh]'
         } animate-in fade-in slide-in-from-bottom-10 duration-300`}>
 
           {/* Header */}
@@ -198,7 +198,7 @@ const AIWidgetInner = () => {
           {/* Messages */}
           {!isMinimized && (
             <>
-              <div className="flex-1 overflow-y-auto p-5 bg-gradient-to-b from-gray-50 to-white space-y-4 scrollbar-thin">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-gradient-to-b from-gray-50 to-white space-y-4 scrollbar-thin">
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''} group`}>
                     {/* Avatar */}
@@ -263,7 +263,7 @@ const AIWidgetInner = () => {
               </div>
 
               {/* Input */}
-              <div className="p-4 bg-white border-t border-gray-100 flex-shrink-0">
+              <div className="p-3 sm:p-4 bg-white border-t border-gray-100 flex-shrink-0">
                 <div className="flex gap-3">
                   <input
                     ref={inputRef}
@@ -312,7 +312,7 @@ const AIWidgetInner = () => {
 
       {/* Hint tooltip — auto-hides after 5s */}
       {!isOpen && showTooltip && (
-        <div className="absolute bottom-20 right-0 bg-white text-gray-800 px-4 py-2 rounded-lg shadow-xl border-2 border-emerald-200 text-sm font-medium whitespace-nowrap">
+        <div className="absolute bottom-20 right-0 bg-white text-gray-800 px-3 sm:px-4 py-2 rounded-lg shadow-xl border-2 border-emerald-200 text-xs sm:text-sm font-medium whitespace-nowrap">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-emerald-600" />
             Ask about your business!
