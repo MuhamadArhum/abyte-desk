@@ -90,18 +90,22 @@ exports.updatePermissions = async (req, res) => {
 
     await conn.commit();
 
-    // Audit trail: record who changed what, with full before/after diff
-    await logAction(
-      req.user.user_id,
-      req.user.name,
-      'PERMISSIONS_UPDATED',
-      'role_permissions',
-      role,
-      { role },
-      req.ip,
-      { permissions: oldPermissions },
-      { permissions: [...permissions].sort() }
-    );
+    // Audit trail — isolated from main flow so audit failure never rolls back a successful update
+    try {
+      await logAction(
+        req.user.user_id,
+        req.user.name,
+        'PERMISSIONS_UPDATED',
+        'role_permissions',
+        role,
+        { role },
+        req.ip,
+        { permissions: oldPermissions },
+        { permissions: [...permissions].sort() }
+      );
+    } catch (auditErr) {
+      logger.warn('Audit log failed for PERMISSIONS_UPDATED', { error: auditErr.message, role });
+    }
 
     res.json({ message: `Permissions updated for ${role}` });
   } catch (err) {
