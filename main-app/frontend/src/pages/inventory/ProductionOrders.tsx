@@ -200,7 +200,7 @@ const ProductionOrders = () => {
   ];
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6">
       <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
         <div>
           <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">

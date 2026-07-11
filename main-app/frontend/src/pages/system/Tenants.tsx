@@ -202,7 +202,7 @@ const Tenants = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
               <div className="text-center p-2 bg-emerald-50 rounded-lg">
                 <Users size={14} className="text-emerald-500 mx-auto mb-1" />
                 <p className="text-sm font-bold text-emerald-700">{tenant.stats?.users || 0}</p>

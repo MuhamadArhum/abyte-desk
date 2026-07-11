@@ -85,7 +85,7 @@ export default function NotFound() {
         {/* Quick Links */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
           <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-4">Or jump to</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {quickLinks.map(l => (
               <Link key={l.path} to={l.path}
                 className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${l.color} hover:shadow-sm transition text-left`}>

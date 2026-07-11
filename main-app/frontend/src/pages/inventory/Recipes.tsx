@@ -228,7 +228,7 @@ const Recipes = () => {
   ];
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-wrap justify-between items-start gap-3 mb-6">
         <div>

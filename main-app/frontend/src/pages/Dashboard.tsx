@@ -345,7 +345,7 @@ const Dashboard = () => {
           <div className="space-y-5">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-sm font-semibold text-gray-700 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {quickActions.map((action, i) => {
                   const Icon = action.icon;
                   return (
@@ -459,7 +459,7 @@ const Dashboard = () => {
 
             {attendance.total > 0 ? (
               <>
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                   {[
                     { label: 'Present', value: attendance.present, color: 'bg-emerald-50 text-emerald-700', icon: UserCheck },
                     { label: 'Absent',  value: attendance.absent,  color: 'bg-red-50 text-red-600',         icon: UserX },
