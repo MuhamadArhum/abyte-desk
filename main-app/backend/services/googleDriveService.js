@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { query } = require('../config/database');
 const logger = require('../config/logger');
+const { encrypt, decrypt } = require('./cryptoService');
 
 const SETTING_ID = 1;
 
@@ -36,7 +37,7 @@ async function getSettings() {
   return {
     gdrive_enabled: !!r.gdrive_enabled,
     gdrive_folder_id: r.gdrive_folder_id || '',
-    gdrive_service_account_json: r.gdrive_service_account_json || '',
+    gdrive_service_account_json: decrypt(r.gdrive_service_account_json || ''),
     gdrive_last_upload_at: r.gdrive_last_upload_at,
     gdrive_last_upload_file: r.gdrive_last_upload_file,
     gdrive_last_upload_status: r.gdrive_last_upload_status,
@@ -54,9 +55,13 @@ async function saveSettings({ gdrive_enabled, gdrive_folder_id, gdrive_service_a
     }
   }
 
+  const encryptedJson = gdrive_service_account_json
+    ? encrypt(gdrive_service_account_json)
+    : null;
+
   await query(
     `UPDATE store_settings SET gdrive_enabled = ?, gdrive_folder_id = ?, gdrive_service_account_json = ? WHERE setting_id = ?`,
-    [gdrive_enabled ? 1 : 0, gdrive_folder_id || null, gdrive_service_account_json || null, SETTING_ID]
+    [gdrive_enabled ? 1 : 0, gdrive_folder_id || null, encryptedJson, SETTING_ID]
   );
 }
 
@@ -131,7 +136,7 @@ async function getTenantDriveSettings(tenantDbName) {
     if (!rows.length) return null;
     const r = rows[0];
     if (!r.gdrive_enabled || !r.gdrive_folder_id || !r.gdrive_service_account_json) return null;
-    return { gdrive_enabled: !!r.gdrive_enabled, gdrive_folder_id: r.gdrive_folder_id, gdrive_service_account_json: r.gdrive_service_account_json };
+    return { gdrive_enabled: !!r.gdrive_enabled, gdrive_folder_id: r.gdrive_folder_id, gdrive_service_account_json: decrypt(r.gdrive_service_account_json) };
   } catch (_e) {
     return null;
   }

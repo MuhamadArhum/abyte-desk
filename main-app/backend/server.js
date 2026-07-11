@@ -176,8 +176,32 @@ const agentLimiter = rateLimit({
   message: { message: 'Too many agent requests. Please wait.' },
 });
 
-// ── Global Middleware ────────────────────────────────────────
-app.use(helmet());
+// ── Security Headers (Helmet) ────────────────────────────────
+const helmetConfig = {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'"],
+      styleSrc:       ["'self'", "'unsafe-inline'"],   // Tailwind CSS requires inline styles
+      imgSrc:         ["'self'", "data:", "blob:"],    // data: for base64 logos, blob: for previews
+      connectSrc:     ["'self'"],                      // API calls — same origin only
+      fontSrc:        ["'self'", "data:"],             // Bundled fonts via Vite
+      objectSrc:      ["'none'"],
+      frameSrc:       ["'none'"],
+      frameAncestors: ["'none'"],                      // Clickjacking protection
+      baseUri:        ["'self'"],
+      formAction:     ["'self'"],
+      ...(process.env.NODE_ENV === 'production' && { upgradeInsecureRequests: [] }),
+    },
+  },
+  // HSTS: only in production — dev runs on HTTP
+  hsts: process.env.NODE_ENV === 'production'
+    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+    : false,
+  // Keep other Helmet defaults: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.
+};
+
+app.use(helmet(helmetConfig));
 app.use(cors(corsOptions));
 
 app.use(morgan('combined', {

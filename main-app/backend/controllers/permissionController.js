@@ -1,6 +1,7 @@
 // permissionController.js - RBAC permission management
 const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
+const { logAction } = require('../services/auditService');
 
 // GET /api/permissions  → { Manager: [...], Cashier: [...], CustomRole: [...] }
 exports.getAllPermissions = async (req, res) => {
@@ -68,6 +69,13 @@ exports.updatePermissions = async (req, res) => {
   try {
     await conn.beginTransaction();
 
+    // Snapshot old permissions BEFORE delete — needed for audit trail
+    const oldRows = await conn.query(
+      'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1 ORDER BY module_key',
+      [role]
+    );
+    const oldPermissions = oldRows.map(r => r.module_key);
+
     // Delete all existing permissions for this role
     await conn.query('DELETE FROM role_permissions WHERE role_name = ?', [role]);
 
@@ -81,6 +89,20 @@ exports.updatePermissions = async (req, res) => {
     }
 
     await conn.commit();
+
+    // Audit trail: record who changed what, with full before/after diff
+    await logAction(
+      req.user.user_id,
+      req.user.name,
+      'PERMISSIONS_UPDATED',
+      'role_permissions',
+      role,
+      { role },
+      req.ip,
+      { permissions: oldPermissions },
+      { permissions: [...permissions].sort() }
+    );
+
     res.json({ message: `Permissions updated for ${role}` });
   } catch (err) {
     await conn.rollback();
