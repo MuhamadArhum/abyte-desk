@@ -41,7 +41,7 @@ function getTenantPool(dbName) {
       port:             parseInt(process.env.DB_PORT) || 3306,
       user:             process.env.TENANT_DB_USER || process.env.DB_USER || 'root',
       password:         process.env.TENANT_DB_PASSWORD || process.env.DB_PASSWORD || '',
-      connectionLimit:  5,
+      connectionLimit:  10,
       bigIntAsNumber:   true,
       insertIdAsNumber: true,
       decimalAsNumber:  true,

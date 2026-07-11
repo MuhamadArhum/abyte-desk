@@ -46,7 +46,7 @@ const poolOptions = {
   port: parseInt(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  connectionLimit: 5,          // 5 per tenant pool — with N tenants × 2 PM2 workers, keep total well under max_connections
+  connectionLimit: 10,         // 10 per tenant pool — with 2 PM2 cluster instances × 10 × N tenants; ensure MariaDB max_connections > 200
   acquireTimeout: 30000,
   connectTimeout: 10000,
   bigIntAsNumber: true,        // Convert BIGINT to JS Number
