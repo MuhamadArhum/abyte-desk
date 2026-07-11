@@ -21,7 +21,7 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'Token has been revoked. Please login again.' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
     // tenant_db comes from JWT — set during login
     const tenantDb = decoded.tenant_db || process.env.DB_NAME || 'abyte_pos';

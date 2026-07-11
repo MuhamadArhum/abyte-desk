@@ -15,7 +15,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
-const { execSync }  = require('child_process');
+const { spawnSync } = require('child_process');
 const { queryDb }   = require('../config/database');
 const fs            = require('fs');
 const path          = require('path');
@@ -100,8 +100,6 @@ async function main() {
 
   console.log(`  ${c.dim}Tenants found : ${tenants.length - 1} + 1 master\n${c.reset}`);
 
-  const passArg = DB_PASS ? `-p${DB_PASS}` : '';
-  const hostArg = `-h${DB_HOST} -P${DB_PORT}`;
   let success = 0, failed = 0, skipped = 0;
   let totalSize = 0;
   const startTime = Date.now();
@@ -119,10 +117,19 @@ async function main() {
 
     process.stdout.write(`  ${c.dim}Backing up ${label}...${c.reset}`);
     try {
-      execSync(
-        `mariadb-dump -u${DB_USER} ${passArg} ${hostArg} --single-transaction --quick --routines ${tenant.db_name} | gzip > ${filePath}`,
-        { stdio: ['ignore', 'ignore', 'ignore'] }
-      );
+      // Build arg array safely — no shell interpolation, no injection risk
+      const dumpArgs = [
+        `-u${DB_USER}`,
+        ...(DB_PASS ? [`-p${DB_PASS}`] : []),
+        ...(DB_HOST !== 'localhost' && DB_HOST !== '127.0.0.1' ? [`-h${DB_HOST}`, `-P${DB_PORT}`] : []),
+        '--single-transaction', '--quick', '--routines',
+        tenant.db_name,
+      ];
+      const dump = spawnSync('mariadb-dump', dumpArgs, { encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
+      if (dump.status !== 0) throw new Error((dump.stderr || Buffer.alloc(0)).toString().substring(0, 120));
+      const gz = spawnSync('gzip', [], { input: dump.stdout, encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
+      if (gz.status !== 0) throw new Error('gzip failed');
+      fs.writeFileSync(filePath, gz.stdout);
       const size = fs.statSync(filePath).size;
       totalSize += size;
       process.stdout.write(`\r  ${c.green}✓ OK      ${c.reset}${label} ${c.dim}— ${formatBytes(size)}${c.reset}\n`);

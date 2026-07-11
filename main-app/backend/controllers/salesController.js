@@ -129,6 +129,16 @@ exports.createSale = async (req, res) => {
       return res.status(400).json({ message: 'Additional charges percent must be between 0 and 100' });
     }
 
+    // Validate each item has positive quantity and non-negative price
+    for (const item of items) {
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        return res.status(400).json({ message: `Item quantity must be a positive integer (got ${item.quantity})` });
+      }
+      if (typeof item.unit_price !== 'number' || item.unit_price < 0) {
+        return res.status(400).json({ message: `Item unit price cannot be negative (got ${item.unit_price})` });
+      }
+    }
+
     // Get a dedicated connection for the transaction (not from the shared query helper)
     conn = await getConnection();
     await conn.beginTransaction();  // START TRANSACTION
@@ -470,7 +480,9 @@ exports.assignUser = async (req, res) => {
     const { user_id } = req.body;
     if (!user_id) return res.status(400).json({ message: 'user_id is required' });
 
-    const sale = await query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const sale = await query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
     if (sale.length === 0) return res.status(404).json({ message: 'Pending sale not found' });
 
     const userRows = await query('SELECT user_id, name FROM users WHERE user_id = ? AND is_active = 1', [user_id]);
@@ -588,7 +600,10 @@ exports.completeSale = async (req, res) => {
 exports.markKotPrinted = async (req, res) => {
   try {
     const { id } = req.params;
-    await query('UPDATE sales SET kot_printed = 1 WHERE sale_id = ?', [id]);
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const result = await query(`UPDATE sales SET kot_printed = 1 WHERE sale_id = ? ${branchCond}`, [id, ...branchPrm]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Sale not found' });
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ message: 'Failed to update KOT status' });
@@ -609,8 +624,22 @@ exports.updateSaleItems = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    // Must be a pending sale
-    const sale = await conn.query('SELECT * FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    // Validate items before touching DB
+    for (const item of items) {
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Item quantity must be a positive integer (got ${item.quantity})` });
+      }
+      if (typeof item.unit_price !== 'number' || item.unit_price < 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Item unit price cannot be negative (got ${item.unit_price})` });
+      }
+    }
+
+    // Must be a pending sale scoped to the user's branch
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const sale = await conn.query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Pending sale not found' });
@@ -671,10 +700,8 @@ exports.deleteSale = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    // Check sale status
-    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND branch_id = ?' : '';
-    const branchParams = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
-    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchCondition}`, [id, ...branchParams]);
+    // Admins can delete any sale; non-admins are blocked above — no branch filter needed here
+    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ?', [id]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });
@@ -945,8 +972,8 @@ exports.getAll = async (req, res) => {
 // --- Get Sale by ID ---
 exports.getById = async (req, res) => {
   try {
-    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND s.branch_id = ?' : '';
-    const branchParam = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
+    const branchCondition = req.user.role_name === 'Admin' ? '' : 'AND s.branch_id = ?';
+    const branchParam = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
     const sale = await query(`
       SELECT s.*, u.name as cashier_name,
              rt.table_name
@@ -984,9 +1011,9 @@ exports.refundSale = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    // Check sale status
-    const branchCondition = req.user.role_name !== 'Admin' && req.branchId ? 'AND branch_id = ?' : '';
-    const branchParams = req.user.role_name !== 'Admin' && req.branchId ? [req.branchId] : [];
+    // Check sale status — scope to branch for non-admins
+    const branchCondition = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchParams = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
     const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchCondition} FOR UPDATE`, [id, ...branchParams]);
     if (sale.length === 0) {
       await conn.rollback();
@@ -1034,7 +1061,9 @@ exports.swapTable = async (req, res) => {
     const { id } = req.params;
     const { table_id } = req.body;
 
-    const sale = await query('SELECT sale_id FROM sales WHERE sale_id = ? AND status = "pending"', [id]);
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const sale = await query(`SELECT sale_id FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
     if (!sale.length) return res.status(404).json({ message: 'Pending sale not found' });
 
     await query('UPDATE sales SET table_id = ? WHERE sale_id = ?', [table_id || null, id]);

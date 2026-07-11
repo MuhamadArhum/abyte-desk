@@ -200,6 +200,11 @@ exports.update = async (req, res) => {
     const { id } = req.params;  // Product ID from URL
     const { product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description } = req.body;
 
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const existing = await query(`SELECT product_id FROM products WHERE product_id = ? ${branchCond}`, [id, ...branchPrm]);
+    if (!existing.length) return res.status(404).json({ message: 'Product not found' });
+
     // Update the product record
     await query(
       'UPDATE products SET product_name = ?, category_id = ?, price = ?, stock_quantity = ?, barcode = ?, product_type = ?, unit = ?, cost_price = ?, min_stock_level = ?, sku = ?, description = ? WHERE product_id = ?',
@@ -232,15 +237,19 @@ exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+
     // Check if this product appears in any sale records
     const sales = await query('SELECT sale_detail_id FROM sale_details WHERE product_id = ? LIMIT 1', [id]);
     if (sales.length > 0) {
       return res.status(400).json({ message: 'Cannot delete product with sales history' });
     }
 
-    // Get product name before deleting for audit log
-    const product = await query('SELECT product_name FROM products WHERE product_id = ?', [id]);
-    const productName = product.length > 0 ? product[0].product_name : 'Unknown';
+    // Get product name before deleting for audit log (also enforces branch ownership)
+    const product = await query(`SELECT product_name FROM products WHERE product_id = ? ${branchCond}`, [id, ...branchPrm]);
+    if (!product.length) return res.status(404).json({ message: 'Product not found' });
+    const productName = product[0].product_name;
 
     // Delete inventory record first (foreign key constraint), then the product
     await query('DELETE FROM inventory WHERE product_id = ?', [id]);
@@ -316,7 +325,9 @@ exports.updateCategory = async (req, res) => {
     const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
-    const [existing] = await query('SELECT category_id FROM categories WHERE category_id = ?', [id]);
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const [existing] = await query(`SELECT category_id FROM categories WHERE category_id = ? ${branchCond}`, [id, ...branchPrm]);
     if (!existing) return res.status(404).json({ message: 'Category not found' });
 
     // Prevent circular reference
@@ -343,6 +354,10 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
+    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
+    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
+    const [owned] = await query(`SELECT category_id FROM categories WHERE category_id = ? ${branchCond}`, [id, ...branchPrm]);
+    if (!owned) return res.status(404).json({ message: 'Category not found' });
     const [productCount] = await query('SELECT COUNT(*) as cnt FROM products WHERE category_id = ?', [id]);
     if (productCount.cnt > 0) {
       return res.status(400).json({ message: `Cannot delete — ${productCount.cnt} products use this category.` });
