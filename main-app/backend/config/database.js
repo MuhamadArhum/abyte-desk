@@ -46,26 +46,52 @@ const poolOptions = {
   port: parseInt(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  connectionLimit: 10,         // 10 per tenant pool — with 2 PM2 cluster instances × 10 × N tenants; ensure MariaDB max_connections > 200
+  // 3 connections per tenant pool per PM2 worker.
+  // With 2 workers × 3 × N tenants, MariaDB max_connections=500 supports ~80 active tenants safely.
+  connectionLimit: 3,
+  minimumIdle: 0,       // return all connections to MariaDB when a pool goes quiet
+  idleTimeout: 60000,   // close individual idle connections after 60s
   acquireTimeout: 30000,
   connectTimeout: 10000,
-  bigIntAsNumber: true,        // Convert BIGINT to JS Number
-  insertIdAsNumber: true,      // Convert insertId to JS Number (prevents BigInt JSON error)
-  decimalAsNumber: true,       // Convert DECIMAL to JS Number
+  bigIntAsNumber: true,
+  insertIdAsNumber: true,
+  decimalAsNumber: true,
   ...sslConfig,
 };
 
-// Pool registry: dbName -> pool instance
-// Pools are created on-demand and reused across requests
+// Pool registry: dbName -> { pool, lastUsed } for LRU eviction
 const pools = new Map();
+
+// Evict pools idle for more than 10 minutes to reclaim MariaDB connections
+const POOL_IDLE_MS = 10 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [db, entry] of pools) {
+    if (now - entry.lastUsed > POOL_IDLE_MS) {
+      entry.pool.end().catch(() => {});
+      pools.delete(db);
+    }
+  }
+}, 60 * 1000).unref(); // .unref() so the timer doesn't keep the process alive
 
 // --- getPool(dbName) ---
 // Returns (or creates) a connection pool for a specific database.
 function getPool(dbName) {
   if (!pools.has(dbName)) {
-    pools.set(dbName, mariadb.createPool({ ...poolOptions, database: dbName }));
+    pools.set(dbName, { pool: mariadb.createPool({ ...poolOptions, database: dbName }), lastUsed: Date.now() });
+  } else {
+    pools.get(dbName).lastUsed = Date.now();
   }
-  return pools.get(dbName);
+  return pools.get(dbName).pool;
+}
+
+// --- closeAllPools() ---
+// Gracefully drains all tenant pools. Called during SIGTERM shutdown.
+async function closeAllPools() {
+  const closers = [];
+  for (const [, entry] of pools) closers.push(entry.pool.end().catch(() => {}));
+  pools.clear();
+  await Promise.all(closers);
 }
 
 // --- getCurrentDb() ---
@@ -104,4 +130,4 @@ async function getConnection() {
   return getPool(getCurrentDb()).getConnection();
 }
 
-module.exports = { query, queryDb, getConnection, tenantStorage, getPool, getCurrentDb };
+module.exports = { query, queryDb, getConnection, tenantStorage, getPool, getCurrentDb, closeAllPools, pools };

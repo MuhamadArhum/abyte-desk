@@ -2,6 +2,7 @@
 const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
+const cache = require('../services/cacheService');
 
 // GET /api/permissions  → { Manager: [...], Cashier: [...], CustomRole: [...] }
 exports.getAllPermissions = async (req, res) => {
@@ -107,6 +108,7 @@ exports.updatePermissions = async (req, res) => {
       logger.warn('Audit log failed for PERMISSIONS_UPDATED', { error: auditErr.message, role });
     }
 
+    cache.invalidatePermissions(req.tenantDb, role).catch(() => {});
     res.json({ message: `Permissions updated for ${role}` });
   } catch (err) {
     await conn.rollback();

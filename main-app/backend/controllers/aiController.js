@@ -501,19 +501,41 @@ Instructions:
 
     messages.push({ role: "user", content: message });
 
-    const completion = await getGroqClient().chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages,
-      max_tokens: 800,
-      temperature: 0.5,
-    });
+    const AI_TIMEOUT_MS = 30000;
+    const MAX_RETRIES = 2;
+    let completion;
+    let lastErr;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      try {
+        completion = await getGroqClient().chat.completions.create(
+          { model: "llama-3.3-70b-versatile", messages, max_tokens: 800, temperature: 0.5 },
+          { signal: controller.signal }
+        );
+        clearTimeout(timer);
+        break;
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        const isRetryable = !err.status || (err.status >= 500 && err.status < 600) || err.name === 'AbortError';
+        if (!isRetryable || attempt === MAX_RETRIES) break;
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
+
+    if (!completion) {
+      logger.error("AI Chat Error:", lastErr?.message);
+      if (lastErr?.status === 401) return res.status(503).json({ error: "Invalid Groq API key." });
+      if (lastErr?.status === 429) return res.status(503).json({ error: "Rate limit exceeded. Please wait a moment." });
+      if (lastErr?.name === 'AbortError') return res.status(503).json({ error: "AI request timed out. Please try again." });
+      return res.status(503).json({ error: "AI assistant is temporarily unavailable. Please try again." });
+    }
 
     res.json({ reply: completion.choices[0].message.content });
   } catch (error) {
     logger.error("AI Chat Error:", error.message);
-    let errorMessage = "Failed to process AI request";
-    if (error.status === 401) errorMessage = "Invalid Groq API key.";
-    else if (error.status === 429) errorMessage = "Rate limit exceeded. Please wait.";
-    res.status(500).json({ error: errorMessage });
+    res.status(503).json({ error: "AI assistant is temporarily unavailable. Please try again." });
   }
 };

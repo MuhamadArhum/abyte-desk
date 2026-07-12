@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 const { query, queryDb } = require('../config/database');
 const logger = require('../config/logger');
 
@@ -121,7 +122,7 @@ async function createBackup(userId, type = 'manual') {
 }
 
 async function finishBackup(filename, filepath, userId, type) {
-  const stats = fs.statSync(filepath);
+  const stats = await fsp.stat(filepath);
   await query(
     'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, ?, ?, ?, ?)',
     [filename, stats.size, userId, type, 'completed']
@@ -169,21 +170,30 @@ async function restoreBackup(filename) {
   }
 }
 
-function listBackupFiles() {
-  if (!fs.existsSync(BACKUP_DIR)) return [];
-  return fs.readdirSync(BACKUP_DIR)
-    .filter(f => f.endsWith('.sql'))
-    .map(f => {
-      const stats = fs.statSync(path.join(BACKUP_DIR, f));
-      return { filename: f, size: stats.size, created: stats.mtime };
-    })
-    .sort((a, b) => b.created - a.created);
+async function listBackupFiles() {
+  try {
+    const files = await fsp.readdir(BACKUP_DIR);
+    const entries = await Promise.all(
+      files
+        .filter(f => f.endsWith('.sql'))
+        .map(async f => {
+          const stats = await fsp.stat(path.join(BACKUP_DIR, f));
+          return { filename: f, size: stats.size, created: stats.mtime };
+        })
+    );
+    return entries.sort((a, b) => b.created - a.created);
+  } catch (e) {
+    if (e.code === 'ENOENT') return [];
+    throw e;
+  }
 }
 
-function deleteBackupFile(filename) {
+async function deleteBackupFile(filename) {
   validateFilename(filename);
   const filepath = path.join(BACKUP_DIR, filename);
-  if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+  await fsp.unlink(filepath).catch(e => {
+    if (e.code !== 'ENOENT') throw e; // ignore "file not found"
+  });
 }
 
 function getBackupDir() {
@@ -225,7 +235,7 @@ async function createTenantBackup(tenantDbName, type = 'scheduled') {
   try {
     try { await runDump(dumpPath); } catch { await runDump('mysqldump'); }
 
-    const stats = fs.statSync(filepath);
+    const stats = await fsp.stat(filepath);
     await queryDb(tenantDbName,
       'INSERT INTO backups (filename, file_size, created_by, type, status) VALUES (?, ?, NULL, ?, ?)',
       [filename, stats.size, type, 'completed']
@@ -242,4 +252,80 @@ async function createTenantBackup(tenantDbName, type = 'scheduled') {
   }
 }
 
-module.exports = { createBackup, createTenantBackup, restoreBackup, listBackupFiles, deleteBackupFile, getBackupDir };
+// ── Retention policy ──────────────────────────────────────────
+// Keep: all of last 7 days | 1 per week for 4 weeks | 1 per month for 3 months
+// Deletes disk file AND removes DB record (if exists).
+async function pruneOldBackups() {
+  const now   = Date.now();
+  const DAY   = 86400000;
+  const WEEK  = 7 * DAY;
+  const MONTH = 30 * DAY;
+
+  let files;
+  try {
+    files = await listBackupFiles();
+  } catch { return; }
+
+  // Group by bucket: daily (0-7d), weekly (7-30d), monthly (30-90d), archive (>90d)
+  const keep = new Set();
+
+  // Always keep last 7 days
+  files.filter(f => now - f.created.getTime() <= 7 * DAY).forEach(f => keep.add(f.filename));
+
+  // Keep oldest file per calendar week in 7-28 day window
+  const weekBuckets = new Map();
+  files
+    .filter(f => { const age = now - f.created.getTime(); return age > 7 * DAY && age <= 28 * DAY; })
+    .forEach(f => {
+      const weekKey = Math.floor(f.created.getTime() / WEEK);
+      if (!weekBuckets.has(weekKey)) { weekBuckets.set(weekKey, f.filename); keep.add(f.filename); }
+    });
+
+  // Keep oldest file per calendar month in 28-90 day window
+  const monthBuckets = new Map();
+  files
+    .filter(f => { const age = now - f.created.getTime(); return age > 28 * DAY && age <= 90 * DAY; })
+    .forEach(f => {
+      const monthKey = `${f.created.getFullYear()}-${f.created.getMonth()}`;
+      if (!monthBuckets.has(monthKey)) { monthBuckets.set(monthKey, f.filename); keep.add(f.filename); }
+    });
+
+  // Delete everything else (>90 days or not in keep set)
+  const toDelete = files.filter(f => !keep.has(f.filename));
+  for (const f of toDelete) {
+    await deleteBackupFile(f.filename).catch(() => {});
+    logger.info('[Backup] Pruned old backup', { filename: f.filename, ageDays: Math.floor((now - f.created.getTime()) / DAY) });
+  }
+  if (toDelete.length) logger.info(`[Backup] Retention sweep complete — removed ${toDelete.length} old backups`);
+}
+
+// ── Backup integrity check ────────────────────────────────────
+// Reads the latest backup file and verifies it contains expected SQL markers.
+async function verifyLastBackup() {
+  const files = await listBackupFiles();
+  if (!files.length) return { ok: false, reason: 'No backups found' };
+
+  const latest = files[0];
+  const filepath = path.join(BACKUP_DIR, latest.filename);
+
+  // Stream just the first 8KB to check SQL headers
+  const chunk = await new Promise((resolve, reject) => {
+    const bufs = [];
+    let total = 0;
+    const stream = fs.createReadStream(filepath, { end: 8192 });
+    stream.on('data', d => { bufs.push(d); total += d.length; });
+    stream.on('end', () => resolve(Buffer.concat(bufs)));
+    stream.on('error', reject);
+  });
+
+  const head = chunk.toString('utf8');
+  const hasMariaDb = head.includes('MariaDB dump') || head.includes('MySQL dump') || head.includes('Dump completed');
+  const hasCreateOrInsert = head.includes('CREATE TABLE') || head.includes('INSERT INTO') || head.includes('CREATE DATABASE');
+
+  if (!hasMariaDb && !hasCreateOrInsert) {
+    return { ok: false, reason: 'File does not appear to be a valid SQL dump', filename: latest.filename };
+  }
+  return { ok: true, filename: latest.filename, sizeBytes: latest.size };
+}
+
+module.exports = { createBackup, createTenantBackup, restoreBackup, listBackupFiles, deleteBackupFile, getBackupDir, pruneOldBackups, verifyLastBackup };

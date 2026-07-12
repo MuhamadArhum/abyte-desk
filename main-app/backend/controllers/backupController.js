@@ -128,7 +128,7 @@ exports.deleteBackup = async (req, res) => {
   try {
     const { filename } = req.params;
 
-    backupService.deleteBackupFile(filename);
+    await backupService.deleteBackupFile(filename);
     await query('DELETE FROM backups WHERE filename = ?', [filename]);
 
     await logAction(req.user.user_id, req.user.name, 'BACKUP_DELETED', 'backup', null,
@@ -144,9 +144,6 @@ exports.deleteBackup = async (req, res) => {
 // GET /api/backup/schedule — return current backup schedule
 exports.getSchedule = async (req, res) => {
   try {
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_enabled TINYINT(1) DEFAULT 1`).catch(() => {});
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_time VARCHAR(5) DEFAULT '02:00'`).catch(() => {});
-
     const rows = await query(`SELECT backup_schedule_enabled, backup_schedule_time FROM store_settings WHERE setting_id = 1`);
     if (!rows.length) return res.json({ backup_schedule_enabled: true, backup_schedule_time: '02:00' });
 

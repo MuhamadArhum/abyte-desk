@@ -1,7 +1,16 @@
 jest.mock('jsonwebtoken');
 jest.mock('../../../config/database');
 jest.mock('../../../services/tokenBlacklist');
-jest.mock('../../../config/logger', () => ({ error: jest.fn(), info: jest.fn() }));
+jest.mock('../../../config/logger', () => ({ error: jest.fn(), info: jest.fn(), http: jest.fn(), warn: jest.fn() }));
+jest.mock('../../../services/cacheService', () => ({
+  get: jest.fn().mockResolvedValue(null),
+  set: jest.fn().mockResolvedValue(undefined),
+  del: jest.fn().mockResolvedValue(undefined),
+  TTL: { PERMISSION: 300, SETTINGS: 600, DASHBOARD: 120, LOOKUP: 900 },
+  invalidatePermissions: jest.fn().mockResolvedValue(undefined),
+  invalidateTenantPermissions: jest.fn().mockResolvedValue(undefined),
+  invalidateSettings: jest.fn().mockResolvedValue(undefined),
+}));
 
 const jwt = require('jsonwebtoken');
 const { queryDb, tenantStorage } = require('../../../config/database');
@@ -134,7 +143,13 @@ describe('authorize middleware', () => {
 
 describe('requirePermission middleware', () => {
   const next = jest.fn();
-  beforeEach(() => jest.clearAllMocks());
+  const cache = require('../../../services/cacheService');
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Re-apply cache.get implementation after clearAllMocks resets it
+    cache.get.mockResolvedValue(null);
+    cache.set.mockResolvedValue(undefined);
+  });
 
   it('always allows Admin role', async () => {
     const req = { user: { role_name: 'Admin' }, method: 'POST', tenantDb: 'test' };

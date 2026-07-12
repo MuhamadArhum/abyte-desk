@@ -6,6 +6,7 @@ const jwt    = require('jsonwebtoken');
 const logger = require('../config/logger');
 const { queryDb, tenantStorage } = require('../config/database');
 const { isBlacklisted } = require('../services/tokenBlacklist');
+const cache  = require('../services/cacheService');
 
 // --- authenticate ---
 const authenticate = async (req, res, next) => {
@@ -84,42 +85,47 @@ const authorize = (...roles) => {
 //   exact match only
 const METHOD_ACTION = { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' };
 
+const _checkPermDb = async (tenantDb, roleName, moduleKey, parts, action) => {
+  if (parts.length === 2 && action) {
+    const subKey = `${moduleKey}.${action}`;
+    const rows = await queryDb(
+      tenantDb,
+      'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
+      [roleName, subKey]
+    );
+    return rows.length > 0;
+  }
+  if (parts.length >= 3) {
+    const rows = await queryDb(
+      tenantDb,
+      'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
+      [roleName, moduleKey]
+    );
+    return rows.length > 0;
+  }
+  const rows = await queryDb(
+    tenantDb,
+    'SELECT 1 FROM role_permissions WHERE role_name = ? AND (module_key = ? OR module_key LIKE ?) AND is_allowed = 1 LIMIT 1',
+    [roleName, moduleKey, `${moduleKey}.%`]
+  );
+  return rows.length > 0;
+};
+
 const requirePermission = (moduleKey) => async (req, res, next) => {
   if (req.user.role_name === 'Admin') return next();
   try {
     const parts  = moduleKey.split('.');
     const action = METHOD_ACTION[req.method];
+    const effectiveKey = (parts.length === 2 && action) ? `${moduleKey}.${action}` : moduleKey;
+    const cacheKey = `perm:${req.tenantDb}:${req.user.role_name}:${effectiveKey}`;
 
-    // 2-part module key + write method → enforce CRUD sub-key
-    if (parts.length === 2 && action) {
-      const subKey = `${moduleKey}.${action}`;
-      const rows = await queryDb(
-        req.tenantDb,
-        'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
-        [req.user.role_name, subKey]
-      );
-      if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
-      return next();
+    let allowed = await cache.get(cacheKey);
+    if (allowed === null) {
+      allowed = await _checkPermDb(req.tenantDb, req.user.role_name, moduleKey, parts, action);
+      await cache.set(cacheKey, allowed, cache.TTL.PERMISSION);
     }
 
-    // 3-part explicit sub-key → exact match only
-    if (parts.length >= 3) {
-      const rows = await queryDb(
-        req.tenantDb,
-        'SELECT 1 FROM role_permissions WHERE role_name = ? AND module_key = ? AND is_allowed = 1 LIMIT 1',
-        [req.user.role_name, moduleKey]
-      );
-      if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
-      return next();
-    }
-
-    // 1-part parent key OR GET on 2-part key → base key or any sub-key
-    const rows = await queryDb(
-      req.tenantDb,
-      'SELECT 1 FROM role_permissions WHERE role_name = ? AND (module_key = ? OR module_key LIKE ?) AND is_allowed = 1 LIMIT 1',
-      [req.user.role_name, moduleKey, `${moduleKey}.%`]
-    );
-    if (rows.length === 0) return res.status(403).json({ message: 'Access denied' });
+    if (!allowed) return res.status(403).json({ message: 'Access denied' });
     next();
   } catch (err) {
     logger.error('Permission check error', { error: err.message });

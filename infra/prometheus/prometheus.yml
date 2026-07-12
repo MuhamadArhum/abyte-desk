@@ -1,0 +1,26 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    app: abyte-erp
+
+scrape_configs:
+
+  # AByte API metrics (requires METRICS_TOKEN in Authorization header if set)
+  - job_name: abyte-api
+    metrics_path: /api/metrics
+    scheme: http
+    static_configs:
+      - targets: ['backend:5000']
+    authorization:
+      credentials: ${METRICS_TOKEN}
+
+  # Redis exporter (optional — add redis_exporter container to docker-compose)
+  - job_name: redis
+    static_configs:
+      - targets: ['redis:6379']
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

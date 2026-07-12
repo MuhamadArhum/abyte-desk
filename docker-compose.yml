@@ -1,43 +1,99 @@
 services:
+
+  # ── MariaDB ────────────────────────────────────────────────
   db:
     image: mariadb:11
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MARIADB_DATABASE: ${MASTER_DB_NAME:-abyte_master}
+      MARIADB_DATABASE:      ${MASTER_DB_NAME:-abyte_master}
     volumes:
       - db_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test:         ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval:     10s
+      timeout:      5s
+      retries:      5
       start_period: 30s
     networks:
       - internal
 
+  # ── Redis (cache + BullMQ queues) ─────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:     ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout:  5s
+      retries:  3
+    networks:
+      - internal
+
+  # ── Backend API ────────────────────────────────────────────
   backend:
     build:
       context: ./main-app/backend
+      target:  production
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file: .env
     environment:
-      DB_HOST: db
-      NODE_ENV: production
+      DB_HOST:    db
+      REDIS_URL:  redis://redis:6379
+      NODE_ENV:   production
     volumes:
       - backups:/app/backups
       - logs:/app/logs
+      - uploads:/app/uploads
     networks:
       - internal
       - public
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition:    on-failure
+        max_attempts: 3
+      update_config:
+        parallelism:   1
+        delay:         10s
+        order:         start-first   # zero-downtime rolling update
 
+  # ── Email Queue Worker ─────────────────────────────────────
+  email-worker:
+    build:
+      context: ./main-app/backend
+      target:  production
+    restart: unless-stopped
+    command:  ["node", "workers/emailWorker.js"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_HOST:   db
+      REDIS_URL: redis://redis:6379
+      NODE_ENV:  production
+    volumes:
+      - logs:/app/logs
+    networks:
+      - internal
+
+  # ── Frontend (Nginx + SPA) ─────────────────────────────────
   frontend:
     build:
       context: ./main-app/frontend
+      target:  production
     restart: unless-stopped
     depends_on:
       - backend
@@ -46,11 +102,49 @@ services:
     networks:
       - public
 
+  # ── Prometheus (metrics scraper) ──── profile: monitoring ──
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - internal
+      - monitoring
+
+  # ── Grafana (dashboards) ────────────── profile: monitoring ─
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
+      GF_USERS_ALLOW_SIGN_UP:    "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
 volumes:
   db_data:
+  redis_data:
   backups:
   logs:
+  uploads:
+  prometheus_data:
+  grafana_data:
 
 networks:
   internal:
   public:
+  monitoring:

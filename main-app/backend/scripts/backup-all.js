@@ -15,10 +15,11 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
-const { spawnSync } = require('child_process');
-const { queryDb }   = require('../config/database');
-const fs            = require('fs');
-const path          = require('path');
+const { spawn }   = require('child_process');
+const { queryDb } = require('../config/database');
+const fs          = require('fs');
+const fsp         = fs.promises;
+const path        = require('path');
 
 const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 const DB_USER   = process.env.DB_USER     || 'root';
@@ -125,12 +126,29 @@ async function main() {
         '--single-transaction', '--quick', '--routines',
         tenant.db_name,
       ];
-      const dump = spawnSync('mariadb-dump', dumpArgs, { encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
-      if (dump.status !== 0) throw new Error((dump.stderr || Buffer.alloc(0)).toString().substring(0, 120));
-      const gz = spawnSync('gzip', [], { input: dump.stdout, encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
-      if (gz.status !== 0) throw new Error('gzip failed');
-      fs.writeFileSync(filePath, gz.stdout);
-      const size = fs.statSync(filePath).size;
+
+      // Async pipeline: mariadb-dump | gzip > file (no blocking, no 512MB RAM buffer)
+      await new Promise((resolve, reject) => {
+        const dump = spawn('mariadb-dump', dumpArgs, { shell: false });
+        const gz   = spawn('gzip',         [],        { shell: false });
+        const out  = fs.createWriteStream(filePath);
+
+        dump.stdout.pipe(gz.stdin);
+        gz.stdout.pipe(out);
+
+        let dumpErr = '';
+        dump.stderr.on('data', d => { dumpErr += d.toString(); });
+
+        dump.on('close', code => { if (code !== 0) reject(new Error(dumpErr.substring(0, 120))); });
+        gz.on('close',   code => { if (code !== 0) reject(new Error('gzip failed')); });
+        out.on('finish', resolve);
+        out.on('error',  reject);
+        dump.on('error', reject);
+        gz.on('error',   reject);
+      });
+
+      const stats = await fsp.stat(filePath);
+      const size = stats.size;
       totalSize += size;
       process.stdout.write(`\r  ${c.green}✓ OK      ${c.reset}${label} ${c.dim}— ${formatBytes(size)}${c.reset}\n`);
       success++;

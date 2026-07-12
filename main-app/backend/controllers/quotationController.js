@@ -294,27 +294,39 @@ const convertToSale = async (req, res) => {
 
     const items = await conn.query('SELECT * FROM quotation_items WHERE quotation_id = ?', [id]);
 
-    // Check stock with FOR UPDATE lock
+    // Batch stock validation with sorted IDs — prevents deadlocks when two
+    // transactions lock rows in the same table simultaneously.
+    const reqProduct = new Map();
+    const reqVariant = new Map();
     for (const item of items) {
-      if (item.variant_id) {
-        const rows = await conn.query(
-          'SELECT available_stock FROM variant_inventory WHERE variant_id = ? FOR UPDATE',
-          [item.variant_id]
-        );
-        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();
-          conn.release();
-          return res.status(400).json({ message: `Insufficient stock for variant ID ${item.variant_id}` });
+      if (item.variant_id) reqVariant.set(item.variant_id, (reqVariant.get(item.variant_id) || 0) + item.quantity);
+      else                 reqProduct.set(item.product_id,  (reqProduct.get(item.product_id)  || 0) + item.quantity);
+    }
+
+    if (reqVariant.size > 0) {
+      const ids = [...reqVariant.keys()].sort((a, b) => a - b);
+      const rows = await conn.query(
+        `SELECT variant_id, available_stock FROM variant_inventory WHERE variant_id IN (${ids.map(() => '?').join(',')}) FOR UPDATE`, ids
+      );
+      const map = new Map(rows.map(r => [r.variant_id, r.available_stock]));
+      for (const [vid, qty] of reqVariant) {
+        if ((map.get(vid) ?? 0) < qty) {
+          await conn.rollback(); conn.release();
+          return res.status(400).json({ message: `Insufficient stock for variant ID ${vid}` });
         }
-      } else {
-        const rows = await conn.query(
-          'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
-          [item.product_id]
-        );
-        if (rows.length === 0 || rows[0].available_stock < item.quantity) {
-          await conn.rollback();
-          conn.release();
-          return res.status(400).json({ message: `Insufficient stock for product ID ${item.product_id}` });
+      }
+    }
+
+    if (reqProduct.size > 0) {
+      const ids = [...reqProduct.keys()].sort((a, b) => a - b);
+      const rows = await conn.query(
+        `SELECT product_id, available_stock FROM inventory WHERE product_id IN (${ids.map(() => '?').join(',')}) FOR UPDATE`, ids
+      );
+      const map = new Map(rows.map(r => [r.product_id, r.available_stock]));
+      for (const [pid, qty] of reqProduct) {
+        if ((map.get(pid) ?? 0) < qty) {
+          await conn.rollback(); conn.release();
+          return res.status(400).json({ message: `Insufficient stock for product ID ${pid}` });
         }
       }
     }
@@ -330,32 +342,29 @@ const convertToSale = async (req, res) => {
 
     const sale_id = Number(saleResult.insertId);
 
-    // Create sale details and deduct stock
-    for (const item of items) {
-      await conn.query(
-        'INSERT INTO sale_details (sale_id, product_id, variant_id, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?, ?)',
-        [sale_id, item.product_id, item.variant_id || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]
-      );
+    // Bulk-insert sale details
+    const sdPh = items.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+    const sdVals = items.flatMap(item => [sale_id, item.product_id, item.variant_id || null, item.quantity, item.unit_price, round2(item.unit_price * item.quantity)]);
+    await conn.query(`INSERT INTO sale_details (sale_id, product_id, variant_id, quantity, unit_price, total_price) VALUES ${sdPh}`, sdVals);
 
-      if (item.variant_id) {
-        await conn.query(
-          'UPDATE variant_inventory SET available_stock = available_stock - ? WHERE variant_id = ?',
-          [item.quantity, item.variant_id]
-        );
-        await conn.query(
-          'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE variant_id = ?',
-          [item.quantity, item.variant_id]
-        );
-      } else {
-        await conn.query(
-          'UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?',
-          [item.quantity, item.product_id]
-        );
-        await conn.query(
-          'UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?',
-          [item.quantity, item.product_id]
-        );
-      }
+    // Batch stock deduction (reuse aggregated maps built during validation above)
+    if (reqProduct.size > 0) {
+      const entries = [...reqProduct.entries()];
+      const caseSql  = entries.map(() => 'WHEN ? THEN ?').join(' ');
+      const caseParams = entries.flatMap(([id, qty]) => [id, qty]);
+      const inPh = entries.map(() => '?').join(',');
+      const ids   = entries.map(([id]) => id);
+      await conn.query(`UPDATE inventory SET available_stock = available_stock - (CASE product_id ${caseSql} END) WHERE product_id IN (${inPh})`, [...caseParams, ...ids]);
+      await conn.query(`UPDATE products SET stock_quantity = stock_quantity - (CASE product_id ${caseSql} END) WHERE product_id IN (${inPh})`, [...caseParams, ...ids]);
+    }
+    if (reqVariant.size > 0) {
+      const entries = [...reqVariant.entries()];
+      const caseSql  = entries.map(() => 'WHEN ? THEN ?').join(' ');
+      const caseParams = entries.flatMap(([id, qty]) => [id, qty]);
+      const inPh = entries.map(() => '?').join(',');
+      const ids   = entries.map(([id]) => id);
+      await conn.query(`UPDATE variant_inventory SET available_stock = available_stock - (CASE variant_id ${caseSql} END) WHERE variant_id IN (${inPh})`, [...caseParams, ...ids]);
+      await conn.query(`UPDATE product_variants SET stock_quantity = stock_quantity - (CASE variant_id ${caseSql} END) WHERE variant_id IN (${inPh})`, [...caseParams, ...ids]);
     }
 
     // Update quotation status to converted

@@ -9,19 +9,22 @@
 //   5. requireModule middleware guards plan-based features
 // =============================================================
 
-const express   = require('express');
-const cors      = require('cors');
-const helmet    = require('helmet');
-const morgan    = require('morgan');
-const path      = require('path');
-const rateLimit = require('express-rate-limit');
-const cron      = require('node-cron');
+const express      = require('express');
+const cors         = require('cors');
+const helmet       = require('helmet');
+const compression  = require('compression');
+const morgan       = require('morgan');
+const path         = require('path');
+const rateLimit    = require('express-rate-limit');
+const cron         = require('node-cron');
 require('dotenv').config({
   path: path.join(__dirname, process.env.NODE_ENV === 'production' ? '.env.production' : '.env'),
 });
 
 const logger = require('./config/logger');
 const { validateEnv } = require('./config/validateEnv');
+const { requestIdMiddleware } = require('./middleware/requestId');
+const { metricsMiddleware, metricsHandler } = require('./services/metricsService');
 validateEnv();
 
 // ── JWT Secret Safety Check ──────────────────────────────────
@@ -201,11 +204,14 @@ const helmetConfig = {
   // Keep other Helmet defaults: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.
 };
 
+app.use(requestIdMiddleware);  // inject X-Request-ID before anything else
+app.use(metricsMiddleware);    // track latency/count per route
 app.use(helmet(helmetConfig));
 app.use(cors(corsOptions));
+app.use(compression()); // gzip/brotli — 60-80% smaller JSON responses
 
 app.use(morgan('combined', {
-  stream: { write: (msg) => logger.info(msg.trim()) },
+  stream: { write: (msg) => logger.http(msg.trim()) },
 }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -235,6 +241,12 @@ app.use('/api/ai',                aiLimiter);
 // Health check — public, no auth (used to wake up Render free tier)
 app.get('/api/ping',    (_req, res) => res.json({ ok: true }));
 app.get('/api/v1/ping', (_req, res) => res.json({ ok: true, version: 'v1' }));
+
+// Prometheus metrics — protected by METRICS_TOKEN if set
+app.get('/api/metrics', metricsHandler);
+
+// Readiness probe — lightweight check used by load balancers / K8s readiness gate
+app.get('/api/ready', (_req, res) => res.json({ ready: true }));
 
 
 // Auth (no tenant guard needed — login resolves tenant itself)
@@ -308,9 +320,39 @@ app.use('/api/coupons',             couponRoutes);
 app.use('/api/whatsapp',            whatsappRoutes);
 app.use('/api/fbr',                 fbrRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', ts: new Date().toISOString() });
+// Health check — probes DB, reports memory/heap/uptime and active pool count.
+// Returns 200 when healthy, 503 when DB is unreachable.
+app.get('/api/health', async (_req, res) => {
+  const { queryDb: qdb, pools } = require('./config/database');
+  const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+
+  let dbOk = false;
+  let dbLatencyMs = null;
+  try {
+    const t0 = Date.now();
+    await qdb(MASTER_DB, 'SELECT 1');
+    dbLatencyMs = Date.now() - t0;
+    dbOk = true;
+  } catch (_e) { /* dbOk stays false */ }
+
+  const mem  = process.memoryUsage();
+  const toMB = (b) => Math.round(b / 1024 / 1024);
+
+  const payload = {
+    status:        dbOk ? 'ok' : 'error',
+    ts:            new Date().toISOString(),
+    uptime_s:      Math.floor(process.uptime()),
+    db:            dbOk ? `ok (${dbLatencyMs}ms)` : 'unreachable',
+    active_pools:  pools ? pools.size : 0,
+    memory: {
+      rss_mb:       toMB(mem.rss),
+      heap_used_mb: toMB(mem.heapUsed),
+      heap_total_mb: toMB(mem.heapTotal),
+      external_mb:  toMB(mem.external),
+    },
+  };
+
+  res.status(dbOk ? 200 : 503).json(payload);
 });
 
 // ── Serve Uploaded Files (logos, etc.) ───────────────────────
@@ -382,14 +424,47 @@ async function runStartupMigrations() {
   }
 }
 
+// ── Graceful Shutdown ─────────────────────────────────────────
+const { closeAllPools } = require('./config/database');
+const { closeQueues }   = require('./services/queueService');
+
+function gracefulShutdown(signal) {
+  logger.info(`[Shutdown] ${signal} received — draining connections`);
+
+  // Stop accepting new requests; give in-flight requests 30s to finish
+  httpServer.close(async () => {
+    try {
+      cron.getTasks().forEach(t => t.stop());
+      await Promise.all([closeAllPools(), closeQueues()]);
+      logger.info('[Shutdown] Clean exit');
+    } catch (e) {
+      logger.error('[Shutdown] Error during cleanup', { error: e.message });
+    }
+    process.exit(0);
+  });
+
+  // Force-exit if graceful drain takes too long
+  setTimeout(() => {
+    logger.error('[Shutdown] Force-exiting after 30s timeout');
+    process.exit(1);
+  }, 30000).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+
 // ── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
+const httpServer = app.listen(PORT, async () => {
   logger.info(`AByte ERP backend started`, {
     port:    PORT,
     db:      process.env.DB_NAME || 'abyte_pos',
     origins: allowedOrigins,
   });
+
+  // Signal PM2 that this worker is ready (enables zero-downtime reloads)
+  if (typeof process.send === 'function') process.send('ready');
+
   // Run after server is accepting requests so DB pool is ready
   runStartupMigrations();
 
@@ -402,11 +477,9 @@ app.listen(PORT, async () => {
     cleanExpired().catch(() => {});
   });
 
-  // Load backup schedule from DB and start cron
+  // Load backup schedule from DB and start cron (columns ensured by Migration v19)
   try {
     const { query: q } = require('./config/database');
-    await q(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_enabled TINYINT(1) DEFAULT 1`).catch(() => {});
-    await q(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_time VARCHAR(5) DEFAULT '02:00'`).catch(() => {});
     const rows = await q(`SELECT backup_schedule_enabled, backup_schedule_time FROM store_settings WHERE setting_id = 1`).catch(() => []);
     const enabled = rows.length ? !!rows[0].backup_schedule_enabled : true;
     const timeStr = (rows.length && rows[0].backup_schedule_time) ? rows[0].backup_schedule_time : '02:00';
@@ -416,4 +489,13 @@ app.listen(PORT, async () => {
     logger.warn('[Backup] Could not load schedule from DB, using default 02:00', { error: e.message });
     rescheduleBackup(true, 2, 0);
   }
+
+  // Run backup retention sweep daily at 03:00
+  cron.schedule('0 3 * * *', async () => {
+    const { pruneOldBackups, verifyLastBackup } = require('./services/backupService');
+    await pruneOldBackups().catch(e => logger.error('[Backup] Retention sweep failed', { error: e.message }));
+    const check = await verifyLastBackup().catch(() => ({ ok: false, reason: 'verify threw' }));
+    if (!check.ok) logger.warn('[Backup] Last backup integrity check failed', check);
+    else logger.info('[Backup] Last backup integrity OK', { filename: check.filename, sizeBytes: check.sizeBytes });
+  });
 });

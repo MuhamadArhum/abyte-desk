@@ -2,6 +2,7 @@
 const { masterQuery }    = require('../config/masterDatabase');
 const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
+const cache = require('../services/cacheService');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const net = require('net');
@@ -9,6 +10,9 @@ const https = require('https');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
+const { spawn } = require('child_process');
+const os = require('os');
 const multer = require('multer');
 
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -35,10 +39,9 @@ const logoUpload = multer({
 // --- Get Store Settings ---
 exports.getSettings = async (req, res) => {
   try {
-    // Ensure payment-method tax columns exist (idempotent)
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_cash DECIMAL(5,2) DEFAULT 16`).catch(() => {});
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_card DECIMAL(5,2) DEFAULT 5`).catch(() => {});
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_online DECIMAL(5,2) DEFAULT 5`).catch(() => {});
+    const cacheKey = `settings:${req.tenantDb}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) return res.json(cached);
 
     const rows = await query('SELECT * FROM store_settings WHERE setting_id = 1');
     if (rows.length === 0) {
@@ -71,6 +74,8 @@ exports.getSettings = async (req, res) => {
     safeRow.refund_password_set = !!refund_password;
     safeRow.reports_password_set = !!reports_password;
     safeRow.jv_delete_password_set = !!jv_delete_password;
+
+    cache.set(cacheKey, safeRow, cache.TTL.SETTINGS).catch(() => {});
     res.json(safeRow);
   } catch (err) {
     logger.error(err);
@@ -163,7 +168,6 @@ exports.updateSettings = async (req, res) => {
 
     // Update accounts security password
     try {
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS jv_delete_password VARCHAR(255) NULL`);
       if (jv_delete_password !== undefined && jv_delete_password !== '') {
         const hash = jv_delete_password.startsWith('$2b$') || jv_delete_password.startsWith('$2a$')
           ? jv_delete_password
@@ -186,8 +190,6 @@ exports.updateSettings = async (req, res) => {
 
     // Update POS mode and per-category tax configuration
     try {
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_mode VARCHAR(10) DEFAULT 'simple'`);
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_tax_config TEXT NULL`);
       await query(
         `UPDATE store_settings SET pos_mode=?, pos_tax_config=? WHERE setting_id=1`,
         [pos_mode || 'simple', pos_tax_config ? JSON.stringify(pos_tax_config) : null]
@@ -199,9 +201,6 @@ exports.updateSettings = async (req, res) => {
     // Update payment-method-specific tax rates
     try {
       const { tax_on_cash, tax_on_card, tax_on_online } = req.body;
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_cash DECIMAL(5,2) DEFAULT 16`);
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_card DECIMAL(5,2) DEFAULT 5`);
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_online DECIMAL(5,2) DEFAULT 5`);
       await query(
         `UPDATE store_settings SET tax_on_cash=?, tax_on_card=?, tax_on_online=? WHERE setting_id=1`,
         [parseFloat(tax_on_cash) || 0, parseFloat(tax_on_card) || 0, parseFloat(tax_on_online) || 0]
@@ -224,8 +223,6 @@ exports.updateSettings = async (req, res) => {
     // Update CPV/CRV default accounts
     try {
       const { cpv_default_account_id, crv_default_account_id } = req.body;
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS cpv_default_account_id INT NULL`);
-      await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS crv_default_account_id INT NULL`);
       await query(
         `UPDATE store_settings SET cpv_default_account_id=?, crv_default_account_id=? WHERE setting_id=1`,
         [cpv_default_account_id || null, crv_default_account_id || null]
@@ -235,6 +232,7 @@ exports.updateSettings = async (req, res) => {
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
+    cache.invalidateSettings(req.tenantDb).catch(() => {});
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
     logger.error(err);
@@ -436,26 +434,9 @@ exports.checkPrinter = async (req, res) => {
 
 // ===================== PRINTER CRUD =====================
 
-// Migrate printers table to new schema on first use
-let printerSchemaMigrated = false;
-async function ensurePrinterSchema() {
-  if (printerSchemaMigrated) return;
-  printerSchemaMigrated = true;
-  try {
-    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS printer_type ENUM('invoice','kot') NOT NULL DEFAULT 'invoice'`);
-    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-    await query(`ALTER TABLE printers ADD COLUMN IF NOT EXISTS is_master TINYINT(1) DEFAULT 0`);
-    await query(`
-      CREATE TABLE IF NOT EXISTS printer_category_mappings (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        printer_id INT NOT NULL,
-        category_id INT NOT NULL,
-        UNIQUE KEY uq_printer_cat (printer_id, category_id),
-        FOREIGN KEY (printer_id) REFERENCES printers(printer_id) ON DELETE CASCADE
-      )
-    `);
-  } catch (e) { /* ignore — columns may already exist */ }
-}
+// Schema for printers and printer_category_mappings is now handled by Migration v19.
+// This no-op function is kept to avoid changing call sites.
+async function ensurePrinterSchema() {}
 
 // --- Get all printers (with category mappings) ---
 exports.getPrinters = async (req, res) => {
@@ -797,34 +778,39 @@ function sendToNetworkPrinter(ip, port, data) {
 }
 
 // Send data to USB printer (Windows: writes via shared printer or LPT)
-function sendToUsbPrinter(printerName, data) {
-  return new Promise((resolve, reject) => {
-    const fs = require('fs');
-    const { spawnSync } = require('child_process');
-    const path = require('path');
-    const os = require('os');
+// Fully async — does not block the Node.js event loop.
+async function sendToUsbPrinter(printerName, data) {
+  const tmpFile = path.join(os.tmpdir(), `receipt_${Date.now()}.bin`);
+  await fsp.writeFile(tmpFile, data);
+  try {
+    await new Promise((resolve, reject) => {
+      const [exe, args] = process.platform === 'win32'
+        ? ['cmd.exe', ['/c', 'copy', '/b', tmpFile, printerName]]
+        : ['lp',      ['-d', printerName, '-o', 'raw', tmpFile]];
 
-    const tmpFile = path.join(os.tmpdir(), `receipt_${Date.now()}.bin`);
-    fs.writeFileSync(tmpFile, data);
+      const proc = spawn(exe, args, { shell: false });
+      let stderr = '';
+      proc.stderr.on('data', d => { stderr += d.toString(); });
 
-    try {
-      let result;
-      if (process.platform === 'win32') {
-        result = spawnSync('cmd.exe', ['/c', 'copy', '/b', tmpFile, printerName], { timeout: 10000, shell: false });
-      } else {
-        result = spawnSync('lp', ['-d', printerName, '-o', 'raw', tmpFile], { timeout: 10000, shell: false });
-      }
-      fs.unlinkSync(tmpFile);
-      if (result.status !== 0) {
-        reject(new Error(`USB print failed: ${result.stderr ? result.stderr.toString() : 'unknown error'}`));
-      } else {
-        resolve();
-      }
-    } catch (err) {
-      try { fs.unlinkSync(tmpFile); } catch {}
-      reject(new Error(`USB print failed: ${err.message}`));
-    }
-  });
+      // Kill the process if it exceeds the 10-second printer timeout
+      const timer = setTimeout(() => {
+        proc.kill();
+        reject(new Error('USB print timed out after 10s'));
+      }, 10000);
+
+      proc.on('close', code => {
+        clearTimeout(timer);
+        if (code === 0) resolve();
+        else reject(new Error(`USB print failed: ${stderr || 'unknown error'}`));
+      });
+      proc.on('error', err => {
+        clearTimeout(timer);
+        reject(new Error(`USB print failed: ${err.message}`));
+      });
+    });
+  } finally {
+    await fsp.unlink(tmpFile).catch(() => {}); // always clean up temp file
+  }
 }
 
 // --- Get categories (for KOT printer mapping) ---
@@ -976,9 +962,23 @@ exports.uploadLogo = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const logoPath = `/uploads/${req.file.filename}`;
-    await query(`ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS receipt_logo VARCHAR(500) NULL`).catch(() => {});
+    const storage = require('../services/storageService');
+    const ext      = path.extname(req.file.originalname).toLowerCase() || '.png';
+    const key      = `logos/logo_${req.tenantDb || 'default'}${ext}`;
+
+    let logoPath;
+    if (storage.PROVIDER === 'local') {
+      // Local disk: multer already wrote the file; use its path
+      logoPath = `/uploads/${req.file.filename}`;
+    } else {
+      // Cloud: upload buffer, delete local temp file
+      await storage.upload({ key, buffer: req.file.buffer || require('fs').readFileSync(req.file.path), mimetype: req.file.mimetype });
+      if (req.file.path) await fsp.unlink(req.file.path).catch(() => {});
+      logoPath = storage.getPublicUrl(key);
+    }
+
     await query('UPDATE store_settings SET receipt_logo = ? WHERE setting_id = 1', [logoPath]);
+    cache.invalidateSettings(req.tenantDb).catch(() => {});
 
     res.json({ success: true, logo_url: logoPath });
   } catch (err) {
@@ -994,7 +994,7 @@ exports.deleteLogo = async (req, res) => {
     const currentLogo = rows[0]?.receipt_logo;
     if (currentLogo) {
       const fullPath = path.join(uploadsDir, path.basename(currentLogo));
-      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+      await fsp.unlink(fullPath).catch(() => {}); // ignore if already gone
     }
     await query('UPDATE store_settings SET receipt_logo = NULL WHERE setting_id = 1');
     res.json({ success: true });

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../utils/api';
 
 interface SettingsContextType {
@@ -32,8 +32,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     fetchSettings();
   }, [fetchSettings]);
 
+  // Memoize context value so all consumers only re-render when currencySymbol
+  // actually changes — not on every parent re-render of SettingsProvider.
+  const contextValue = useMemo(
+    () => ({ currencySymbol, refreshSettings: fetchSettings }),
+    [currencySymbol, fetchSettings]
+  );
+
   return (
-    <SettingsContext.Provider value={{ currencySymbol, refreshSettings: fetchSettings }}>
+    <SettingsContext.Provider value={contextValue}>
       {children}
     </SettingsContext.Provider>
   );

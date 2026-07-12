@@ -26,32 +26,13 @@ const FBR_INVOICE_SANDBOX = 'https://esp.fbr.gov.pk/esb/v1/api/Sandbox/PostInvoi
  * Ensure all FBR columns exist in store_settings and required tables exist.
  * Idempotent — called at the top of every exported function.
  */
+// FBR schema (store_settings + sales columns) is now ensured by Migration v19.
+// The fbr_invoices table still needs to be created on first use since it's
+// not part of the base schema.sql and may not be in all tenant DBs.
 let _schemaDone = false;
 async function ensureFbrSchema() {
   if (_schemaDone) return;
   _schemaDone = true;
-
-  const alters = [
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_enabled TINYINT(1) DEFAULT 0`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_posid INT NULL`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_username VARCHAR(100) NULL`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_password VARCHAR(255) NULL`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_mode ENUM('sandbox','live') DEFAULT 'sandbox'`,
-    `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_ntn VARCHAR(50) NULL`,
-    // Extend sales table with FBR tracking columns
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_invoice_no VARCHAR(100) NULL`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_status ENUM('not_sent','pending','sent','failed') DEFAULT 'not_sent'`,
-    `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_synced_at DATETIME NULL`,
-  ];
-
-  for (const sql of alters) {
-    try { await query(sql); } catch (e) {
-      if (!e.message?.includes('Duplicate column') && !e.message?.includes('already exists')) {
-        logger.warn('[fbrController] schema alter warning:', e.message);
-      }
-    }
-  }
-
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS fbr_invoices (

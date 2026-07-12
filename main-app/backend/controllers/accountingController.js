@@ -1256,11 +1256,21 @@ exports.deletePaymentVoucherGroup = async (req, res) => {
           const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
           const typeMap = {};
           for (const a of accRows) typeMap[a.account_id] = a.account_type;
+          // Aggregate reversals per account, then apply in a single CASE WHEN UPDATE
+          const netChange = new Map();
           for (const line of lines) {
             const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
             const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
-            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+            netChange.set(line.account_id, (netChange.get(line.account_id) || 0) + reversal);
           }
+          const ncEntries = [...netChange.entries()];
+          const ncCase  = ncEntries.map(() => 'WHEN ? THEN current_balance + ?').join(' ');
+          const ncCaseP = ncEntries.flatMap(([id, v]) => [id, v]);
+          const ncIds   = ncEntries.map(([id]) => id);
+          await conn.query(
+            `UPDATE accounts SET current_balance = CASE account_id ${ncCase} END WHERE account_id IN (${ncIds.map(() => '?').join(',')})`,
+            [...ncCaseP, ...ncIds]
+          );
         }
         await conn.query('UPDATE payment_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [voucher.voucher_id]);
         await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);
@@ -1430,11 +1440,21 @@ exports.deleteReceiptVoucherGroup = async (req, res) => {
           const accRows = await conn.query(`SELECT account_id, account_type FROM accounts WHERE account_id IN (${accIds.map(() => '?').join(',')})`, accIds);
           const typeMap = {};
           for (const a of accRows) typeMap[a.account_id] = a.account_type;
+          // Aggregate reversals per account, then apply in a single CASE WHEN UPDATE
+          const netChange = new Map();
           for (const line of lines) {
             const debitInc = ['asset', 'expense'].includes(typeMap[line.account_id]);
             const reversal = debitInc ? -(Number(line.debit) - Number(line.credit)) : -(Number(line.credit) - Number(line.debit));
-            await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [reversal, line.account_id]);
+            netChange.set(line.account_id, (netChange.get(line.account_id) || 0) + reversal);
           }
+          const ncEntries = [...netChange.entries()];
+          const ncCase  = ncEntries.map(() => 'WHEN ? THEN current_balance + ?').join(' ');
+          const ncCaseP = ncEntries.flatMap(([id, v]) => [id, v]);
+          const ncIds   = ncEntries.map(([id]) => id);
+          await conn.query(
+            `UPDATE accounts SET current_balance = CASE account_id ${ncCase} END WHERE account_id IN (${ncIds.map(() => '?').join(',')})`,
+            [...ncCaseP, ...ncIds]
+          );
         }
         await conn.query('UPDATE receipt_vouchers SET journal_entry_id = NULL WHERE voucher_id = ?', [voucher.voucher_id]);
         await conn.query('DELETE FROM journal_entry_lines WHERE entry_id = ?', [voucher.journal_entry_id]);

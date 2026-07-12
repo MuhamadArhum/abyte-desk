@@ -1,6 +1,14 @@
 node_modules
 backups
 logs
+uploads
 .env
 .env.*
 *.log
+tests
+.git
+.github
+coverage
+*.md
+jest.config.js
+nodemon.json

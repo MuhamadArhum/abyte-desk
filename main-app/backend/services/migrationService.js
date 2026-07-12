@@ -406,6 +406,112 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE users ADD INDEX IF NOT EXISTS idx_reset_token (reset_token)`);
     },
   },
+  {
+    version: 19,
+    name: 'runtime_alter_table_cleanup',
+    async run(db) {
+      // Consolidate all runtime ALTER TABLEs that were scattered across controllers.
+      // Running them here at startup (once per tenant) eliminates the overhead of
+      // executing schema checks on every API request.
+      const stmts = [
+        // store_settings — payment-method tax rates
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_cash DECIMAL(5,2) DEFAULT 16`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_card DECIMAL(5,2) DEFAULT 5`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_on_online DECIMAL(5,2) DEFAULT 5`,
+        // store_settings — security passwords
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS jv_delete_password VARCHAR(255) NULL`,
+        // store_settings — POS mode
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_mode VARCHAR(10) DEFAULT 'simple'`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS pos_tax_config TEXT NULL`,
+        // store_settings — accounting defaults
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS cpv_default_account_id INT NULL`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS crv_default_account_id INT NULL`,
+        // store_settings — receipt logo
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS receipt_logo VARCHAR(500) NULL`,
+        // store_settings — backup scheduler
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_enabled TINYINT(1) DEFAULT 1`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS backup_schedule_time VARCHAR(5) DEFAULT '02:00'`,
+        // store_settings — FBR integration
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_enabled TINYINT(1) DEFAULT 0`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_posid INT NULL`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_username VARCHAR(100) NULL`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_password VARCHAR(255) NULL`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_mode ENUM('sandbox','live') DEFAULT 'sandbox'`,
+        `ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS fbr_ntn VARCHAR(50) NULL`,
+        // sales — FBR tracking
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_invoice_no VARCHAR(100) NULL`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_status ENUM('not_sent','pending','sent','failed') DEFAULT 'not_sent'`,
+        `ALTER TABLE sales ADD COLUMN IF NOT EXISTS fbr_synced_at DATETIME NULL`,
+        // printers — extended schema
+        `ALTER TABLE printers ADD COLUMN IF NOT EXISTS printer_type ENUM('invoice','kot') NOT NULL DEFAULT 'invoice'`,
+        `ALTER TABLE printers ADD COLUMN IF NOT EXISTS branch_id INT NULL`,
+        `ALTER TABLE printers ADD COLUMN IF NOT EXISTS is_master TINYINT(1) DEFAULT 0`,
+        // printer_category_mappings — KOT routing table
+        `CREATE TABLE IF NOT EXISTS printer_category_mappings (
+           id INT PRIMARY KEY AUTO_INCREMENT,
+           printer_id INT NOT NULL,
+           category_id INT NOT NULL,
+           UNIQUE KEY uq_printer_cat (printer_id, category_id),
+           FOREIGN KEY (printer_id) REFERENCES printers(printer_id) ON DELETE CASCADE
+         )`,
+      ];
+      for (const sql of stmts) {
+        try {
+          await queryDb(db, sql);
+        } catch (e) {
+          if (!e.message?.includes('Duplicate column') && !e.message?.includes('already exists')) {
+            throw e;
+          }
+        }
+      }
+    },
+  },
+  {
+    version: 18,
+    name: 'performance_indexes',
+    async run(db) {
+      const idxs = [
+        // Sales — hot paths hit on every report and POS lookup
+        ['sales',                'idx_sales_branch_date_status', '(branch_id, sale_date, status)'],
+        ['sales',                'idx_sales_branch_invoice',     '(branch_id, invoice_no)'],
+        ['sales',                'idx_sales_token_no',           '(token_no)'],
+        // Sale details — join target for every order fetch
+        ['sale_details',         'idx_sd_sale_product',          '(sale_id, product_id)'],
+        // Journal entries — accounting report queries filter by status + date
+        ['journal_entries',      'idx_je_status_date',           '(status, entry_date)'],
+        // Journal entry lines — general ledger queries filter by account + entry
+        ['journal_entry_lines',  'idx_jel_account_entry',        '(account_id, entry_id)'],
+        // Payment vouchers — lookup by voucher_number and account
+        ['payment_vouchers',     'idx_pv_voucher_number',        '(voucher_number)'],
+        ['payment_vouchers',     'idx_pv_account_id',            '(account_id)'],
+        // Receipt vouchers — same pattern
+        ['receipt_vouchers',     'idx_rv_voucher_number',        '(voucher_number)'],
+        ['receipt_vouchers',     'idx_rv_account_id',            '(account_id)'],
+        // Accounts — tree traversal on parent_account_id
+        ['accounts',             'idx_accounts_parent',          '(parent_account_id)'],
+        // Credit payments — lookup by credit_sale_id
+        ['credit_payments',      'idx_cp_credit_sale',           '(credit_sale_id)'],
+        // Deliveries — join from sales
+        ['deliveries',           'idx_deliveries_sale_id',       '(sale_id)'],
+        // Purchase vouchers — lookup by account
+        ['inv_purchase_vouchers','idx_ipv_account_id',           '(account_id)'],
+        // Cash movements — filtered by shift/register
+        ['cash_movements',       'idx_cm_register_created',      '(register_id, created_at)'],
+        // Return details — join from returns
+        ['return_details',       'idx_rd_return_product',        '(return_id, product_id)'],
+        // Stock issue items — join from stock issues
+        ['stock_issue_items',    'idx_sii_issue_product',        '(issue_id, product_id)'],
+      ];
+      for (const [table, idx, cols] of idxs) {
+        try {
+          await queryDb(db, `ALTER TABLE \`${table}\` ADD INDEX IF NOT EXISTS \`${idx}\` ${cols}`);
+        } catch (e) {
+          // Table may not exist in all tenant configs; skip gracefully
+          if (!e.message?.includes("doesn't exist") && !e.message?.includes('Duplicate key name')) throw e;
+        }
+      }
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

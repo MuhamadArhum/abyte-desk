@@ -11,38 +11,68 @@ try {
   logger.warn('[EmailService] nodemailer not installed. Run: npm install nodemailer');
 }
 
+let _transporter = null;
+let _configKey = null;
+
+const _makeConfigKey = () =>
+  `${process.env.EMAIL_HOST}:${process.env.EMAIL_PORT}:${process.env.EMAIL_USER}`;
+
 const getTransporter = () => {
   if (!nodemailer) return null;
   if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER) return null;
 
-  return nodemailer.createTransport({
-    host:   process.env.EMAIL_HOST,
-    port:   parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_PORT === '465',
+  const key = _makeConfigKey();
+  if (_transporter && _configKey === key) return _transporter;
+
+  _transporter = nodemailer.createTransport({
+    host:             process.env.EMAIL_HOST,
+    port:             parseInt(process.env.EMAIL_PORT || '587'),
+    secure:           process.env.EMAIL_PORT === '465',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    connectionTimeout: 10000,
+    greetingTimeout:   8000,
+    socketTimeout:     15000,
   });
+  _configKey = key;
+  return _transporter;
 };
 
-const sendMail = async ({ to, subject, html, text }) => {
+const resetTransporter = () => { _transporter = null; _configKey = null; };
+
+const RETRY_DELAYS = [1000, 3000];
+
+const sendMail = exports.sendMail = async ({ to, subject, html, text }) => {
   const transporter = getTransporter();
   if (!transporter) {
     logger.warn('[EmailService] Email not configured — skipping send', { to, subject });
     return { skipped: true };
   }
 
-  const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-    to,
-    subject,
-    html,
-    text,
-  });
-
-  logger.info('[EmailService] Email sent', { to, subject, messageId: info.messageId });
-  return info;
+  let lastErr;
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        to,
+        subject,
+        html,
+        text,
+      });
+      logger.info('[EmailService] Email sent', { to, subject, messageId: info.messageId });
+      return info;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < RETRY_DELAYS.length) {
+        logger.warn(`[EmailService] Send attempt ${attempt + 1} failed, retrying`, { to, error: err.message });
+        await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+      }
+    }
+  }
+  resetTransporter();
+  throw lastErr;
 };
 
 // ── Notification templates ──────────────────────────────────────
@@ -300,11 +330,41 @@ exports.sendPasswordReset = async ({ to, name, resetLink, companyName }) => {
   });
 };
 
+// ── Queue-based fire-and-forget variants ───────────────────────
+// These push a job to BullMQ and return immediately.
+// If Redis is unavailable they fall back to inline direct send.
+const _enqueue = async (jobName, data) => {
+  try {
+    const { emailQueue } = require('./queueService');
+    const job = await emailQueue.add(jobName, data);
+    if (job?.inline) {
+      // Fallback: queueService ran inline — still need to call real handler
+      return exports[jobName] ? exports[jobName](data) : sendMail(data);
+    }
+    return job;
+  } catch {
+    // Last-resort: send directly if queue throws
+    return sendMail(data);
+  }
+};
+
+exports.enqueueLowStockAlert        = (d) => _enqueue('lowStockAlert', d);
+exports.enqueueSaleConfirmation     = (d) => _enqueue('saleConfirmation', d);
+exports.enqueueBackupNotification   = (d) => _enqueue('backupNotification', d);
+exports.enqueueLoginAlert           = (d) => _enqueue('loginAlert', d);
+exports.enqueueInvoiceEmail         = (d) => _enqueue('invoiceEmail', d);
+exports.enqueuePasswordReset        = (d) => _enqueue('passwordReset', d);
+
 exports.testConnection = async () => {
   const transporter = getTransporter();
   if (!transporter) throw new Error('Email not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');
-  await transporter.verify();
-  return { ok: true };
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (err) {
+    resetTransporter();
+    throw err;
+  }
 };
 
 exports.isConfigured = () => {

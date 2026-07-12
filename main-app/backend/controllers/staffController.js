@@ -327,25 +327,43 @@ exports.markBulkAttendance = async (req, res) => {
 
     await conn.beginTransaction();
 
+    // 1. Batch-fetch all existing statuses to compute leave balance changes
+    const existingMap = new Map();
+    const existConds = records.map(() => '(staff_id = ? AND attendance_date = ?)').join(' OR ');
+    const existParams = records.flatMap(r => [r.staff_id, r.attendance_date]);
+    const existRows = await conn.query(`SELECT staff_id, attendance_date, status FROM attendance WHERE ${existConds}`, existParams);
+    for (const row of existRows) existingMap.set(`${row.staff_id}_${row.attendance_date}`, row.status);
+
+    // 2. Compute net leave balance change per staff member
+    const leaveChanges = new Map();
     for (const record of records) {
-      const { staff_id, attendance_date, check_in, check_out, status, notes } = record;
-      const newStatus = status || 'present';
+      const newStatus = record.status || 'present';
+      const oldStatus = existingMap.get(`${record.staff_id}_${record.attendance_date}`) || null;
+      let delta = 0;
+      if (oldStatus !== 'leave' && newStatus === 'leave') delta = -1;
+      else if (oldStatus === 'leave' && newStatus !== 'leave') delta = +1;
+      if (delta !== 0) leaveChanges.set(record.staff_id, (leaveChanges.get(record.staff_id) || 0) + delta);
+    }
 
-      // Check existing for leave balance
-      const [existing] = await conn.query('SELECT status FROM attendance WHERE staff_id = ? AND attendance_date = ?', [staff_id, attendance_date]);
-      const oldStatus = existing ? existing.status : null;
+    // 3. Bulk-upsert all attendance records in one query
+    const attPh = records.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+    const attVals = records.flatMap(r => [r.staff_id, r.attendance_date, r.check_in || null, r.check_out || null, r.status || 'present', r.notes || null]);
+    await conn.query(
+      `INSERT INTO attendance (staff_id, attendance_date, check_in, check_out, status, notes) VALUES ${attPh}
+       ON DUPLICATE KEY UPDATE check_in=VALUES(check_in), check_out=VALUES(check_out), status=VALUES(status), notes=VALUES(notes)`,
+      attVals
+    );
 
+    // 4. Batch-update leave balances with CASE WHEN (one query instead of N)
+    if (leaveChanges.size > 0) {
+      const lcEntries = [...leaveChanges.entries()];
+      const lcCase  = lcEntries.map(() => 'WHEN ? THEN ?').join(' ');
+      const lcCaseP = lcEntries.flatMap(([id, d]) => [id, d]);
+      const lcIds   = lcEntries.map(([id]) => id);
       await conn.query(
-        'INSERT INTO attendance (staff_id, attendance_date, check_in, check_out, status, notes) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE check_in=?, check_out=?, status=?, notes=?',
-        [staff_id, attendance_date, check_in || null, check_out || null, newStatus, notes || null, check_in || null, check_out || null, newStatus, notes || null]
+        `UPDATE staff SET leave_balance = GREATEST(leave_balance + (CASE staff_id ${lcCase} END), 0) WHERE staff_id IN (${lcIds.map(() => '?').join(',')})`,
+        [...lcCaseP, ...lcIds]
       );
-
-      // Adjust leave balance
-      if (oldStatus !== 'leave' && newStatus === 'leave') {
-        await conn.query('UPDATE staff SET leave_balance = GREATEST(leave_balance - 1, 0) WHERE staff_id = ?', [staff_id]);
-      } else if (oldStatus === 'leave' && newStatus !== 'leave') {
-        await conn.query('UPDATE staff SET leave_balance = leave_balance + 1 WHERE staff_id = ?', [staff_id]);
-      }
     }
 
     await conn.commit();
@@ -716,6 +734,7 @@ exports.getSalarySheet = async (req, res) => {
     // Daily rate denominator = total days in month (holidays are paid so salary / days_in_month)
     const rate_base    = daysInMonth;
 
+    // Correlated subqueries replaced with derived-table JOINs to avoid per-row sub-selects
     let sql = `
       SELECT s.staff_id, s.employee_id, s.full_name, s.department, s.position,
              s.salary, s.salary_type, COALESCE(s.monthly_leave_allowed, 2) as monthly_leave_allowed,
@@ -727,38 +746,45 @@ exports.getSalarySheet = async (req, res) => {
              COUNT(CASE WHEN a.status = 'absent'   THEN 1 END) as absent_days,
              COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_days,
              COALESCE(SUM(CASE WHEN l.status = 'active' THEN l.monthly_deduction ELSE 0 END), 0) as loan_deduction,
-             COALESCE((SELECT SUM(ap.amount) FROM advance_payments ap
-                       WHERE ap.staff_id = s.staff_id AND MONTH(ap.payment_date) = ? AND YEAR(ap.payment_date) = ?), 0) as advance_deduction,
-             COALESCE((SELECT sa.days FROM salary_adjustments sa
-                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), 0) as adjustment_days,
-             COALESCE((SELECT sa.reason FROM salary_adjustments sa
-                       WHERE sa.staff_id = s.staff_id AND sa.month = ? AND sa.year = ?), NULL) as adjustment_reason,
-             COALESCE((
-               SELECT SUM(CASE WHEN sc.calculation='percentage'
-                               THEN s.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
-                               ELSE COALESCE(ssc.custom_value, sc.default_value) END)
-               FROM staff_salary_components ssc
-               JOIN salary_components sc ON ssc.component_id = sc.component_id
-               WHERE ssc.staff_id = s.staff_id AND ssc.is_active = 1
-                 AND sc.is_active = 1 AND sc.type = 'allowance'
-             ), 0) as total_allowances,
-             COALESCE((
-               SELECT SUM(CASE WHEN sc.calculation='percentage'
-                               THEN s.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
-                               ELSE COALESCE(ssc.custom_value, sc.default_value) END)
-               FROM staff_salary_components ssc
-               JOIN salary_components sc ON ssc.component_id = sc.component_id
-               WHERE ssc.staff_id = s.staff_id AND ssc.is_active = 1
-                 AND sc.is_active = 1 AND sc.type = 'deduction'
-             ), 0) as total_comp_deductions
+             COALESCE(ap_agg.advance_total, 0)    as advance_deduction,
+             COALESCE(sadj.adjustment_days, 0)    as adjustment_days,
+             sadj.adjustment_reason               as adjustment_reason,
+             COALESCE(ssc_agg.total_allowances, 0)      as total_allowances,
+             COALESCE(ssc_agg.total_comp_deductions, 0) as total_comp_deductions
       FROM staff s
       LEFT JOIN accounts acc ON s.salary_account_id = acc.account_id
       LEFT JOIN attendance a ON s.staff_id = a.staff_id
            AND MONTH(a.attendance_date) = ? AND YEAR(a.attendance_date) = ?
       LEFT JOIN staff_loans l ON s.staff_id = l.staff_id AND l.status = 'active'
+      LEFT JOIN (
+        SELECT staff_id, SUM(amount) as advance_total
+        FROM advance_payments WHERE MONTH(payment_date) = ? AND YEAR(payment_date) = ?
+        GROUP BY staff_id
+      ) ap_agg ON s.staff_id = ap_agg.staff_id
+      LEFT JOIN (
+        SELECT staff_id, MAX(days) as adjustment_days, MAX(reason) as adjustment_reason
+        FROM salary_adjustments WHERE month = ? AND year = ?
+        GROUP BY staff_id
+      ) sadj ON s.staff_id = sadj.staff_id
+      LEFT JOIN (
+        SELECT ssc.staff_id,
+               SUM(CASE WHEN sc.type = 'allowance' THEN
+                 CASE WHEN sc.calculation = 'percentage' THEN st.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
+                      ELSE COALESCE(ssc.custom_value, sc.default_value) END
+               ELSE 0 END) as total_allowances,
+               SUM(CASE WHEN sc.type = 'deduction' THEN
+                 CASE WHEN sc.calculation = 'percentage' THEN st.salary * COALESCE(ssc.custom_value, sc.default_value) / 100
+                      ELSE COALESCE(ssc.custom_value, sc.default_value) END
+               ELSE 0 END) as total_comp_deductions
+        FROM staff_salary_components ssc
+        JOIN salary_components sc ON ssc.component_id = sc.component_id
+        JOIN staff st ON ssc.staff_id = st.staff_id
+        WHERE ssc.is_active = 1 AND sc.is_active = 1
+        GROUP BY ssc.staff_id
+      ) ssc_agg ON s.staff_id = ssc_agg.staff_id
       WHERE s.is_active = 1
     `;
-    const params = [m, y, m, y, m, y, m, y];
+    const params = [m, y, m, y, m, y];
     if (department) { sql += ' AND s.department = ?'; params.push(department); }
     sql += ' GROUP BY s.staff_id ORDER BY s.department, s.full_name';
 

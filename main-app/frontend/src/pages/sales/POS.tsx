@@ -697,31 +697,35 @@ const POS = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Bundle detection - detect applicable bundles whenever cart changes
+  // Bundle detection — debounced 400ms so rapid cart edits don't flood the API.
+  // The ref holds the pending timer; each cart change cancels the previous one.
+  const bundleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const detectBundles = async () => {
-      if (cart.length === 0) {
-        setAppliedBundles([]);
-        return;
-      }
+    if (bundleDebounceRef.current) clearTimeout(bundleDebounceRef.current);
 
+    if (cart.length === 0) {
+      setAppliedBundles([]);
+      return;
+    }
+
+    bundleDebounceRef.current = setTimeout(async () => {
       try {
         const cartItems = cart.map(item => ({
           product_id: item.product_id,
           variant_id: item.variant_id || null,
-          quantity: item.quantity,
-          unit_price: item.price
+          quantity:   item.quantity,
+          unit_price: item.price,
         }));
-
         const response = await api.post('/bundles/detect', { cart_items: cartItems });
         setAppliedBundles(response.data.applicable_bundles || []);
-      } catch (error) {
-        console.error('Bundle detection error:', error);
+      } catch {
         setAppliedBundles([]);
       }
-    };
+    }, 400);
 
-    detectBundles();
+    return () => {
+      if (bundleDebounceRef.current) clearTimeout(bundleDebounceRef.current);
+    };
   }, [cart, setAppliedBundles]);
 
   // Phone field → search existing customers, show suggestions
