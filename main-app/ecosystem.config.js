@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, 'backend/.env.production') });
+
 module.exports = {
   apps: [
     // ── Main API (cluster — 2 workers, zero-downtime reload) ──
@@ -5,8 +8,6 @@ module.exports = {
       name:    'abyte-main-api',
       script:  './backend/server.js',
       cwd:     '/var/www/AByte-POS/main-app',
-      node_args: '--env-file=/var/www/AByte-POS/main-app/backend/.env.production',
-
       exec_mode: 'cluster',
       instances: process.env.API_INSTANCES || 2,
 
@@ -16,7 +17,14 @@ module.exports = {
       kill_timeout:   30000,   // ms before SIGKILL after SIGTERM (matches gracefulShutdown timeout)
       shutdown_with_message: true,
 
-      env_production: { NODE_ENV: 'production' },
+      env_production: {
+        NODE_ENV:    'production',
+        DB_HOST:     process.env.DB_HOST,
+        DB_PORT:     process.env.DB_PORT,
+        DB_USER:     process.env.DB_USER,
+        DB_PASSWORD: process.env.DB_PASSWORD,
+        DB_NAME:     process.env.DB_NAME,
+      },
 
       autorestart:        true,
       max_memory_restart: '500M',
@@ -34,16 +42,12 @@ module.exports = {
       name:    'abyte-email-worker',
       script:  './backend/workers/emailWorker.js',
       cwd:     '/var/www/AByte-POS/main-app',
-      node_args: '--env-file=/var/www/AByte-POS/main-app/backend/.env.production',
-
       exec_mode:          'fork',
       instances:          1,
-      autorestart:        true,
+      autorestart:        false,
       max_memory_restart: '200M',
       restart_delay:      3000,
 
-      // Only start worker when Redis is configured
-      // If REDIS_URL is missing the worker exits immediately with a clear error
       env_production: { NODE_ENV: 'production' },
 
       error_file:      '/var/log/pm2/abyte-email-worker-error.log',
