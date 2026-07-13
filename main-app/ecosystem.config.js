@@ -58,7 +58,15 @@ module.exports = {
       max_memory_restart: '200M',
       restart_delay:      3000,
 
-      env_production: { NODE_ENV: 'production' },
+      env_production: {
+        NODE_ENV:   'production',
+        REDIS_URL:  envVars.REDIS_URL,
+        EMAIL_HOST: envVars.EMAIL_HOST,
+        EMAIL_PORT: envVars.EMAIL_PORT,
+        EMAIL_USER: envVars.EMAIL_USER,
+        EMAIL_PASS: envVars.EMAIL_PASS,
+        EMAIL_FROM: envVars.EMAIL_FROM,
+      },
 
       error_file:      '/var/log/pm2/abyte-email-worker-error.log',
       out_file:        '/var/log/pm2/abyte-email-worker-out.log',
