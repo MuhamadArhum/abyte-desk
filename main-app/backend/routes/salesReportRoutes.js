@@ -17,5 +17,13 @@ router.get('/category-breakdown', controller.getCategoryBreakdown);
 router.get('/profit-margin', controller.getProfitMargin);
 router.get('/discount-analysis', controller.getDiscountAnalysis);
 router.get('/tax-report', controller.getTaxReport);
+router.get('/returns', controller.getSalesReturns);
+router.get('/shift-report', controller.getShiftReport);
+router.get('/voided', controller.getVoidedSales);
+router.get('/product-performance', controller.getProductPerformance);
+router.get('/customer-history', controller.getCustomerHistory);
+router.get('/credit-aging', controller.getCreditAging);
+router.get('/branch-sales', controller.getBranchSales);
+router.get('/cash-reconciliation', controller.getCashReconciliation);
 
 module.exports = router;
