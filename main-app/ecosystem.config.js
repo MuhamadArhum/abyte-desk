@@ -1,5 +1,15 @@
+const fs   = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, 'backend/.env.production') });
+
+const envVars = {};
+try {
+  fs.readFileSync(path.join(__dirname, 'backend/.env.production'), 'utf8')
+    .split('\n')
+    .forEach(line => {
+      const m = line.match(/^([^#=][^=]*)=(.*)$/);
+      if (m) envVars[m[1].trim()] = m[2].trim();
+    });
+} catch (_) {}
 
 module.exports = {
   apps: [
@@ -19,11 +29,11 @@ module.exports = {
 
       env_production: {
         NODE_ENV:    'production',
-        DB_HOST:     process.env.DB_HOST,
-        DB_PORT:     process.env.DB_PORT,
-        DB_USER:     process.env.DB_USER,
-        DB_PASSWORD: process.env.DB_PASSWORD,
-        DB_NAME:     process.env.DB_NAME,
+        DB_HOST:     envVars.DB_HOST,
+        DB_PORT:     envVars.DB_PORT,
+        DB_USER:     envVars.DB_USER,
+        DB_PASSWORD: envVars.DB_PASSWORD,
+        DB_NAME:     envVars.DB_NAME,
       },
 
       autorestart:        true,
