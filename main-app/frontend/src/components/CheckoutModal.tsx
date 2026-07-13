@@ -145,7 +145,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, onSucces
     try {
       const waRes = await api.get('/whatsapp/settings');
       setWaEnabled(waRes.data.whatsapp_enabled);
-    } catch (_e) { /* silent — whatsapp may not be configured */ }
+    } catch { /* silent — whatsapp may not be configured */ }
   };
 
   const fetchLoyaltyInfo = async (customerId: number) => {

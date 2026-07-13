@@ -32,7 +32,7 @@ const IncrementHistory = () => {
       const res = await api.get('/staff/increments', { params });
       setIncrements(res.data.data || []);
       if (res.data.pagination) setPagination(res.data.pagination);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load increments');
     } finally {
       setLoading(false);

@@ -1061,7 +1061,7 @@ exports.getSupplierPerformance = async (req, res) => {
       GROUP BY s.supplier_id
     `, params2);
 
-    const returnMap: Record<number, any> = {};
+    const returnMap = {};
     returns.forEach(r => { returnMap[Number(r.supplier_id)] = r; });
 
     const data = purchases.map(s => {

@@ -150,7 +150,7 @@ const AdvancePayments = () => {
       const res = await api.get('/staff/advance-payments', { params });
       setAdvances(res.data.data || []);
       if (res.data.pagination) setPagination(res.data.pagination);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load advance payments');
     } finally {
       setLoading(false);

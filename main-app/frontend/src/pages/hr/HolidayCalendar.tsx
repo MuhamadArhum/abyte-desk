@@ -117,7 +117,7 @@ const HolidayCalendar = () => {
       const params = yearFilter ? { year: yearFilter } : {};
       const res = await api.get('/staff/holidays', { params });
       setHolidays(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load holidays');
     } finally {
       setLoading(false);

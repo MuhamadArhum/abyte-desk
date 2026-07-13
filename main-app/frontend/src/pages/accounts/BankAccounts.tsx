@@ -162,7 +162,7 @@ const BankAccounts = () => {
     try {
       const res = await api.get('/accounting/bank-accounts');
       setBankAccounts(res.data.data || []);
-    } catch (err) {
+    } catch {
       toast.error('Failed to fetch bank accounts');
     } finally {
       setLoading(false);

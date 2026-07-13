@@ -23,7 +23,7 @@ const DailyAttendance = () => {
       const res = await api.get('/staff/reports/daily-attendance', { params: { date } });
       setData(res.data.data || []);
       setSummary(res.data.summary || {});
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to load attendance');
     } finally {
       setLoading(false);
