@@ -23,6 +23,11 @@ function validateEnv() {
     process.exit(1);
   }
 
+  const OPTIONAL_WARN = ['REDIS_URL', 'EMAIL_HOST', 'EMAIL_USER'];
+  OPTIONAL_WARN.forEach((key) => {
+    if (!process.env[key]) console.warn(`[startup] Warning: ${key} is not set — email/queue features will be disabled.`);
+  });
+
   if (process.env.NODE_ENV === 'production') {
     const jwt = process.env.JWT_SECRET;
     if (INSECURE_JWT_VALUES.includes(jwt) || jwt.length < 32) {

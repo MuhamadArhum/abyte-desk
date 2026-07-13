@@ -127,6 +127,20 @@ else
   echo -e "      ${YELLOW}⚠ PM2 status: $STATUS — run: pm2 logs $PM2_APP${NC}"
 fi
 
+WORKER_STATUS=$(pm2 jlist 2>/dev/null | node -e "
+  try {
+    const list = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const app = list.find(p => p.name === 'abyte-email-worker');
+    console.log(app ? app.pm2_env.status : 'not_found');
+  } catch(e) { console.log('parse_error'); }
+" 2>/dev/null || echo "unknown")
+
+if echo "$WORKER_STATUS" | grep -q "online"; then
+  ok "Email worker online"
+else
+  echo -e "      ${YELLOW}⚠ Email worker status: $WORKER_STATUS — run: pm2 logs abyte-email-worker${NC}"
+fi
+
 # ── Done ──────────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}╔══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}${BOLD}║         ✅  Deploy Successful!            ║${NC}"

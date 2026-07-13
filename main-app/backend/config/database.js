@@ -46,7 +46,7 @@ const poolOptions = {
   port: parseInt(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  connectionLimit: 3,
+  connectionLimit: 5,
   idleTimeout: 60000,
   acquireTimeout: 30000,
   connectTimeout: 10000,

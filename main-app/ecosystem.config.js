@@ -54,7 +54,7 @@ module.exports = {
       cwd:     '/var/www/AByte-POS/main-app',
       exec_mode:          'fork',
       instances:          1,
-      autorestart:        false,
+      autorestart:        true,
       max_memory_restart: '200M',
       restart_delay:      3000,
 
