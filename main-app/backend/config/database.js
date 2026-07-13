@@ -46,11 +46,8 @@ const poolOptions = {
   port: parseInt(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  // 3 connections per tenant pool per PM2 worker.
-  // With 2 workers × 3 × N tenants, MariaDB max_connections=500 supports ~80 active tenants safely.
   connectionLimit: 3,
-  minimumIdle: 0,       // return all connections to MariaDB when a pool goes quiet
-  idleTimeout: 60000,   // close individual idle connections after 60s
+  idleTimeout: 60000,
   acquireTimeout: 30000,
   connectTimeout: 10000,
   bigIntAsNumber: true,
