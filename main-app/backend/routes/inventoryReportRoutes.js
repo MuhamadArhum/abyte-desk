@@ -26,5 +26,11 @@ router.get('/opening-closing',      controller.openingClosingStock);
 router.get('/reorder-alert',        controller.reorderAlert);
 router.get('/category-wise-purchase', controller.categoryWisePurchase);
 router.get('/rate-history',         controller.rateHistory);
+router.get('/stock-valuation',      controller.getStockValuation);
+router.get('/purchase-returns',     controller.getPurchaseReturns);
+router.get('/stock-transfers',      controller.getStockTransfers);
+router.get('/dead-stock',           controller.getDeadStock);
+router.get('/stock-adjustments',    controller.getStockAdjustments);
+router.get('/supplier-performance', controller.getSupplierPerformance);
 
 module.exports = router;

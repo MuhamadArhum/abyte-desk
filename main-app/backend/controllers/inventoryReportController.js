@@ -684,6 +684,419 @@ exports.categoryWisePurchase = async (req, res) => {
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
+// ── 1. Stock Valuation Report ────────────────────────────────
+exports.getStockValuation = async (req, res) => {
+  try {
+    const branch = branchWhere(req, 'p');
+
+    const [totals] = await query(`
+      SELECT
+        COUNT(p.product_id) as total_products,
+        COALESCE(SUM(COALESCE(i.available_stock, 0)), 0) as total_units,
+        COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0)), 0) as total_cost_value,
+        COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.selling_price, p.price, 0)), 0) as total_retail_value
+      FROM products p
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
+    `, branch.params);
+
+    const byCategory = await query(`
+      SELECT
+        COALESCE(c.category_name, 'Uncategorized') as category_name,
+        COUNT(p.product_id) as product_count,
+        COALESCE(SUM(COALESCE(i.available_stock, 0)), 0) as total_units,
+        COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0)), 0) as cost_value,
+        COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.selling_price, p.price, 0)), 0) as retail_value
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
+      GROUP BY c.category_id
+      ORDER BY cost_value DESC
+    `, branch.params);
+
+    const products = await query(`
+      SELECT
+        p.product_id, p.product_name, p.sku,
+        COALESCE(c.category_name, 'Uncategorized') as category_name,
+        COALESCE(i.available_stock, 0) as current_stock,
+        COALESCE(p.cost_price, 0) as cost_price,
+        COALESCE(p.selling_price, p.price, 0) as selling_price,
+        COALESCE(i.available_stock, 0) * COALESCE(p.cost_price, 0) as cost_value,
+        COALESCE(i.available_stock, 0) * COALESCE(p.selling_price, p.price, 0) as retail_value
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory i ON p.product_id = i.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
+      ORDER BY cost_value DESC
+    `, branch.params);
+
+    const totalCost   = Number(totals.total_cost_value);
+    const totalRetail = Number(totals.total_retail_value);
+    res.json({
+      summary: {
+        total_products:   Number(totals.total_products),
+        total_units:      Number(totals.total_units),
+        total_cost_value: totalCost,
+        total_retail_value: totalRetail,
+        potential_profit: totalRetail - totalCost,
+        margin_pct: totalRetail > 0 ? Math.round(((totalRetail - totalCost) / totalRetail) * 100) : 0,
+      },
+      by_category: byCategory.map(r => ({
+        category_name:  r.category_name,
+        product_count:  Number(r.product_count),
+        total_units:    Number(r.total_units),
+        cost_value:     Number(r.cost_value),
+        retail_value:   Number(r.retail_value),
+      })),
+      products: products.map(r => ({
+        product_id:    Number(r.product_id),
+        product_name:  r.product_name,
+        sku:           r.sku,
+        category_name: r.category_name,
+        current_stock: Number(r.current_stock),
+        cost_price:    Number(r.cost_price),
+        selling_price: Number(r.selling_price),
+        cost_value:    Number(r.cost_value),
+        retail_value:  Number(r.retail_value),
+      })),
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+// ── 2. Purchase Returns Report ────────────────────────────────
+exports.getPurchaseReturns = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const params = [];
+    let dateW = '';
+    if (from_date) { dateW += ' AND pr.return_date >= ?'; params.push(from_date); }
+    if (to_date)   { dateW += ' AND pr.return_date <= ?'; params.push(to_date); }
+
+    const [summary] = await query(`
+      SELECT
+        COUNT(DISTINCT pr.pr_id) as total_returns,
+        COALESCE(SUM(pr.total_amount), 0) as total_amount,
+        COUNT(DISTINCT pr.supplier_id) as unique_suppliers
+      FROM purchase_returns pr WHERE 1=1 ${dateW}
+    `, params);
+
+    const data = await query(`
+      SELECT
+        pr.pr_id, pr.pr_number, pr.return_date, pr.total_amount, pr.notes,
+        COALESCE(s.supplier_name, 'Unknown') as supplier_name,
+        pv.pv_number as original_voucher,
+        u.name as created_by,
+        COUNT(pri.item_id) as item_count
+      FROM purchase_returns pr
+      LEFT JOIN suppliers s ON pr.supplier_id = s.supplier_id
+      LEFT JOIN inv_purchase_vouchers pv ON pr.pv_id = pv.pv_id
+      LEFT JOIN users u ON pr.created_by = u.user_id
+      LEFT JOIN purchase_return_items pri ON pr.pr_id = pri.pr_id
+      WHERE 1=1 ${dateW}
+      GROUP BY pr.pr_id
+      ORDER BY pr.return_date DESC
+    `, params);
+
+    const bySupplier = await query(`
+      SELECT
+        COALESCE(s.supplier_name, 'Unknown') as supplier_name,
+        COUNT(DISTINCT pr.pr_id) as return_count,
+        COALESCE(SUM(pr.total_amount), 0) as total_amount
+      FROM purchase_returns pr
+      LEFT JOIN suppliers s ON pr.supplier_id = s.supplier_id
+      WHERE 1=1 ${dateW}
+      GROUP BY pr.supplier_id
+      ORDER BY total_amount DESC
+    `, params);
+
+    res.json({
+      summary: {
+        total_returns:     Number(summary.total_returns),
+        total_amount:      Number(summary.total_amount),
+        unique_suppliers:  Number(summary.unique_suppliers),
+      },
+      data: data.map(r => ({
+        pr_id:            Number(r.pr_id),
+        pr_number:        r.pr_number,
+        return_date:      r.return_date,
+        total_amount:     Number(r.total_amount),
+        notes:            r.notes,
+        supplier_name:    r.supplier_name,
+        original_voucher: r.original_voucher,
+        created_by:       r.created_by,
+        item_count:       Number(r.item_count),
+      })),
+      by_supplier: bySupplier.map(r => ({
+        supplier_name: r.supplier_name,
+        return_count:  Number(r.return_count),
+        total_amount:  Number(r.total_amount),
+      })),
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+// ── 3. Stock Transfer Report ──────────────────────────────────
+exports.getStockTransfers = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const params = [];
+    let dateW = '';
+    if (from_date) { dateW += ' AND DATE(st.transfer_date) >= ?'; params.push(from_date); }
+    if (to_date)   { dateW += ' AND DATE(st.transfer_date) <= ?'; params.push(to_date); }
+
+    const [summary] = await query(`
+      SELECT
+        COUNT(*) as total_transfers,
+        COUNT(CASE WHEN status='completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN status='pending'   THEN 1 END) as pending,
+        COUNT(CASE WHEN status='cancelled' THEN 1 END) as cancelled,
+        COALESCE(SUM(CASE WHEN status='completed' THEN quantity ELSE 0 END), 0) as total_qty_moved
+      FROM stock_transfers st WHERE 1=1 ${dateW}
+    `, params);
+
+    const data = await query(`
+      SELECT
+        st.transfer_id, st.transfer_date, st.quantity, st.status, st.notes,
+        p.product_name, p.unit,
+        fs.store_name as from_branch,
+        ts.store_name as to_branch,
+        u.name as created_by,
+        COALESCE(p.cost_price, 0) * st.quantity as transfer_value
+      FROM stock_transfers st
+      JOIN products p ON st.product_id = p.product_id
+      JOIN stores fs ON st.from_store_id = fs.store_id
+      JOIN stores ts ON st.to_store_id = ts.store_id
+      JOIN users u ON st.created_by = u.user_id
+      WHERE 1=1 ${dateW}
+      ORDER BY st.transfer_date DESC
+    `, params);
+
+    res.json({
+      summary: {
+        total_transfers: Number(summary.total_transfers),
+        completed:       Number(summary.completed),
+        pending:         Number(summary.pending),
+        cancelled:       Number(summary.cancelled),
+        total_qty_moved: Number(summary.total_qty_moved),
+      },
+      data: data.map(r => ({
+        transfer_id:    Number(r.transfer_id),
+        transfer_date:  r.transfer_date,
+        product_name:   r.product_name,
+        unit:           r.unit,
+        from_branch:    r.from_branch,
+        to_branch:      r.to_branch,
+        quantity:       Number(r.quantity),
+        status:         r.status,
+        notes:          r.notes,
+        created_by:     r.created_by,
+        transfer_value: Number(r.transfer_value),
+      })),
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+// ── 4. Dead Stock Report (90+ days no movement) ───────────────
+exports.getDeadStock = async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 90;
+    const branch = branchWhere(req, 'p');
+
+    const rows = await query(`
+      SELECT
+        p.product_id, p.product_name, p.sku, p.unit,
+        COALESCE(c.category_name, 'Uncategorized') as category_name,
+        COALESCE(inv.available_stock, 0) as current_stock,
+        COALESCE(p.cost_price, 0) as cost_price,
+        COALESCE(inv.available_stock, 0) * COALESCE(p.cost_price, 0) as dead_stock_value,
+        MAX(act.last_date) as last_movement_date,
+        DATEDIFF(CURDATE(), MAX(act.last_date)) as days_inactive
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      LEFT JOIN inventory inv ON inv.product_id = p.product_id
+      LEFT JOIN (
+        SELECT sd.product_id, s.sale_date as last_date
+        FROM sale_details sd JOIN sales s ON sd.sale_id = s.sale_id WHERE s.status = 'completed'
+        UNION ALL
+        SELECT pvd.product_id, pv.voucher_date as last_date
+        FROM inv_purchase_voucher_items pvd JOIN inv_purchase_vouchers pv ON pvd.pv_id = pv.pv_id
+        UNION ALL
+        SELECT sii.product_id, si.issue_date as last_date
+        FROM stock_issue_items sii JOIN stock_issues si ON sii.issue_id = si.issue_id
+      ) act ON act.product_id = p.product_id
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+        AND COALESCE(inv.available_stock, 0) > 0 ${branch.clause}
+      GROUP BY p.product_id
+      HAVING MAX(act.last_date) IS NULL OR DATEDIFF(CURDATE(), MAX(act.last_date)) >= ?
+      ORDER BY dead_stock_value DESC
+    `, [...branch.params, days]);
+
+    const totalValue = rows.reduce((s, r) => s + Number(r.dead_stock_value), 0);
+    res.json({
+      summary: {
+        total_items:       rows.length,
+        total_dead_value:  totalValue,
+        threshold_days:    days,
+      },
+      data: rows.map(r => ({
+        product_id:         Number(r.product_id),
+        product_name:       r.product_name,
+        sku:                r.sku,
+        unit:               r.unit,
+        category_name:      r.category_name,
+        current_stock:      Number(r.current_stock),
+        cost_price:         Number(r.cost_price),
+        dead_stock_value:   Number(r.dead_stock_value),
+        last_movement_date: r.last_movement_date,
+        days_inactive:      r.days_inactive !== null ? Number(r.days_inactive) : null,
+      })),
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+// ── 5. Stock Adjustment Report ────────────────────────────────
+exports.getStockAdjustments = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const branch = branchWhere(req, 'p');
+    const params = [...branch.params];
+    let dateW = '';
+    if (from_date) { dateW += ' AND DATE(sa.created_at) >= ?'; params.push(from_date); }
+    if (to_date)   { dateW += ' AND DATE(sa.created_at) <= ?'; params.push(to_date); }
+
+    const typeStats = await query(`
+      SELECT sa.adjustment_type,
+        COUNT(*) as count,
+        SUM(sa.quantity_adjusted) as total_qty
+      FROM stock_adjustments sa
+      JOIN products p ON sa.product_id = p.product_id
+      WHERE 1=1 ${branch.clause} ${dateW}
+      GROUP BY sa.adjustment_type
+      ORDER BY count DESC
+    `, params);
+
+    const data = await query(`
+      SELECT
+        sa.adjustment_id, sa.adjustment_type, sa.quantity_before,
+        sa.quantity_adjusted, sa.quantity_after, sa.reason,
+        sa.reference_number, sa.created_at,
+        p.product_name, p.unit,
+        COALESCE(c.category_name, 'Uncategorized') as category_name,
+        u.name as created_by
+      FROM stock_adjustments sa
+      JOIN products p ON sa.product_id = p.product_id
+      LEFT JOIN categories c ON p.category_id = c.category_id
+      JOIN users u ON sa.created_by = u.user_id
+      WHERE 1=1 ${branch.clause} ${dateW}
+      ORDER BY sa.created_at DESC
+      LIMIT 200
+    `, params);
+
+    const additions    = typeStats.filter(r => ['addition','return','opening_stock'].includes(r.adjustment_type)).reduce((s,r) => s + Number(r.total_qty), 0);
+    const subtractions = typeStats.filter(r => ['subtraction','damage','theft','expired'].includes(r.adjustment_type)).reduce((s,r) => s + Number(r.total_qty), 0);
+
+    res.json({
+      summary: {
+        total_adjustments: data.length,
+        net_adjustment:    additions - subtractions,
+        total_additions:   additions,
+        total_subtractions: subtractions,
+      },
+      by_type: typeStats.map(r => ({
+        adjustment_type: r.adjustment_type,
+        count:           Number(r.count),
+        total_qty:       Number(r.total_qty),
+      })),
+      data: data.map(r => ({
+        adjustment_id:    Number(r.adjustment_id),
+        adjustment_type:  r.adjustment_type,
+        product_name:     r.product_name,
+        unit:             r.unit,
+        category_name:    r.category_name,
+        quantity_before:  Number(r.quantity_before),
+        quantity_adjusted: Number(r.quantity_adjusted),
+        quantity_after:   Number(r.quantity_after),
+        reason:           r.reason,
+        reference_number: r.reference_number,
+        created_by:       r.created_by,
+        created_at:       r.created_at,
+      })),
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
+// ── 6. Supplier Performance Report ───────────────────────────
+exports.getSupplierPerformance = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    const params1 = [], params2 = [];
+    let dw1 = '', dw2 = '';
+    if (from_date) { dw1 += ' AND pv.voucher_date >= ?'; params1.push(from_date); dw2 += ' AND pr.return_date >= ?'; params2.push(from_date); }
+    if (to_date)   { dw1 += ' AND pv.voucher_date <= ?'; params1.push(to_date);   dw2 += ' AND pr.return_date <= ?'; params2.push(to_date); }
+
+    const purchases = await query(`
+      SELECT
+        COALESCE(s.supplier_id, 0) as supplier_id,
+        COALESCE(s.supplier_name, 'Unknown') as supplier_name,
+        s.phone, s.payment_terms,
+        COUNT(DISTINCT pv.pv_id) as order_count,
+        COALESCE(SUM(pv.total_amount), 0) as total_purchased,
+        COALESCE(AVG(pv.total_amount), 0) as avg_order_value
+      FROM inv_purchase_vouchers pv
+      LEFT JOIN suppliers s ON pv.supplier_id = s.supplier_id
+      WHERE 1=1 ${dw1}
+      GROUP BY s.supplier_id
+      ORDER BY total_purchased DESC
+    `, params1);
+
+    const returns = await query(`
+      SELECT
+        COALESCE(s.supplier_id, 0) as supplier_id,
+        COUNT(DISTINCT pr.pr_id) as return_count,
+        COALESCE(SUM(pr.total_amount), 0) as total_returned
+      FROM purchase_returns pr
+      LEFT JOIN suppliers s ON pr.supplier_id = s.supplier_id
+      WHERE 1=1 ${dw2}
+      GROUP BY s.supplier_id
+    `, params2);
+
+    const returnMap: Record<number, any> = {};
+    returns.forEach(r => { returnMap[Number(r.supplier_id)] = r; });
+
+    const data = purchases.map(s => {
+      const ret = returnMap[Number(s.supplier_id)] || { return_count: 0, total_returned: 0 };
+      const totalPurchased = Number(s.total_purchased);
+      const totalReturned  = Number(ret.total_returned);
+      return {
+        supplier_id:      Number(s.supplier_id),
+        supplier_name:    s.supplier_name,
+        phone:            s.phone,
+        payment_terms:    s.payment_terms,
+        order_count:      Number(s.order_count),
+        total_purchased:  totalPurchased,
+        avg_order_value:  Number(s.avg_order_value),
+        return_count:     Number(ret.return_count),
+        total_returned:   totalReturned,
+        return_rate_pct:  totalPurchased > 0 ? Math.round((totalReturned / totalPurchased) * 100) : 0,
+        net_purchases:    totalPurchased - totalReturned,
+      };
+    });
+
+    const grandTotal    = data.reduce((s, r) => s + r.total_purchased, 0);
+    const grandReturned = data.reduce((s, r) => s + r.total_returned, 0);
+    res.json({
+      summary: {
+        total_suppliers:   data.length,
+        grand_total:       grandTotal,
+        grand_returned:    grandReturned,
+        overall_return_pct: grandTotal > 0 ? Math.round((grandReturned / grandTotal) * 100) : 0,
+      },
+      data,
+    });
+  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
+};
+
 exports.rateHistory = async (req, res) => {
   try {
     const { product_id, from_date, to_date } = req.query;
