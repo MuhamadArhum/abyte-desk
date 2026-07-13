@@ -7,9 +7,8 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
       },
-      node_args: '--env-file=/var/www/AByte-POS/admin-panel/backend/.env.production',
-      exec_mode: 'cluster',
-      instances: 2,
+      exec_mode: 'fork',
+      instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '300M',
