@@ -7,6 +7,7 @@
 
 const logger = require('../config/logger');
 const path = require('path');
+const fs = require('fs');
 const { query } = require('../config/database');
 const { logAction } = require('../services/auditService');
 const backupService = require('../services/backupService');
@@ -31,7 +32,7 @@ exports.createBackup = async (req, res) => {
         logger.error('[GDrive] Manual backup upload failed', { error: driveErr.message });
         await gdriveService.recordTenantUploadStatus(tenantDb, result.filename, `failed: ${driveErr.message.slice(0,80)}`);
       }
-    }).catch(() => {});
+    }).catch(err => logger.error('[GDrive] Drive settings fetch failed', { error: err.message }));
 
     res.status(201).json({ message: 'Backup created successfully', filename: result.filename });
   } catch (error) {
@@ -111,11 +112,14 @@ exports.downloadBackup = async (req, res) => {
       return res.status(400).json({ message: 'Invalid filename' });
     }
 
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ message: 'Backup file not found' });
+    }
+
     res.download(filepath, filename, (err) => {
-      if (err) {
-        if (!res.headersSent) {
-          res.status(404).json({ message: 'Backup file not found' });
-        }
+      if (err && !res.headersSent) {
+        logger.error('Download backup stream error:', { error: err.message });
+        res.status(500).json({ message: 'Download failed' });
       }
     });
   } catch (error) {

@@ -210,6 +210,11 @@ async function runExpiryCheck() {
 const app = express();
 app.set('trust proxy', 1);
 
+if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
+  console.error('[FATAL] ALLOWED_ORIGINS is not set in production. Set it in .env.production.');
+  process.exit(1);
+}
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : ['http://localhost:5174'];

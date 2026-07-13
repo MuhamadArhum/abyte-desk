@@ -652,7 +652,8 @@ exports.getTrialBalance6Col = async (req, res) => {
         ids.push(id);
         for (const child of (childMap[id] || [])) queue.push(child);
       }
-      accountIdFilter = `AND a.account_id IN (${ids.join(',')})`;
+      accountIdFilter = `AND a.account_id IN (${ids.map(() => '?').join(',')})`;
+      filterParams = ids;
     }
 
     const accounts = await query(`
@@ -667,7 +668,7 @@ exports.getTrialBalance6Col = async (req, res) => {
       WHERE a.is_active = 1 ${accountIdFilter}
       GROUP BY a.account_id
       ORDER BY a.account_code
-    `, [from_date, from_date, from_date, to_date, from_date, to_date]);
+    `, [from_date, from_date, from_date, to_date, from_date, to_date, ...filterParams]);
 
     const rows = accounts.map(a => {
       const debitIncrease = ['asset', 'expense'].includes(a.account_type);

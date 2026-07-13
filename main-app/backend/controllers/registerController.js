@@ -85,14 +85,30 @@ exports.openRegister = async (req, res) => {
       return res.status(400).json({ message: 'Valid opening balance is required' });
     }
 
-    const result = await query(
-      'INSERT INTO cash_registers (opened_by, opening_balance, branch_id) VALUES (?, ?, ?)',
-      [req.user.user_id, opening_balance, branch_id]
-    );
+    const conn = await getConnection();
+    let registerId;
+    try {
+      await conn.beginTransaction();
+      const openCheck = await conn.query(`SELECT register_id FROM cash_registers WHERE status = 'open'${branchClause} LIMIT 1 FOR UPDATE`, branchParam);
+      if (openCheck.length > 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
+      }
+      const result = await conn.query(
+        'INSERT INTO cash_registers (opened_by, opening_balance, branch_id) VALUES (?, ?, ?)',
+        [req.user.user_id, opening_balance, branch_id]
+      );
+      registerId = Number(result.insertId);
+      await conn.commit();
+    } catch (txErr) {
+      await conn.rollback();
+      throw txErr;
+    } finally {
+      conn.release();
+    }
 
-    const registerId = Number(result.insertId);
-
-    await logAction(req.user.user_id, req.user.name, 'REGISTER_OPENED', 'cash_register', registerId, { opening_balance }, req.ip);
+    await logAction(req.user.user_id, req.user.name, 'REGISTER_OPENED', 'cash_register', registerId, { opening_balance }, req.ip)
+      .catch(err => logger.warn('[audit] logAction failed for REGISTER_OPENED', { error: err.message }));
 
     const newRegister = await query('SELECT * FROM cash_registers WHERE register_id = ?', [registerId]);
     res.status(201).json(newRegister[0]);

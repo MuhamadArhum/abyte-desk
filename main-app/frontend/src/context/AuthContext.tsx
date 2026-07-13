@@ -87,21 +87,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fetch(`${apiBase}/auth/verify`, {
         headers: { Authorization: `Bearer ${storedToken}` },
       })
-        .then(r => r.ok ? r.json() : null)
+        .then(r => {
+          if (r.ok) return r.json();
+          if (r.status === 401 || r.status === 403) return null;
+          throw new Error('transient');
+        })
         .then(data => {
           if (data?.user) {
             setUser(data.user);
             setPermissions(data.permissions);
             setModules(data.modules || []);
-          } else {
+          } else if (data === null) {
             localStorage.removeItem('token');
             setToken(null);
           }
         })
         .catch(() => {
-          // B-030: On network failure, clear auth state to avoid null user with valid token
-          localStorage.removeItem('token');
-          setToken(null);
+          // Network or server error — keep token, user stays logged in
         })
         .finally(() => setIsLoading(false));
     } else {

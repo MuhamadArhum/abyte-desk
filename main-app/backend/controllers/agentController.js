@@ -12,7 +12,7 @@
 // =============================================================
 
 const crypto         = require('crypto');
-const { queryDb }    = require('../config/database');
+const { queryDb, getPool } = require('../config/database');
 const { masterQuery } = require('../config/masterDatabase');
 const logger         = require('../config/logger');
 
@@ -62,24 +62,27 @@ exports.getPendingJobs = async (req, res) => {
     const tenantDb = await resolveAndAuth(req, res);
     if (!tenantDb) return;
 
-    // Fetch up to 5 pending jobs
-    const jobs = await queryDb(
-      tenantDb,
-      `SELECT id, type, payload, created_at
-       FROM print_queue
-       WHERE status = 'pending'
-       ORDER BY created_at ASC
-       LIMIT 5`
-    );
-
-    if (jobs.length > 0) {
-      const ids = jobs.map(j => j.id);
-      // Mark as 'printing' so they won't be returned again
-      await queryDb(
-        tenantDb,
-        `UPDATE print_queue SET status = 'printing' WHERE id IN (${ids.map(() => '?').join(',')})`,
-        ids
+    // Fetch and lock pending jobs atomically to prevent duplicate delivery
+    const conn = await getPool(tenantDb).getConnection();
+    let jobs = [];
+    try {
+      await conn.beginTransaction();
+      jobs = await conn.query(
+        `SELECT id, type, payload, created_at FROM print_queue WHERE status = 'pending' ORDER BY created_at ASC LIMIT 5 FOR UPDATE`
       );
+      if (jobs.length > 0) {
+        const ids = jobs.map(j => j.id);
+        await conn.query(
+          `UPDATE print_queue SET status = 'printing' WHERE id IN (${ids.map(() => '?').join(',')})`,
+          ids
+        );
+      }
+      await conn.commit();
+    } catch (txErr) {
+      await conn.rollback();
+      throw txErr;
+    } finally {
+      conn.release();
     }
 
     // Parse payload JSON

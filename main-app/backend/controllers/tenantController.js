@@ -37,7 +37,8 @@ exports.getAll = async (req, res) => {
         const [products] = await queryDb(t.db_name, 'SELECT COUNT(*) as cnt FROM products');
         const [sales]    = await queryDb(t.db_name, 'SELECT COUNT(*) as cnt FROM sales');
         return { ...t, stats: { users: users.cnt, products: products.cnt, sales: sales.cnt } };
-      } catch {
+      } catch (err) {
+        logger.warn(`[tenantController] Failed to fetch stats for tenant ${t.tenant_id}`, { error: err.message });
         return { ...t, stats: { users: 0, products: 0, sales: 0 } };
       }
     }));
