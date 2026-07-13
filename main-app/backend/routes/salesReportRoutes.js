@@ -14,5 +14,8 @@ router.get('/daily-trend', controller.getDailyTrend);
 router.get('/top-customers', controller.getTopCustomers);
 router.get('/comparison', controller.getSalesComparison);
 router.get('/category-breakdown', controller.getCategoryBreakdown);
+router.get('/profit-margin', controller.getProfitMargin);
+router.get('/discount-analysis', controller.getDiscountAnalysis);
+router.get('/tax-report', controller.getTaxReport);
 
 module.exports = router;

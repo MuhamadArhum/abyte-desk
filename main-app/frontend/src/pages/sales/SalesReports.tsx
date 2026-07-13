@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers, Percent, Tag, Receipt } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
@@ -21,12 +21,15 @@ const SalesReports = () => {
   const [dailyTrend, setDailyTrend] = useState<any[]>([]);
   const [topCustomers, setTopCustomers] = useState<any[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<any[]>([]);
+  const [profitMargin, setProfitMargin]     = useState<{ summary: any; data: any[] }>({ summary: {}, data: [] });
+  const [discountAnalysis, setDiscountAnalysis] = useState<{ summary: any; by_cashier: any[]; daily: any[] }>({ summary: {}, by_cashier: [], daily: [] });
+  const [taxReport, setTaxReport]           = useState<{ summary: any; daily: any[] }>({ summary: {}, daily: [] });
 
   const fetchReports = async () => {
     setLoading(true);
     try {
       const params = { date_from: dateFrom, date_to: dateTo };
-      const [sumRes, compRes, hourRes, payRes, cashRes, trendRes, custRes, catRes] = await Promise.all([
+      const [sumRes, compRes, hourRes, payRes, cashRes, trendRes, custRes, catRes, pmRes, daRes, taxRes] = await Promise.all([
         api.get('/sales-reports/summary', { params }),
         api.get('/sales-reports/comparison', { params }),
         api.get('/sales-reports/hourly', { params: { date: dateFrom } }),
@@ -35,6 +38,9 @@ const SalesReports = () => {
         api.get('/sales-reports/daily-trend', { params }),
         api.get('/sales-reports/top-customers', { params }),
         api.get('/sales-reports/category-breakdown', { params }),
+        api.get('/sales-reports/profit-margin', { params }),
+        api.get('/sales-reports/discount-analysis', { params }),
+        api.get('/sales-reports/tax-report', { params }),
       ]);
       setSummary(sumRes.data);
       setComparison(compRes.data);
@@ -44,6 +50,9 @@ const SalesReports = () => {
       setDailyTrend(trendRes.data.data || []);
       setTopCustomers(custRes.data.data || []);
       setCategoryBreakdown(catRes.data.data || []);
+      setProfitMargin({ summary: pmRes.data.summary || {}, data: pmRes.data.data || [] });
+      setDiscountAnalysis({ summary: daRes.data.summary || {}, by_cashier: daRes.data.by_cashier || [], daily: daRes.data.daily || [] });
+      setTaxReport({ summary: taxRes.data.summary || {}, daily: taxRes.data.daily || [] });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
@@ -245,6 +254,153 @@ const SalesReports = () => {
                 </table>
               </div>
             )}
+          </div>
+          {/* ── Profit Margin Report ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-2">
+                <Percent size={18} className="text-emerald-600" />
+                <h3 className="font-semibold text-gray-800">Profit Margin by Product</h3>
+              </div>
+              <button onClick={() => exportCSV(profitMargin.data, 'profit_margin.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              {[
+                { label: 'Total Revenue', value: `${currency}${Number(profitMargin.summary.total_revenue || 0).toFixed(0)}`, color: 'text-gray-800' },
+                { label: 'Total Cost', value: `${currency}${Number(profitMargin.summary.total_cost || 0).toFixed(0)}`, color: 'text-red-600' },
+                { label: 'Gross Profit', value: `${currency}${Number(profitMargin.summary.gross_profit || 0).toFixed(0)}`, color: 'text-emerald-600' },
+                { label: 'Overall Margin', value: `${profitMargin.summary.overall_margin || 0}%`, color: Number(profitMargin.summary.overall_margin) >= 30 ? 'text-emerald-600' : 'text-orange-500' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className={`text-xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            {profitMargin.data.length === 0 ? (
+              <p className="text-center text-gray-400 py-6">No data — make sure products have cost prices set</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Product', 'Category', 'Qty Sold', 'Revenue', 'Cost', 'Gross Profit', 'Margin %'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left font-semibold text-gray-600">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {profitMargin.data.map(r => (
+                      <tr key={r.product_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium text-gray-800">{r.product_name}</td>
+                        <td className="px-4 py-3 text-gray-500">{r.category_name}</td>
+                        <td className="px-4 py-3 text-gray-700">{r.total_qty}</td>
+                        <td className="px-4 py-3 font-medium">{currency}{Number(r.revenue).toFixed(0)}</td>
+                        <td className="px-4 py-3 text-red-500">{currency}{Number(r.total_cost).toFixed(0)}</td>
+                        <td className="px-4 py-3 text-emerald-600 font-bold">{currency}{Number(r.gross_profit).toFixed(0)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${Number(r.margin_pct) >= 30 ? 'bg-emerald-100 text-emerald-700' : Number(r.margin_pct) >= 15 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            {Number(r.margin_pct).toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── Discount Analysis ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-2">
+                <Tag size={18} className="text-orange-500" />
+                <h3 className="font-semibold text-gray-800">Discount Analysis</h3>
+              </div>
+              <button onClick={() => exportCSV(discountAnalysis.by_cashier, 'discount_analysis.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              {[
+                { label: 'Total Discount Given', value: `${currency}${Number(discountAnalysis.summary.total_discount || 0).toFixed(0)}`, color: 'text-red-600' },
+                { label: 'Discounted Orders', value: `${discountAnalysis.summary.discounted_orders || 0}`, color: 'text-gray-800' },
+                { label: 'Gross Sales', value: `${currency}${Number(discountAnalysis.summary.gross_sales || 0).toFixed(0)}`, color: 'text-gray-800' },
+                { label: 'Avg Discount Rate', value: `${discountAnalysis.summary.discount_pct || 0}%`, color: Number(discountAnalysis.summary.discount_pct) > 10 ? 'text-red-600' : 'text-emerald-600' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className={`text-xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            {discountAnalysis.by_cashier.length === 0 ? (
+              <p className="text-center text-gray-400 py-6">No discount data in this period</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Cashier', 'Total Orders', 'Discounted Orders', 'Total Discount', 'Gross Sales', 'Discount %'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left font-semibold text-gray-600">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {discountAnalysis.by_cashier.map(r => (
+                      <tr key={r.user_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium text-gray-800">{r.cashier_name}</td>
+                        <td className="px-4 py-3 text-gray-700">{r.total_orders}</td>
+                        <td className="px-4 py-3 text-gray-700">{r.discounted_orders}</td>
+                        <td className="px-4 py-3 text-red-500 font-bold">{currency}{Number(r.total_discount).toFixed(0)}</td>
+                        <td className="px-4 py-3">{currency}{Number(r.gross_sales).toFixed(0)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${Number(r.discount_pct) > 10 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {Number(r.discount_pct).toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── Tax Report ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+            <div className="flex justify-between items-center mb-5">
+              <div className="flex items-center gap-2">
+                <Receipt size={18} className="text-blue-600" />
+                <h3 className="font-semibold text-gray-800">Tax / GST Report</h3>
+              </div>
+              <button onClick={() => exportCSV(taxReport.daily, 'tax_report.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              {[
+                { label: 'Gross Amount', value: `${currency}${Number(taxReport.summary.gross_amount || 0).toFixed(0)}`, color: 'text-gray-800' },
+                { label: 'Tax Collected', value: `${currency}${Number(taxReport.summary.tax_collected || 0).toFixed(0)}`, color: 'text-blue-600' },
+                { label: 'Net Amount', value: `${currency}${Number(taxReport.summary.net_amount || 0).toFixed(0)}`, color: 'text-emerald-600' },
+                { label: 'Taxable Orders', value: `${taxReport.summary.taxable_orders || 0} / ${taxReport.summary.total_orders || 0}`, color: 'text-gray-800' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className={`text-xl font-bold ${color}`}>{value}</p>
+                  <p className="text-xs text-gray-500 mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            {taxReport.daily.length > 1 && (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={taxReport.daily}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => [`${currency}${v.toFixed(0)}`]} />
+                  <Bar dataKey="tax_collected" name="Tax" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="net_amount" name="Net Sales" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            {taxReport.daily.length === 0 && <p className="text-center text-gray-400 py-6">No data in this period</p>}
           </div>
         </>
       )}
