@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw, Mail, X, Send, Loader2 } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw, Mail, X, Send, Loader2, Megaphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import OnboardingWizard from '../components/OnboardingWizard';
+import BulkEmailModal from '../components/BulkEmailModal';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import EditModulesModal from '../components/EditModulesModal';
 import { useToast } from '../context/ToastContext';
@@ -76,6 +77,7 @@ export default function Clients() {
   const [clients, setClients]     = useState<Tenant[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showBulkEmail, setShowBulkEmail] = useState(false);
   const [resetTarget, setResetTarget]   = useState<ResetTarget | null>(null);
   const [moduleTarget, setModuleTarget] = useState<ModuleTarget | null>(null);
   const [emailTarget, setEmailTarget]   = useState<EmailTarget | null>(null);
@@ -214,6 +216,13 @@ export default function Clients() {
               <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
+              onClick={() => setShowBulkEmail(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-200 transition"
+            >
+              <Megaphone size={15} />
+              <span className="hidden sm:inline">New Campaign</span>
+            </button>
+            <button
               onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-md shadow-emerald-200 transition"
             >
@@ -241,6 +250,13 @@ export default function Clients() {
         <div className="flex items-center gap-3 bg-slate-800 text-white rounded-2xl px-5 py-3 shadow-lg">
           <span className="text-sm font-semibold">{selected.size} client{selected.size !== 1 ? 's' : ''} selected</span>
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => setShowBulkEmail(true)}
+              disabled={bulkLoading}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-60"
+            >
+              <Mail size={12} /> Email Selected
+            </button>
             <button
               onClick={() => bulkAction('activate')}
               disabled={bulkLoading}
@@ -488,6 +504,13 @@ export default function Clients() {
 
       {showModal && (
         <OnboardingWizard onClose={() => setShowModal(false)} onCreated={() => load()} />
+      )}
+
+      {showBulkEmail && (
+        <BulkEmailModal
+          selectedIds={[...selected]}
+          onClose={() => { setShowBulkEmail(false); setSelected(new Set()); }}
+        />
       )}
 
       {resetTarget && (

@@ -12,6 +12,7 @@ router.get('/revenue',            tenantController.getRevenue);
 router.get('/recent-activity',    tenantController.getRecentActivity);
 router.get('/expiring',           tenantController.getExpiring);
 router.post('/bulk',              tenantController.bulkUpdate);
+router.post('/bulk-email',        tenantController.bulkEmail);
 router.get('/',                   tenantController.getAll);
 router.get('/:id',                tenantController.getOne);
 router.get('/:id/activity',       tenantController.getTenantActivity);

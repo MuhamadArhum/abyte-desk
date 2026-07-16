@@ -937,6 +937,69 @@ exports.getTenantActivity = async (req, res) => {
   }
 };
 
+// POST /api/tenants/bulk-email — Broadcast email to multiple clients
+exports.bulkEmail = async (req, res) => {
+  try {
+    const { recipient_type, ids, subject, html_body } = req.body;
+    if (!subject?.trim()) return res.status(400).json({ message: 'Subject is required' });
+    if (!html_body?.trim()) return res.status(400).json({ message: 'Message body is required' });
+    if (!['selected', 'active', 'all'].includes(recipient_type)) {
+      return res.status(400).json({ message: 'recipient_type must be selected, active, or all' });
+    }
+
+    let tenants;
+    if (recipient_type === 'selected') {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'ids array required for selected recipients' });
+      }
+      if (ids.length > 500) return res.status(400).json({ message: 'Max 500 recipients at once' });
+      const placeholders = ids.map(() => '?').join(',');
+      tenants = await query(
+        `SELECT t.tenant_id, t.admin_email, COALESCE(tc.company_name, t.tenant_name) AS display_name
+         FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+         WHERE t.tenant_id IN (${placeholders})`,
+        ids
+      );
+    } else if (recipient_type === 'active') {
+      tenants = await query(
+        `SELECT t.tenant_id, t.admin_email, COALESCE(tc.company_name, t.tenant_name) AS display_name
+         FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id
+         WHERE t.is_active = 1`
+      );
+    } else {
+      tenants = await query(
+        `SELECT t.tenant_id, t.admin_email, COALESCE(tc.company_name, t.tenant_name) AS display_name
+         FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id`
+      );
+    }
+
+    if (tenants.length === 0) return res.status(400).json({ message: 'No recipients found' });
+
+    const emailService = require('../services/emailService');
+    let sent = 0, failed = 0;
+    for (const t of tenants) {
+      try {
+        await emailService.sendCampaignEmail({
+          to:         t.admin_email,
+          clientName: t.display_name,
+          subject:    subject.trim(),
+          htmlBody:   html_body.trim(),
+        });
+        sent++;
+      } catch (err) {
+        logger.error('[BulkEmail] Failed for tenant', { tenant_id: t.tenant_id, error: err.message });
+        failed++;
+      }
+    }
+
+    logger.info(`[BulkEmail] Campaign sent: ${sent}/${tenants.length}`, { recipient_type, subject });
+    res.json({ message: `Sent to ${sent} client(s)`, sent, failed, total: tenants.length });
+  } catch (err) {
+    logger.error('bulkEmail error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // POST /api/tenants/bulk — Bulk activate/deactivate
 exports.bulkUpdate = async (req, res) => {
   try {

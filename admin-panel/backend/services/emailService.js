@@ -163,6 +163,39 @@ exports.sendInvoiceEmail = async ({ to, clientName, invoiceNo, amount, period, s
   });
 };
 
+exports.sendCampaignEmail = async ({ to, clientName, subject, htmlBody }) => {
+  const bodyHtml = (htmlBody || '').replace(/\n/g, '<br>');
+  return sendMail({
+    to,
+    subject,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+
+  <div style="background:linear-gradient(135deg,#059669,#0d9488);padding:28px 40px;">
+    <h1 style="color:#ffffff;font-size:22px;margin:0;font-weight:800;">AByte ERP</h1>
+    <p style="color:#a7f3d0;font-size:12px;margin:4px 0 0;">Powered by AbyteSol</p>
+  </div>
+
+  <div style="padding:32px 40px;">
+    <p style="color:#475569;font-size:14px;margin:0 0 16px;">Dear <strong style="color:#1e293b;">${clientName}</strong>,</p>
+    <div style="color:#374151;font-size:14px;line-height:1.75;">${bodyHtml}</div>
+  </div>
+
+  <div style="background:#f8fafc;padding:16px 40px;border-top:1px solid #e2e8f0;text-align:center;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
+    <p style="color:#cbd5e1;font-size:10px;margin:6px 0 0;">This is a broadcast message from AByte ERP Admin. Contact: ${process.env.EMAIL_USER || 'contact@abytesol.com'}</p>
+  </div>
+</div>
+</body>
+</html>`,
+    text: `Dear ${clientName},\n\n${htmlBody}\n\n---\nAByte ERP | Powered by AbyteSol`,
+  });
+};
+
 exports.sendPaymentReminderEmail = async ({ to, clientName, invoiceNo, amount, period, invoiceDate }) => {
   function formatPeriod(p) {
     if (!p) return p || '';
