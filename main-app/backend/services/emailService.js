@@ -330,31 +330,6 @@ exports.sendPasswordReset = async ({ to, name, resetLink, companyName }) => {
   });
 };
 
-// ── Queue-based fire-and-forget variants ───────────────────────
-// These push a job to BullMQ and return immediately.
-// If Redis is unavailable they fall back to inline direct send.
-const _enqueue = async (jobName, data) => {
-  try {
-    const { emailQueue } = require('./queueService');
-    const job = await emailQueue.add(jobName, data);
-    if (job?.inline) {
-      // Fallback: queueService ran inline — still need to call real handler
-      return exports[jobName] ? exports[jobName](data) : sendMail(data);
-    }
-    return job;
-  } catch {
-    // Last-resort: send directly if queue throws
-    return sendMail(data);
-  }
-};
-
-exports.enqueueLowStockAlert        = (d) => _enqueue('lowStockAlert', d);
-exports.enqueueSaleConfirmation     = (d) => _enqueue('saleConfirmation', d);
-exports.enqueueBackupNotification   = (d) => _enqueue('backupNotification', d);
-exports.enqueueLoginAlert           = (d) => _enqueue('loginAlert', d);
-exports.enqueueInvoiceEmail         = (d) => _enqueue('invoiceEmail', d);
-exports.enqueuePasswordReset        = (d) => _enqueue('passwordReset', d);
-
 exports.testConnection = async () => {
   const transporter = getTransporter();
   if (!transporter) throw new Error('Email not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');
