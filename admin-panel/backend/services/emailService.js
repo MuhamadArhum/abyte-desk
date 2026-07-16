@@ -163,4 +163,75 @@ exports.sendInvoiceEmail = async ({ to, clientName, invoiceNo, amount, period, s
   });
 };
 
+exports.sendPaymentReminderEmail = async ({ to, clientName, invoiceNo, amount, period, invoiceDate }) => {
+  function formatPeriod(p) {
+    if (!p) return p || '';
+    const [y, m] = p.split('-');
+    const d = new Date(Number(y), Number(m) - 1, 1);
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  const periodLabel = formatPeriod(period);
+  const amountFmt   = Number(amount || 0).toLocaleString();
+  const dateFmt     = invoiceDate
+    ? new Date(invoiceDate).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '';
+  const daysSince   = invoiceDate
+    ? Math.floor((Date.now() - new Date(invoiceDate).getTime()) / 86400000)
+    : null;
+
+  return sendMail({
+    to,
+    subject: `Payment Reminder — ${invoiceNo} (Rs. ${amountFmt} due)`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+<div style="max-width:640px;margin:32px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
+
+  <div style="background:#dc2626;padding:20px 40px;">
+    <h1 style="color:#ffffff;font-size:18px;margin:0;font-weight:800;">⚠️ Payment Reminder</h1>
+    <p style="color:#fecaca;font-size:12px;margin:4px 0 0;">AByte ERP — Action Required</p>
+  </div>
+
+  <div style="padding:28px 40px;border-bottom:1px solid #f1f5f9;">
+    <p style="color:#1e293b;font-size:15px;margin:0 0 12px;">Dear <strong>${clientName}</strong>,</p>
+    <p style="color:#475569;font-size:13px;margin:0;line-height:1.6;">
+      This is a reminder that invoice <strong>${invoiceNo}</strong> for <strong>${periodLabel}</strong>
+      ${dateFmt ? ` (issued on ${dateFmt})` : ''} remains unpaid.
+      ${daysSince !== null ? ` It has been <strong>${daysSince} day${daysSince !== 1 ? 's' : ''}</strong> since the invoice was issued.` : ''}
+    </p>
+  </div>
+
+  <div style="padding:24px 40px;background:#fff7ed;border-bottom:1px solid #fed7aa;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#ea580c;margin:0 0 4px;">Amount Due</p>
+        <p style="font-size:28px;font-weight:900;color:#dc2626;margin:0;">Rs. ${amountFmt}</p>
+      </div>
+      <div style="text-align:right;">
+        <p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:0 0 2px;">Invoice</p>
+        <p style="font-size:14px;font-weight:700;color:#1e293b;margin:0;">${invoiceNo}</p>
+        <p style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:8px 0 2px;">Period</p>
+        <p style="font-size:13px;color:#1e293b;margin:0;">${periodLabel}</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:24px 40px;">
+    <p style="color:#475569;font-size:13px;margin:0 0 8px;">Please settle this invoice at your earliest convenience to avoid any service interruption.</p>
+    <p style="color:#475569;font-size:13px;margin:0;">If you have already made the payment, please disregard this reminder or contact us with your payment details.</p>
+  </div>
+
+  <div style="background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">AByte ERP &nbsp;|&nbsp; Powered by AbyteSol</p>
+    <p style="color:#cbd5e1;font-size:10px;margin:6px 0 0;">Contact: ${process.env.EMAIL_USER || 'contact@abytesol.com'}</p>
+  </div>
+</div>
+</body>
+</html>`,
+    text: `Payment Reminder — ${invoiceNo}\n\nDear ${clientName},\n\nThis is a reminder that invoice ${invoiceNo} for ${periodLabel}${dateFmt ? ` (issued ${dateFmt})` : ''} remains unpaid.\n\nAmount Due: Rs. ${amountFmt}\n\nPlease settle this invoice promptly to avoid service interruption.\n\nAByte ERP | Powered by AbyteSol`,
+  });
+};
+
 exports.isConfigured = () => !!(process.env.EMAIL_HOST && process.env.EMAIL_USER);

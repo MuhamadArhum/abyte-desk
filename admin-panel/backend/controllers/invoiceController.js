@@ -211,6 +211,41 @@ exports.delete = async (req, res) => {
   }
 };
 
+// POST /api/invoices/:id/remind — send payment reminder email
+exports.sendReminder = async (req, res) => {
+  try {
+    const rows = await query(
+      `SELECT i.*, COALESCE(tc.company_name, t.tenant_name) AS tenant_name,
+              t.admin_email
+       FROM invoices i
+       JOIN tenants t ON t.tenant_id = i.tenant_id
+       LEFT JOIN tenant_configs tc ON tc.tenant_id = i.tenant_id
+       WHERE i.invoice_id = ?`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'Invoice not found' });
+    const inv = rows[0];
+    if (inv.status === 'paid') return res.status(400).json({ message: 'Invoice already paid' });
+    if (!inv.admin_email) return res.status(400).json({ message: 'Client has no email on record' });
+
+    const emailService = require('../services/emailService');
+    await emailService.sendPaymentReminderEmail({
+      to:          inv.admin_email,
+      clientName:  inv.tenant_name,
+      invoiceNo:   inv.invoice_number,
+      amount:      inv.amount,
+      period:      inv.period_month,
+      invoiceDate: inv.created_at,
+    });
+
+    logger.info('[Invoice] Reminder sent', { invoice_id: req.params.id, to: inv.admin_email });
+    res.json({ message: 'Reminder sent successfully' });
+  } catch (err) {
+    logger.error('invoice sendReminder error', { error: err.message });
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // POST /api/invoices/:id/send-email
 exports.sendEmail = async (req, res) => {
   try {

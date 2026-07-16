@@ -504,12 +504,27 @@ exports.getRevenue = async (req, res) => {
     const activeTenants = tenants.filter(t => t.is_active);
     const currentMrr   = activeTenants.reduce((s, t) => s + getPrice(parseMods(t.modules_enabled)), 0);
 
+    // Churn rate: inactive / total * 100
+    const inactiveCount = tenants.filter(t => !t.is_active).length;
+    const churnRate = tenants.length > 0 ? Math.round((inactiveCount / tenants.length) * 100) : 0;
+
+    // Module-wise revenue breakdown
+    const moduleBreakdown = ['sales', 'inventory', 'accounts', 'hr'].map(mod => {
+      const clientsWithMod = activeTenants.filter(t =>
+        parseMods(t.modules_enabled).some(m => m === mod || m.startsWith(mod + '.'))
+      );
+      const modPrice = priceOf(mod, dbPrices);
+      return { module: mod, clients: clientsWithMod.length, revenue: clientsWithMod.length * modPrice };
+    });
+
     res.json({
       current_mrr:      currentMrr,
       annual_projection: currentMrr * 12,
       active_clients:   activeTenants.length,
       total_clients:    tenants.length,
       avg_per_client:   activeTenants.length ? Math.round(currentMrr / activeTenants.length) : 0,
+      churn_rate:       churnRate,
+      module_breakdown: moduleBreakdown,
       monthly_chart:    monthlyChart,
       client_breakdown: clientBreakdown,
     });

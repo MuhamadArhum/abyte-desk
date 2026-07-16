@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, Users, DollarSign, Calendar } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Calendar, TrendingDown, BarChart2 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar
+  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import api from '../api/axios';
 
@@ -11,9 +11,12 @@ interface ClientRow {
   tenant_id: number; display_name: string; tenant_code: string;
   is_active: number; modules: string[]; monthly_price: number; joined_at: string;
 }
+interface ModuleBreakdownRow { module: string; clients: number; revenue: number; }
 interface RevenueData {
   current_mrr: number; annual_projection: number;
   active_clients: number; total_clients: number; avg_per_client: number;
+  churn_rate: number;
+  module_breakdown: ModuleBreakdownRow[];
   monthly_chart: MonthData[];
   client_breakdown: ClientRow[];
 }
@@ -27,11 +30,11 @@ const avatarGradients = [
   'from-amber-500 to-orange-600',
 ];
 
-const MODULE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  sales:     { bg: 'bg-blue-50',    text: 'text-blue-600',    label: 'Sales' },
-  inventory: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Inventory' },
-  accounts:  { bg: 'bg-purple-50',  text: 'text-purple-600',  label: 'Accounts' },
-  hr:        { bg: 'bg-orange-50',  text: 'text-orange-600',  label: 'HR' },
+const MODULE_STYLES: Record<string, { bg: string; text: string; label: string; pie?: string }> = {
+  sales:     { bg: 'bg-blue-50',    text: 'text-blue-600',    label: 'Sales',     pie: '#3b82f6' },
+  inventory: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Inventory', pie: '#10b981' },
+  accounts:  { bg: 'bg-purple-50',  text: 'text-purple-600',  label: 'Accounts',  pie: '#8b5cf6' },
+  hr:        { bg: 'bg-orange-50',  text: 'text-orange-600',  label: 'HR',        pie: '#f97316' },
 };
 
 function SkeletonCard() {
@@ -75,25 +78,34 @@ export default function Revenue() {
       label: 'Monthly Revenue',
       value: `Rs. ${data.current_mrr.toLocaleString()}`,
       sub:   'Current MRR',
-      icon:  TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-600',
+      icon:  TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-600', gradient: true,
     },
     {
       label: 'Annual Projection',
       value: `Rs. ${data.annual_projection.toLocaleString()}`,
       sub:   'Based on current MRR',
-      icon:  DollarSign, bg: 'bg-slate-100', color: 'text-slate-600',
+      icon:  DollarSign, bg: 'bg-slate-100', color: 'text-slate-600', gradient: false,
     },
     {
       label: 'Active Clients',
       value: `${data.active_clients} / ${data.total_clients}`,
       sub:   'Active / Total',
-      icon:  Users, bg: 'bg-slate-100', color: 'text-slate-600',
+      icon:  Users, bg: 'bg-slate-100', color: 'text-slate-600', gradient: false,
     },
     {
       label: 'Avg per Client',
       value: `Rs. ${data.avg_per_client.toLocaleString()}`,
       sub:   'Per active client',
-      icon:  Calendar, bg: 'bg-slate-100', color: 'text-slate-600',
+      icon:  Calendar, bg: 'bg-slate-100', color: 'text-slate-600', gradient: false,
+    },
+    {
+      label: 'Churn Rate',
+      value: `${data.churn_rate}%`,
+      sub:   'Inactive / Total clients',
+      icon:  TrendingDown,
+      bg:    data.churn_rate > 20 ? 'bg-red-50' : data.churn_rate > 10 ? 'bg-amber-50' : 'bg-green-50',
+      color: data.churn_rate > 20 ? 'text-red-500' : data.churn_rate > 10 ? 'text-amber-600' : 'text-emerald-600',
+      gradient: false,
     },
   ] : [];
 
@@ -123,11 +135,11 @@ export default function Revenue() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {loading
-          ? [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
-          : statCards.map(({ label, value, sub, icon: Icon, bg, color }, i) => (
-              i === 0 ? (
+          ? [...Array(5)].map((_, i) => <SkeletonCard key={i} />)
+          : statCards.map(({ label, value, sub, icon: Icon, bg, color, gradient }) => (
+              gradient ? (
                 <div key={label} className="relative bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 overflow-hidden shadow-lg shadow-emerald-200 group hover:-translate-y-0.5 transition-transform duration-200">
                   <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
@@ -204,6 +216,90 @@ export default function Revenue() {
             )}
           </ResponsiveContainer>
         )}
+      </div>
+
+      {/* Module Revenue Breakdown */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BarChart2 size={14} className="text-blue-600" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-700">Module Revenue Mix</h3>
+          </div>
+          {loading ? (
+            <div className="h-52 bg-slate-50 rounded-xl animate-pulse" />
+          ) : (
+            <ResponsiveContainer width="100%" height={210}>
+              <PieChart>
+                <Pie
+                  data={(data?.module_breakdown || []).filter(m => m.revenue > 0).map(m => ({
+                    name: MODULE_STYLES[m.module]?.label || m.module,
+                    value: m.revenue,
+                    fill: MODULE_STYLES[m.module]?.pie || '#94a3b8',
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {(data?.module_breakdown || []).filter(m => m.revenue > 0).map((m, i) => (
+                    <Cell key={i} fill={MODULE_STYLES[m.module]?.pie || '#94a3b8'} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => [`Rs. ${Number(v).toLocaleString()}`, 'Revenue']} />
+                <Legend iconType="circle" iconSize={8} formatter={(v) => <span className="text-xs text-slate-600">{v}</span>} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Module table */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-700">Module Breakdown</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Revenue contribution per module</p>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {loading ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="px-5 py-4 animate-pulse flex justify-between">
+                  <div className="w-24 h-4 bg-slate-100 rounded" />
+                  <div className="w-20 h-4 bg-slate-100 rounded" />
+                </div>
+              ))
+            ) : (
+              (data?.module_breakdown || []).map(m => {
+                const s = MODULE_STYLES[m.module] || { bg: 'bg-slate-50', text: 'text-slate-600', label: m.module };
+                const totalMrr = data?.current_mrr || 1;
+                const pct = totalMrr > 0 ? Math.round((m.revenue / totalMrr) * 100) : 0;
+                return (
+                  <div key={m.module} className="px-5 py-4 flex items-center gap-3">
+                    <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold ${s.bg} ${s.text} w-24 justify-center`}>
+                      {s.label}
+                    </span>
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-slate-500">{m.clients} client{m.clients !== 1 ? 's' : ''}</span>
+                        <span className="font-semibold text-slate-700">Rs. {m.revenue.toLocaleString()}</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: s.pie || '#94a3b8' }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 w-8 text-right">{pct}%</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Client Breakdown */}

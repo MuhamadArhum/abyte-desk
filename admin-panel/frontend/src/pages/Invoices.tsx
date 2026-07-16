@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FileText, Plus, X, Printer, CheckCircle, Send, Trash2, RefreshCw, Zap, CreditCard, Eye, Mail } from 'lucide-react';
+import { FileText, Plus, X, Printer, CheckCircle, Send, Trash2, RefreshCw, Zap, CreditCard, Eye, Mail, Download, Bell } from 'lucide-react';
+import jsPDF from 'jspdf';
 import api from '../api/axios';
 import { useToast } from '../context/ToastContext';
 
@@ -480,6 +481,120 @@ function printInvoice(inv: Invoice) {
   }
 }
 
+// ─── Download PDF ─────────────────────────────────────────────────────────────
+function downloadPDF(inv: Invoice) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+  const M = 20;
+
+  // Header bar
+  doc.setFillColor(5, 150, 105);
+  doc.rect(0, 0, W, 38, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AByte ERP', M, 18);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Powered by AbyteSol', M, 25);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(inv.invoice_number, W - M, 17, { align: 'right' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Status: ${inv.status.toUpperCase()}`, W - M, 25, { align: 'right' });
+
+  // Bill To / Dates
+  let y = 54;
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('BILL TO', M, y);
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(13);
+  doc.text(inv.tenant_name, M, y + 7);
+
+  const dateStr = new Date(inv.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+  const periodStr = formatPeriod(inv.period_month);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(148, 163, 184);
+  doc.text('INVOICE DATE', W - M, y, { align: 'right' });
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(dateStr, W - M, y + 7, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(148, 163, 184);
+  doc.text('BILLING PERIOD', W - M, y + 17, { align: 'right' });
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(periodStr, W - M, y + 24, { align: 'right' });
+
+  // Divider
+  y = 90;
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(M, y, W - M, y);
+
+  // Table header
+  y += 10;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(148, 163, 184);
+  doc.text('DESCRIPTION', M, y);
+  doc.text('AMOUNT', W - M, y, { align: 'right' });
+
+  // Row divider
+  y += 5;
+  doc.line(M, y, W - M, y);
+
+  // Item row
+  y += 12;
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`ERP Subscription — ${periodStr}`, M, y);
+  doc.text(`Rs. ${Number(inv.amount).toLocaleString()}`, W - M, y, { align: 'right' });
+
+  // Total row
+  y += 10;
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(226, 232, 240);
+  doc.line(M, y, W - M, y);
+  y += 9;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text('Total', M, y);
+  doc.setTextColor(5, 150, 105);
+  doc.text(`Rs. ${Number(inv.amount).toLocaleString()}`, W - M, y, { align: 'right' });
+
+  // Notes
+  if (inv.notes) {
+    y += 18;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Notes: ${inv.notes}`, M, y, { maxWidth: W - 2 * M });
+  }
+
+  // Footer
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 270, W, 27, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.4);
+  doc.line(0, 270, W, 270);
+  doc.setFontSize(9);
+  doc.setTextColor(148, 163, 184);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Thank you for your business — AByte ERP | Powered by AbyteSol', W / 2, 281, { align: 'center' });
+
+  doc.save(`${inv.invoice_number}.pdf`);
+}
+
 export default function Invoices() {
   const { toast } = useToast();
   const [invoices, setInvoices]         = useState<Invoice[]>([]);
@@ -492,6 +607,7 @@ export default function Invoices() {
   const [paymentInv, setPaymentInv]     = useState<Invoice | null>(null);
   const [detailInv, setDetailInv]       = useState<Invoice | null>(null);
   const [emailInv, setEmailInv]         = useState<Invoice | null>(null);
+  const [remindingId, setRemindingId]   = useState<number | null>(null);
 
   const loadStats = useCallback(() => {
     api.get('/invoices/stats').then(r => setStats(r.data)).catch(() => {});
@@ -531,6 +647,21 @@ export default function Invoices() {
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { message?: string } } }).response?.data?.message : undefined;
       toast('error', msg || 'Failed to delete');
+    }
+  };
+
+  const sendReminder = async (inv: Invoice) => {
+    setRemindingId(inv.invoice_id);
+    try {
+      await api.post(`/invoices/${inv.invoice_id}/remind`);
+      toast('success', `Reminder sent to ${inv.tenant_name}`);
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        : undefined;
+      toast('error', msg || 'Failed to send reminder');
+    } finally {
+      setRemindingId(null);
     }
   };
 
@@ -701,6 +832,26 @@ export default function Invoices() {
                             <CreditCard size={13} />
                           </button>
                         )}
+                        {inv.status === 'sent' && (
+                          <button
+                            onClick={() => sendReminder(inv)}
+                            disabled={remindingId === inv.invoice_id}
+                            title="Send Payment Reminder"
+                            className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-40"
+                          >
+                            {remindingId === inv.invoice_id
+                              ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin block" />
+                              : <Bell size={13} />
+                            }
+                          </button>
+                        )}
+                        <button
+                          onClick={() => downloadPDF(inv)}
+                          title="Download PDF"
+                          className="p-1.5 text-violet-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
+                        >
+                          <Download size={13} />
+                        </button>
                         <button
                           onClick={() => printInvoice(inv)}
                           title="Print"
