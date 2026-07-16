@@ -50,5 +50,8 @@ router.get('/reports/profit-loss', accountingController.getProfitLoss);
 router.get('/reports/balance-sheet', accountingController.getBalanceSheet);
 router.get('/reports/analytics', accountingController.getAccountingAnalytics);
 router.get('/cash-position', accountingController.getCashPosition);
+router.get('/reports/cash-flow', accountingController.getCashFlowStatement);
+router.get('/reports/payables-aging', accountingController.getPayablesAging);
+router.get('/reports/account-statement', accountingController.getAccountStatement);
 
 module.exports = router;

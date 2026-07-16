@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { BarChart3, Download, Users, DollarSign, TrendingUp, Printer, Calendar } from 'lucide-react';
+import { BarChart3, Download, Users, DollarSign, TrendingUp, Printer, Calendar, FileText, Clock, CreditCard, Wallet } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { printReport, buildTable } from '../../utils/reportPrinter';
 import api from '../../utils/api';
@@ -54,7 +54,7 @@ const exportToCSV = (data: any[], filename: string, columns: { key: string; labe
 const StaffReports = () => {
   const { currencySymbol: currency } = useSettings();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'attendance' | 'salary'>('attendance');
+  const [activeTab, setActiveTab] = useState<'attendance' | 'salary' | 'leave' | 'overtime' | 'loans' | 'advances'>('attendance');
 
   // Attendance report state
   const [attendanceMonth, setAttendanceMonth] = useState(localMonthStr());
@@ -66,6 +66,33 @@ const StaffReports = () => {
   const [salaryToDate, setSalaryToDate] = useState(localToday());
   const [salaryData, setSalaryData] = useState<SalaryReportRow[]>([]);
   const [salaryLoading, setSalaryLoading] = useState(false);
+
+  // Leave report state
+  const [leaveFrom, setLeaveFrom] = useState(localToday());
+  const [leaveTo, setLeaveTo] = useState(localToday());
+  const [leaveData, setLeaveData] = useState<any[]>([]);
+  const [leaveSummary, setLeaveSummary] = useState<any>(null);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+
+  // Overtime report state
+  const [otFrom, setOtFrom] = useState(localToday());
+  const [otTo, setOtTo] = useState(localToday());
+  const [otData, setOtData] = useState<any[]>([]);
+  const [otSummary, setOtSummary] = useState<any>(null);
+  const [otLoading, setOtLoading] = useState(false);
+
+  // Loan summary state
+  const [loanData, setLoanData] = useState<any[]>([]);
+  const [loanSummary, setLoanSummary] = useState<any>(null);
+  const [loanLoading, setLoanLoading] = useState(false);
+  const [loanStatusFilter, setLoanStatusFilter] = useState('');
+
+  // Advance summary state
+  const [advFrom, setAdvFrom] = useState(localToday());
+  const [advTo, setAdvTo] = useState(localToday());
+  const [advData, setAdvData] = useState<any[]>([]);
+  const [advSummary, setAdvSummary] = useState<any>(null);
+  const [advLoading, setAdvLoading] = useState(false);
 
   const fetchAttendanceReport = async () => {
     if (!attendanceMonth) { toast.error('Select a month'); return; }
@@ -98,6 +125,64 @@ const StaffReports = () => {
       toast.error(error.response?.data?.message || 'Failed to load salary report');
     } finally {
       setSalaryLoading(false);
+    }
+  };
+
+  const fetchLeaveReport = async () => {
+    if (!leaveFrom || !leaveTo) { toast.error('Select date range'); return; }
+    setLeaveLoading(true);
+    try {
+      const res = await api.get('/staff/reports/leave-report', { params: { from_date: leaveFrom, to_date: leaveTo } });
+      setLeaveData(res.data.data || []);
+      setLeaveSummary(res.data.summary || null);
+      if ((res.data.data || []).length === 0) toast.info('No leave data for selected period');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load leave report');
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  const fetchOvertimeReport = async () => {
+    if (!otFrom || !otTo) { toast.error('Select date range'); return; }
+    setOtLoading(true);
+    try {
+      const res = await api.get('/staff/reports/overtime', { params: { from_date: otFrom, to_date: otTo } });
+      setOtData(res.data.data || []);
+      setOtSummary(res.data.summary || null);
+      if ((res.data.data || []).length === 0) toast.info('No overtime data for selected period');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load overtime report');
+    } finally {
+      setOtLoading(false);
+    }
+  };
+
+  const fetchLoanSummary = async () => {
+    setLoanLoading(true);
+    try {
+      const res = await api.get('/staff/reports/loan-summary', { params: loanStatusFilter ? { status: loanStatusFilter } : {} });
+      setLoanData(res.data.data || []);
+      setLoanSummary(res.data.summary || null);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load loan summary');
+    } finally {
+      setLoanLoading(false);
+    }
+  };
+
+  const fetchAdvanceSummary = async () => {
+    if (!advFrom || !advTo) { toast.error('Select date range'); return; }
+    setAdvLoading(true);
+    try {
+      const res = await api.get('/staff/reports/advance-summary', { params: { from_date: advFrom, to_date: advTo } });
+      setAdvData(res.data.data || []);
+      setAdvSummary(res.data.summary || null);
+      if ((res.data.data || []).length === 0) toast.info('No advance data for selected period');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load advance summary');
+    } finally {
+      setAdvLoading(false);
     }
   };
 
@@ -156,29 +241,23 @@ const StaffReports = () => {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${
-            activeTab === 'attendance'
-              ? 'bg-emerald-600 text-white shadow-lg'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          <Users size={18} />
-          Attendance Report
-        </button>
-        <button
-          onClick={() => setActiveTab('salary')}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${
-            activeTab === 'salary'
-              ? 'bg-emerald-600 text-white shadow-lg'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          <DollarSign size={18} />
-          Salary Report
-        </button>
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[
+          { key: 'attendance', label: 'Attendance', icon: <Users size={16} /> },
+          { key: 'salary', label: 'Salary', icon: <DollarSign size={16} /> },
+          { key: 'leave', label: 'Leave', icon: <Calendar size={16} /> },
+          { key: 'overtime', label: 'Overtime', icon: <Clock size={16} /> },
+          { key: 'loans', label: 'Loans', icon: <CreditCard size={16} /> },
+          { key: 'advances', label: 'Advances', icon: <Wallet size={16} /> },
+        ].map(tab => (
+          <button key={tab.key}
+            onClick={() => setActiveTab(tab.key as any)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition ${
+              activeTab === tab.key ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}>
+            {tab.icon}{tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Attendance Tab */}
@@ -415,6 +494,328 @@ const StaffReports = () => {
               <TrendingUp size={48} className="mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">Select a date range and click Generate</p>
               <p className="text-sm mt-1">Salary summary will appear here</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Leave Report Tab */}
+      {activeTab === 'leave' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+              <input type="date" value={leaveFrom} onChange={e => setLeaveFrom(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+              <input type="date" value={leaveTo} onChange={e => setLeaveTo(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <button onClick={fetchLeaveReport} disabled={leaveLoading}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+              {leaveLoading ? 'Loading...' : 'Generate'}
+            </button>
+            {leaveData.length > 0 && (
+              <button onClick={() => exportToCSV(leaveData, `leave-report-${leaveFrom}`, [
+                { key: 'employee_id', label: 'Emp ID' }, { key: 'full_name', label: 'Name' }, { key: 'department', label: 'Department' },
+                { key: 'total_requests', label: 'Requests' }, { key: 'approved_days', label: 'Approved Days' },
+                { key: 'pending_days', label: 'Pending' }, { key: 'annual_taken', label: 'Annual' },
+                { key: 'sick_taken', label: 'Sick' }, { key: 'casual_taken', label: 'Casual' }, { key: 'leave_balance', label: 'Balance' },
+              ])} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm">
+                <Download size={16} /> Export
+              </button>
+            )}
+          </div>
+          {leaveSummary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Employees', value: leaveSummary.total_staff, color: 'text-gray-800' },
+                { label: 'Total Requests', value: leaveSummary.total_requests, color: 'text-blue-600' },
+                { label: 'Approved Days', value: leaveSummary.total_approved_days, color: 'text-emerald-600' },
+                { label: 'Pending Days', value: leaveSummary.total_pending, color: 'text-yellow-600' },
+              ].map(c => (
+                <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                  <p className="text-xs text-gray-500">{c.label}</p>
+                  <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {leaveData.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>{['Emp ID','Name','Department','Requests','Approved Days','Pending','Annual','Sick','Casual','Balance'].map(h => (
+                      <th key={h} className="p-4 text-left text-sm font-semibold text-gray-700">{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {leaveData.map((r: any) => (
+                      <tr key={r.staff_id} className="border-b hover:bg-gray-50">
+                        <td className="p-4 text-sm font-mono text-gray-500">{r.employee_id || '-'}</td>
+                        <td className="p-4 font-medium text-gray-800">{r.full_name}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.department || '-'}</td>
+                        <td className="p-4 text-center text-gray-700">{r.total_requests}</td>
+                        <td className="p-4 text-center font-semibold text-emerald-600">{r.approved_days}</td>
+                        <td className="p-4 text-center text-yellow-600">{r.pending_days}</td>
+                        <td className="p-4 text-center text-gray-600">{r.annual_taken}</td>
+                        <td className="p-4 text-center text-gray-600">{r.sick_taken}</td>
+                        <td className="p-4 text-center text-gray-600">{r.casual_taken}</td>
+                        <td className="p-4 text-center font-semibold text-blue-600">{r.leave_balance}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {leaveData.length === 0 && !leaveLoading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-500">
+              <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">Select a date range and click Generate</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Overtime Tab */}
+      {activeTab === 'overtime' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+              <input type="date" value={otFrom} onChange={e => setOtFrom(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+              <input type="date" value={otTo} onChange={e => setOtTo(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <button onClick={fetchOvertimeReport} disabled={otLoading}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+              {otLoading ? 'Loading...' : 'Generate'}
+            </button>
+            {otData.length > 0 && (
+              <button onClick={() => exportToCSV(otData, `overtime-report-${otFrom}`, [
+                { key: 'employee_id', label: 'Emp ID' }, { key: 'full_name', label: 'Name' }, { key: 'department', label: 'Department' },
+                { key: 'ot_days', label: 'OT Days' }, { key: 'ot_hours', label: 'OT Hours' }, { key: 'ot_amount', label: 'OT Amount' },
+              ])} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm">
+                <Download size={16} /> Export
+              </button>
+            )}
+          </div>
+          {otSummary && (
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Staff with OT', value: otSummary.total_staff, color: 'text-gray-800' },
+                { label: 'Total OT Hours', value: `${otSummary.total_ot_hours}h`, color: 'text-orange-600' },
+                { label: 'Total OT Amount', value: `${currency}${Number(otSummary.total_ot_amount).toFixed(0)}`, color: 'text-emerald-600' },
+              ].map(c => (
+                <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                  <p className="text-xs text-gray-500">{c.label}</p>
+                  <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {otData.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>{['Emp ID','Name','Department','Position','OT Days','OT Hours','OT Amount (1.5x)'].map(h => (
+                      <th key={h} className="p-4 text-left text-sm font-semibold text-gray-700">{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {otData.map((r: any) => (
+                      <tr key={r.staff_id} className="border-b hover:bg-gray-50">
+                        <td className="p-4 text-sm font-mono text-gray-500">{r.employee_id || '-'}</td>
+                        <td className="p-4 font-medium text-gray-800">{r.full_name}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.department || '-'}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.position || '-'}</td>
+                        <td className="p-4 text-center text-gray-700">{r.ot_days}</td>
+                        <td className="p-4 text-center font-semibold text-orange-600">{r.ot_hours}h</td>
+                        <td className="p-4 text-right font-semibold text-emerald-600">{currency}{Number(r.ot_amount).toFixed(0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {otData.length === 0 && !otLoading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-500">
+              <Clock size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">Select a date range and click Generate</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Loan Summary Tab */}
+      {activeTab === 'loans' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status Filter</label>
+              <select value={loanStatusFilter} onChange={e => setLoanStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500">
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <button onClick={fetchLoanSummary} disabled={loanLoading}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+              {loanLoading ? 'Loading...' : 'Generate'}
+            </button>
+            {loanData.length > 0 && (
+              <button onClick={() => exportToCSV(loanData, 'loan-summary', [
+                { key: 'employee_id', label: 'Emp ID' }, { key: 'full_name', label: 'Name' }, { key: 'department', label: 'Department' },
+                { key: 'loan_amount', label: 'Loan Amount' }, { key: 'amount_repaid', label: 'Repaid' },
+                { key: 'remaining_balance', label: 'Remaining' }, { key: 'status', label: 'Status' }, { key: 'loan_date', label: 'Date' },
+              ])} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm">
+                <Download size={16} /> Export
+              </button>
+            )}
+          </div>
+          {loanSummary && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[
+                { label: 'Total Loans', value: loanSummary.total_loans, color: 'text-gray-800' },
+                { label: 'Active', value: loanSummary.active_count, color: 'text-blue-600' },
+                { label: 'Disbursed', value: `${currency}${Number(loanSummary.total_disbursed).toFixed(0)}`, color: 'text-gray-700' },
+                { label: 'Repaid', value: `${currency}${Number(loanSummary.total_repaid).toFixed(0)}`, color: 'text-emerald-600' },
+                { label: 'Outstanding', value: `${currency}${Number(loanSummary.total_outstanding).toFixed(0)}`, color: 'text-red-600' },
+              ].map(c => (
+                <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                  <p className="text-xs text-gray-500">{c.label}</p>
+                  <p className={`text-xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {loanData.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>{['Emp ID','Name','Department','Loan Amount','Repaid','Remaining','Status','Date','Purpose'].map(h => (
+                      <th key={h} className="p-4 text-left text-sm font-semibold text-gray-700">{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {loanData.map((r: any) => (
+                      <tr key={r.loan_id} className="border-b hover:bg-gray-50">
+                        <td className="p-4 text-sm font-mono text-gray-500">{r.employee_id || '-'}</td>
+                        <td className="p-4 font-medium text-gray-800">{r.full_name}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.department || '-'}</td>
+                        <td className="p-4 text-right font-medium">{currency}{Number(r.loan_amount).toFixed(0)}</td>
+                        <td className="p-4 text-right text-emerald-600">{currency}{Number(r.amount_repaid).toFixed(0)}</td>
+                        <td className="p-4 text-right font-semibold text-red-600">{currency}{Number(r.remaining_balance).toFixed(0)}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${r.status === 'active' ? 'bg-blue-100 text-blue-700' : r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-gray-600">{r.loan_date}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.purpose || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {loanData.length === 0 && !loanLoading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-500">
+              <CreditCard size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">Click Generate to view loan summary</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Advance Summary Tab */}
+      {activeTab === 'advances' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+              <input type="date" value={advFrom} onChange={e => setAdvFrom(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+              <input type="date" value={advTo} onChange={e => setAdvTo(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <button onClick={fetchAdvanceSummary} disabled={advLoading}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50">
+              {advLoading ? 'Loading...' : 'Generate'}
+            </button>
+            {advData.length > 0 && (
+              <button onClick={() => exportToCSV(advData, `advance-summary-${advFrom}`, [
+                { key: 'employee_id', label: 'Emp ID' }, { key: 'full_name', label: 'Name' }, { key: 'department', label: 'Department' },
+                { key: 'total_count', label: 'Count' }, { key: 'total_amount', label: 'Total' },
+                { key: 'pending_amount', label: 'Pending' }, { key: 'deducted_amount', label: 'Deducted' },
+              ])} className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm">
+                <Download size={16} /> Export
+              </button>
+            )}
+          </div>
+          {advSummary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Employees', value: advSummary.total_employees, color: 'text-gray-800' },
+                { label: 'Total Advanced', value: `${currency}${Number(advSummary.total_advanced).toFixed(0)}`, color: 'text-blue-600' },
+                { label: 'Pending Recovery', value: `${currency}${Number(advSummary.total_pending).toFixed(0)}`, color: 'text-yellow-600' },
+                { label: 'Deducted', value: `${currency}${Number(advSummary.total_deducted).toFixed(0)}`, color: 'text-emerald-600' },
+              ].map(c => (
+                <div key={c.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+                  <p className="text-xs text-gray-500">{c.label}</p>
+                  <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {advData.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>{['Emp ID','Name','Department','Count','Total Amount','Pending','Deducted','Last Date'].map(h => (
+                      <th key={h} className="p-4 text-left text-sm font-semibold text-gray-700">{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {advData.map((r: any) => (
+                      <tr key={r.staff_id} className="border-b hover:bg-gray-50">
+                        <td className="p-4 text-sm font-mono text-gray-500">{r.employee_id || '-'}</td>
+                        <td className="p-4 font-medium text-gray-800">{r.full_name}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.department || '-'}</td>
+                        <td className="p-4 text-center text-gray-700">{r.total_count}</td>
+                        <td className="p-4 text-right font-medium text-blue-600">{currency}{Number(r.total_amount).toFixed(0)}</td>
+                        <td className="p-4 text-right text-yellow-600">{currency}{Number(r.pending_amount).toFixed(0)}</td>
+                        <td className="p-4 text-right text-emerald-600">{currency}{Number(r.deducted_amount).toFixed(0)}</td>
+                        <td className="p-4 text-sm text-gray-600">{r.last_advance_date || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {advData.length === 0 && !advLoading && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-500">
+              <Wallet size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">Select a date range and click Generate</p>
             </div>
           )}
         </div>

@@ -14,6 +14,10 @@ router.post('/reports/salary-adjustment', requirePermission('hr.payroll'), staff
 router.get('/reports/salary-voucher', staffController.getSalaryVoucher);
 router.get('/reports/daily-attendance', staffController.getDailyAttendance);
 router.get('/reports/employee-ledger/:staffId', staffController.getEmployeeLedger);
+router.get('/reports/leave-report', staffController.getLeaveReport);
+router.get('/reports/overtime', staffController.getOvertimeReport);
+router.get('/reports/loan-summary', staffController.getLoanSummary);
+router.get('/reports/advance-summary', staffController.getAdvanceSummary);
 
 router.get('/payroll/preview', requirePermission('hr.payroll'), staffController.getPayrollPreview);
 router.post('/payroll/process', requirePermission('hr.payroll'), staffController.processPayroll);

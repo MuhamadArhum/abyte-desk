@@ -2151,3 +2151,226 @@ exports.processLeaveCarryForward = async (req, res) => {
     conn.release();
   }
 };
+
+exports.getLeaveReport = async (req, res) => {
+  try {
+    const { from_date, to_date, department } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'from_date and to_date required' });
+
+    let where = 's.is_active = 1';
+    const params = [from_date, to_date];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+    if (department) { where += ' AND s.department = ?'; params.push(department); }
+
+    const data = await query(`
+      SELECT
+        s.staff_id, s.employee_id, s.full_name, s.department, s.leave_balance,
+        COUNT(lr.leave_id) as total_requests,
+        SUM(CASE WHEN lr.status = 'approved' THEN lr.days_requested ELSE 0 END) as approved_days,
+        SUM(CASE WHEN lr.status = 'pending' THEN lr.days_requested ELSE 0 END) as pending_days,
+        SUM(CASE WHEN lr.status = 'rejected' THEN lr.days_requested ELSE 0 END) as rejected_days,
+        SUM(CASE WHEN lr.leave_type = 'annual' AND lr.status = 'approved' THEN lr.days_requested ELSE 0 END) as annual_taken,
+        SUM(CASE WHEN lr.leave_type = 'sick' AND lr.status = 'approved' THEN lr.days_requested ELSE 0 END) as sick_taken,
+        SUM(CASE WHEN lr.leave_type = 'casual' AND lr.status = 'approved' THEN lr.days_requested ELSE 0 END) as casual_taken
+      FROM staff s
+      LEFT JOIN leave_requests lr ON s.staff_id = lr.staff_id
+        AND lr.from_date BETWEEN ? AND ?
+      WHERE ${where}
+      GROUP BY s.staff_id
+      HAVING total_requests > 0
+      ORDER BY approved_days DESC, s.full_name
+    `, params);
+
+    const summary = {
+      total_staff: data.length,
+      total_requests: data.reduce((s, r) => s + Number(r.total_requests || 0), 0),
+      total_approved_days: data.reduce((s, r) => s + Number(r.approved_days || 0), 0),
+      total_pending: data.reduce((s, r) => s + Number(r.pending_days || 0), 0),
+    };
+
+    res.json({ data: data.map(r => ({ ...r,
+      total_requests: Number(r.total_requests || 0),
+      approved_days: Number(r.approved_days || 0),
+      pending_days: Number(r.pending_days || 0),
+      rejected_days: Number(r.rejected_days || 0),
+      annual_taken: Number(r.annual_taken || 0),
+      sick_taken: Number(r.sick_taken || 0),
+      casual_taken: Number(r.casual_taken || 0),
+      leave_balance: Number(r.leave_balance || 0),
+    })), summary });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getOvertimeReport = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'from_date and to_date required' });
+
+    let where = 's.is_active = 1';
+    const params = [from_date, to_date];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+
+    const data = await query(`
+      SELECT
+        s.staff_id, s.employee_id, s.full_name, s.department, s.position,
+        s.salary as monthly_salary,
+        COUNT(a.attendance_id) as ot_days,
+        COALESCE(SUM(GREATEST(0, TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) - 480)), 0) as total_ot_minutes
+      FROM staff s
+      LEFT JOIN attendance a ON s.staff_id = a.staff_id
+        AND a.attendance_date BETWEEN ? AND ?
+        AND a.check_in IS NOT NULL AND a.check_out IS NOT NULL
+        AND TIMESTAMPDIFF(MINUTE, a.check_in, a.check_out) > 480
+      WHERE ${where}
+      GROUP BY s.staff_id
+      HAVING total_ot_minutes > 0
+      ORDER BY total_ot_minutes DESC
+    `, params);
+
+    const result = data.map(r => {
+      const otMinutes = Number(r.total_ot_minutes || 0);
+      const otHours = Math.round((otMinutes / 60) * 100) / 100;
+      const hourlyRate = Number(r.monthly_salary || 0) / 26 / 8;
+      const otAmount = Math.round(hourlyRate * otHours * 1.5 * 100) / 100;
+      return {
+        ...r,
+        ot_days: Number(r.ot_days || 0),
+        total_ot_minutes: otMinutes,
+        ot_hours: otHours,
+        ot_amount: otAmount,
+        monthly_salary: Number(r.monthly_salary || 0),
+      };
+    });
+
+    const summary = {
+      total_staff: result.length,
+      total_ot_hours: Math.round(result.reduce((s, r) => s + r.ot_hours, 0) * 100) / 100,
+      total_ot_amount: Math.round(result.reduce((s, r) => s + r.ot_amount, 0) * 100) / 100,
+    };
+
+    res.json({ data: result, summary });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getLoanSummary = async (req, res) => {
+  try {
+    let where = '1=1';
+    const params = [];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+    const { status } = req.query;
+    if (status) { where += ' AND l.status = ?'; params.push(status); }
+
+    const data = await query(`
+      SELECT
+        l.loan_id, l.loan_amount, l.remaining_balance, l.status, l.purpose,
+        DATE(l.loan_date) as loan_date, l.notes,
+        (l.loan_amount - l.remaining_balance) as amount_repaid,
+        s.staff_id, s.employee_id, s.full_name, s.department,
+        COUNT(lr.repayment_id) as repayment_count,
+        MAX(DATE(lr.repayment_date)) as last_repayment_date
+      FROM loans l
+      JOIN staff s ON l.staff_id = s.staff_id
+      LEFT JOIN loan_repayments lr ON l.loan_id = lr.loan_id
+      WHERE ${where}
+      GROUP BY l.loan_id
+      ORDER BY s.full_name, l.loan_date DESC
+    `, params);
+
+    const result = data.map(r => ({
+      ...r,
+      loan_amount: Number(r.loan_amount || 0),
+      remaining_balance: Number(r.remaining_balance || 0),
+      amount_repaid: Number(r.amount_repaid || 0),
+      repayment_count: Number(r.repayment_count || 0),
+    }));
+
+    const summary = {
+      total_loans: result.length,
+      total_disbursed: result.reduce((s, r) => s + r.loan_amount, 0),
+      total_outstanding: result.filter(r => r.status === 'active').reduce((s, r) => s + r.remaining_balance, 0),
+      total_repaid: result.reduce((s, r) => s + r.amount_repaid, 0),
+      active_count: result.filter(r => r.status === 'active').length,
+    };
+
+    res.json({ data: result, summary });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getAdvanceSummary = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'from_date and to_date required' });
+
+    let where = '1=1';
+    const params = [from_date, to_date];
+    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.user.branch_id);
+    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
+      where += ' AND s.branch_id = ?';
+      params.push(req.query.filter_branch);
+    }
+
+    const data = await query(`
+      SELECT
+        s.staff_id, s.employee_id, s.full_name, s.department,
+        COUNT(ap.advance_id) as total_count,
+        SUM(ap.amount) as total_amount,
+        SUM(CASE WHEN ap.status = 'pending' THEN ap.amount ELSE 0 END) as pending_amount,
+        SUM(CASE WHEN ap.status = 'deducted' THEN ap.amount ELSE 0 END) as deducted_amount,
+        MAX(DATE(ap.advance_date)) as last_advance_date
+      FROM advance_payments ap
+      JOIN staff s ON ap.staff_id = s.staff_id
+      WHERE ap.advance_date BETWEEN ? AND ? AND ${where}
+      GROUP BY s.staff_id
+      ORDER BY total_amount DESC
+    `, params);
+
+    const result = data.map(r => ({
+      ...r,
+      total_count: Number(r.total_count || 0),
+      total_amount: Number(r.total_amount || 0),
+      pending_amount: Number(r.pending_amount || 0),
+      deducted_amount: Number(r.deducted_amount || 0),
+    }));
+
+    const summary = {
+      total_employees: result.length,
+      total_advanced: result.reduce((s, r) => s + r.total_amount, 0),
+      total_pending: result.reduce((s, r) => s + r.pending_amount, 0),
+      total_deducted: result.reduce((s, r) => s + r.deducted_amount, 0),
+    };
+
+    res.json({ data: result, summary });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

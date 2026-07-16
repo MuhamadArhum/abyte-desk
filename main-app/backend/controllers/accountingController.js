@@ -1616,4 +1616,250 @@ exports.getCashPosition = async (req, res) => {
   }
 };
 
+exports.getCashFlowStatement = async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    if (!from_date || !to_date) return res.status(400).json({ message: 'from_date and to_date required' });
+
+    // Cash inflows from receipt vouchers
+    const [crvTotals] = await query(`
+      SELECT
+        COALESCE(SUM(rv.total_amount), 0) as total_receipts,
+        COUNT(rv.voucher_id) as receipt_count
+      FROM receipt_vouchers rv
+      WHERE rv.voucher_date BETWEEN ? AND ?
+    `, [from_date, to_date]);
+
+    // Cash outflows from payment vouchers
+    const [cpvTotals] = await query(`
+      SELECT
+        COALESCE(SUM(pv.total_amount), 0) as total_payments,
+        COUNT(pv.voucher_id) as payment_count
+      FROM payment_vouchers pv
+      WHERE pv.voucher_date BETWEEN ? AND ?
+    `, [from_date, to_date]);
+
+    // Monthly breakdown
+    const monthly = await query(`
+      SELECT period, SUM(receipts) as receipts, SUM(payments) as payments
+      FROM (
+        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, total_amount as receipts, 0 as payments
+        FROM receipt_vouchers WHERE voucher_date BETWEEN ? AND ?
+        UNION ALL
+        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, 0 as receipts, total_amount as payments
+        FROM payment_vouchers WHERE voucher_date BETWEEN ? AND ?
+      ) combined
+      GROUP BY period
+      ORDER BY period
+    `, [from_date, to_date, from_date, to_date]);
+
+    // Top receipt categories (account names)
+    const topReceipts = await query(`
+      SELECT a.account_name, SUM(rvl.credit_amount) as amount
+      FROM receipt_voucher_lines rvl
+      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
+      JOIN accounts a ON rvl.account_id = a.account_id
+      WHERE rv.voucher_date BETWEEN ? AND ? AND rvl.credit_amount > 0
+      GROUP BY rvl.account_id
+      ORDER BY amount DESC
+      LIMIT 10
+    `, [from_date, to_date]);
+
+    // Top payment categories
+    const topPayments = await query(`
+      SELECT a.account_name, SUM(pvl.debit_amount) as amount
+      FROM payment_voucher_lines pvl
+      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
+      JOIN accounts a ON pvl.account_id = a.account_id
+      WHERE pv.voucher_date BETWEEN ? AND ? AND pvl.debit_amount > 0
+      GROUP BY pvl.account_id
+      ORDER BY amount DESC
+      LIMIT 10
+    `, [from_date, to_date]);
+
+    const totalReceipts = Number(crvTotals.total_receipts || 0);
+    const totalPayments = Number(cpvTotals.total_payments || 0);
+    const netCashFlow = totalReceipts - totalPayments;
+
+    res.json({
+      period: { from_date, to_date },
+      summary: {
+        total_receipts: totalReceipts,
+        receipt_count: Number(crvTotals.receipt_count || 0),
+        total_payments: totalPayments,
+        payment_count: Number(cpvTotals.payment_count || 0),
+        net_cash_flow: netCashFlow,
+      },
+      monthly: monthly.map(m => ({
+        period: m.period,
+        receipts: Number(m.receipts || 0),
+        payments: Number(m.payments || 0),
+        net: Number(m.receipts || 0) - Number(m.payments || 0),
+      })),
+      top_receipts: topReceipts.map(r => ({ account_name: r.account_name, amount: Number(r.amount || 0) })),
+      top_payments: topPayments.map(r => ({ account_name: r.account_name, amount: Number(r.amount || 0) })),
+    });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getPayablesAging = async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT
+        s.supplier_id, s.supplier_name, s.phone, s.email,
+        p.purchase_id, DATE(p.purchase_date) as purchase_date,
+        p.grand_total, COALESCE(p.paid_amount, 0) as paid_amount,
+        (p.grand_total - COALESCE(p.paid_amount, 0)) as outstanding,
+        DATEDIFF(NOW(), p.purchase_date) as days_old
+      FROM purchases p
+      JOIN suppliers s ON p.supplier_id = s.supplier_id
+      WHERE p.payment_status IN ('partial', 'unpaid', 'pending')
+        AND (p.grand_total - COALESCE(p.paid_amount, 0)) > 0
+      ORDER BY s.supplier_name, p.purchase_date
+    `, []);
+
+    const supplierMap = {};
+    for (const row of rows) {
+      const sid = row.supplier_id;
+      if (!supplierMap[sid]) {
+        supplierMap[sid] = {
+          supplier_id: sid,
+          supplier_name: row.supplier_name,
+          phone: row.phone,
+          email: row.email,
+          total_outstanding: 0,
+          current: 0,
+          days_1_30: 0,
+          days_31_60: 0,
+          days_61_90: 0,
+          days_90_plus: 0,
+          invoice_count: 0,
+        };
+      }
+      const sup = supplierMap[sid];
+      const amt = Number(row.outstanding || 0);
+      const days = Number(row.days_old || 0);
+      sup.total_outstanding += amt;
+      sup.invoice_count++;
+      if (days <= 0) sup.current += amt;
+      else if (days <= 30) sup.days_1_30 += amt;
+      else if (days <= 60) sup.days_31_60 += amt;
+      else if (days <= 90) sup.days_61_90 += amt;
+      else sup.days_90_plus += amt;
+    }
+
+    const data = Object.values(supplierMap).sort((a, b) => b.total_outstanding - a.total_outstanding);
+    const summary = {
+      total_suppliers: data.length,
+      total_outstanding: data.reduce((s, r) => s + r.total_outstanding, 0),
+      current: data.reduce((s, r) => s + r.current, 0),
+      days_1_30: data.reduce((s, r) => s + r.days_1_30, 0),
+      days_31_60: data.reduce((s, r) => s + r.days_31_60, 0),
+      days_61_90: data.reduce((s, r) => s + r.days_61_90, 0),
+      days_90_plus: data.reduce((s, r) => s + r.days_90_plus, 0),
+    };
+
+    res.json({ data, summary });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getAccountStatement = async (req, res) => {
+  try {
+    const { account_id, from_date, to_date } = req.query;
+    if (!account_id || !from_date || !to_date) {
+      return res.status(400).json({ message: 'account_id, from_date and to_date required' });
+    }
+
+    const [account] = await query(
+      `SELECT account_id, account_code, account_name, account_type FROM accounts WHERE account_id = ?`,
+      [account_id]
+    );
+    if (!account) return res.status(404).json({ message: 'Account not found' });
+
+    // Opening balance from all posted entries before from_date
+    const openingRows = await query(`
+      SELECT COALESCE(SUM(jel.debit_amount), 0) as total_dr, COALESCE(SUM(jel.credit_amount), 0) as total_cr
+      FROM journal_entry_lines jel
+      JOIN journal_entries je ON jel.entry_id = je.entry_id
+      WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
+    `, [account_id, from_date]);
+
+    const openingCPV = await query(`
+      SELECT COALESCE(SUM(pvl.debit_amount), 0) as total_dr, COALESCE(SUM(pvl.credit_amount), 0) as total_cr
+      FROM payment_voucher_lines pvl
+      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
+      WHERE pvl.account_id = ? AND pv.voucher_date < ?
+    `, [account_id, from_date]);
+
+    const openingCRV = await query(`
+      SELECT COALESCE(SUM(rvl.debit_amount), 0) as total_dr, COALESCE(SUM(rvl.credit_amount), 0) as total_cr
+      FROM receipt_voucher_lines rvl
+      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
+      WHERE rvl.account_id = ? AND rv.voucher_date < ?
+    `, [account_id, from_date]);
+
+    const openingDr = Number(openingRows[0]?.total_dr || 0) + Number(openingCPV[0]?.total_dr || 0) + Number(openingCRV[0]?.total_dr || 0);
+    const openingCr = Number(openingRows[0]?.total_cr || 0) + Number(openingCPV[0]?.total_cr || 0) + Number(openingCRV[0]?.total_cr || 0);
+    const isDebitNormal = ['asset', 'expense'].includes(account.account_type);
+    const openingBalance = isDebitNormal ? openingDr - openingCr : openingCr - openingDr;
+
+    // Period transactions
+    const txns = await query(`
+      SELECT je.entry_date as txn_date, je.reference_number as reference, je.description,
+             COALESCE(jel.debit_amount, 0) as debit, COALESCE(jel.credit_amount, 0) as credit, 'Journal' as source
+      FROM journal_entry_lines jel
+      JOIN journal_entries je ON jel.entry_id = je.entry_id
+      WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date BETWEEN ? AND ?
+      UNION ALL
+      SELECT pv.voucher_date, pv.voucher_number, pv.description,
+             COALESCE(pvl.debit_amount, 0), COALESCE(pvl.credit_amount, 0), 'CPV'
+      FROM payment_voucher_lines pvl
+      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
+      WHERE pvl.account_id = ? AND pv.voucher_date BETWEEN ? AND ?
+      UNION ALL
+      SELECT rv.voucher_date, rv.voucher_number, rv.description,
+             COALESCE(rvl.debit_amount, 0), COALESCE(rvl.credit_amount, 0), 'CRV'
+      FROM receipt_voucher_lines rvl
+      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
+      WHERE rvl.account_id = ? AND rv.voucher_date BETWEEN ? AND ?
+      ORDER BY txn_date, reference
+    `, [account_id, from_date, to_date, account_id, from_date, to_date, account_id, from_date, to_date]);
+
+    // Compute running balance
+    let runningBalance = openingBalance;
+    const data = txns.map(t => {
+      const dr = Number(t.debit || 0);
+      const cr = Number(t.credit || 0);
+      if (isDebitNormal) runningBalance += dr - cr;
+      else runningBalance += cr - dr;
+      return {
+        txn_date: t.txn_date,
+        reference: t.reference,
+        description: t.description,
+        debit: dr,
+        credit: cr,
+        balance: Math.round(runningBalance * 100) / 100,
+        source: t.source,
+      };
+    });
+
+    res.json({
+      account,
+      period: { from_date, to_date },
+      opening_balance: Math.round(openingBalance * 100) / 100,
+      closing_balance: Math.round(runningBalance * 100) / 100,
+      data,
+    });
+  } catch (err) {
+    logger.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = exports;
