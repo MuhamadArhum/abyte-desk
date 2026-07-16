@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, RefreshCw, CheckCircle, XCircle, Key, Search, Users, Eye, Package, Calendar, Database, RotateCcw, Mail, X, Send, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import AddClientModal from '../components/AddClientModal';
+import OnboardingWizard from '../components/OnboardingWizard';
 import ResetPasswordModal from '../components/ResetPasswordModal';
 import EditModulesModal from '../components/EditModulesModal';
 import { useToast } from '../context/ToastContext';
@@ -487,7 +487,7 @@ export default function Clients() {
       </div>
 
       {showModal && (
-        <AddClientModal onClose={() => { setShowModal(false); load(); }} />
+        <OnboardingWizard onClose={() => setShowModal(false)} onCreated={() => load()} />
       )}
 
       {resetTarget && (

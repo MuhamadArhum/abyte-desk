@@ -389,6 +389,7 @@ export default function ClientDetail() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [editUser, setEditUser]           = useState<UserRow | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [togglingModule, setTogglingModule] = useState<string | null>(null);
 
   // Subscription form
   const [subForm, setSubForm] = useState({ ends_at: '', status: '' });
@@ -475,6 +476,35 @@ export default function ClientDetail() {
       toast('error', 'Failed to update subscription');
     } finally {
       setSavingSub(false);
+    }
+  };
+
+  const PARENT_SUB_KEYS: Record<string, string[]> = {
+    sales:     ['sales.pos','sales.orders','sales.register','sales.deliveries','sales.returns','sales.quotations','sales.credit','sales.pricerules','sales.targets','sales.reports','sales.customers','restaurant.tables'],
+    inventory: ['inventory.products','inventory.categories','inventory.bundles','inventory.purchases','inventory.suppliers','inventory.adjustments','inventory.reports'],
+    accounts:  ['accounts.chart','accounts.journal','accounts.payment-vouchers','accounts.ledger','accounts.bank','accounts.analytics'],
+    hr:        ['hr.staff','hr.attendance','hr.payroll','hr.salary-components','hr.leaves','hr.loans','hr.reports'],
+  };
+
+  const toggleModule = async (parentKey: string, currentMods: string[]) => {
+    const isActive = currentMods.some(m => m === parentKey || m.startsWith(parentKey + '.'));
+    let newMods: string[];
+    if (isActive) {
+      newMods = currentMods.filter(m => m !== parentKey && !m.startsWith(parentKey + '.'));
+      if (newMods.length === 0) { toast('error', 'At least one module must remain enabled'); return; }
+    } else {
+      const subs = PARENT_SUB_KEYS[parentKey] || [parentKey];
+      newMods = [...currentMods.filter(m => m !== parentKey && !m.startsWith(parentKey + '.')), ...subs];
+    }
+    setTogglingModule(parentKey);
+    try {
+      await api.put(`/tenants/${id}`, { modules: newMods });
+      toast('success', `${MODULE_STYLES[parentKey]?.label || parentKey} module ${isActive ? 'disabled' : 'enabled'}`);
+      load();
+    } catch {
+      toast('error', 'Failed to update modules');
+    } finally {
+      setTogglingModule(null);
     }
   };
 
@@ -565,10 +595,6 @@ export default function ClientDetail() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => setShowModules(true)}
-              className="px-3 py-2 text-sm border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition font-medium">
-              Manage Modules
-            </button>
             <button onClick={() => setShowReset(true)}
               className="px-3 py-2 text-sm border border-amber-200 rounded-xl text-amber-600 hover:bg-amber-50 transition font-medium">
               Reset Password
@@ -605,22 +631,43 @@ export default function ClientDetail() {
         {/* Modules + Info */}
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Package size={13} className="text-purple-600" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Package size={13} className="text-purple-600" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-700">Modules</h3>
               </div>
-              <h3 className="text-sm font-bold text-slate-700">Active Modules</h3>
+              <button onClick={() => setShowModules(true)}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold transition">
+                Manage Features →
+              </button>
             </div>
             <div className="space-y-2">
-              {mods.length === 0 ? (
-                <p className="text-slate-400 text-sm">No modules enabled</p>
-              ) : mods.map(m => {
-                const s = MODULE_STYLES[m] || { bg: 'bg-slate-50', text: 'text-slate-600', label: m };
-                const price = prices[m as keyof typeof prices] ?? (['accounts', 'hr'].includes(m) ? 2999 : 2250);
+              {(['sales','inventory','accounts','hr'] as const).map(parentKey => {
+                const s = MODULE_STYLES[parentKey];
+                const isActive = mods.some(m => m === parentKey || m.startsWith(parentKey + '.'));
+                const price = prices[parentKey as keyof typeof prices] ?? (['accounts','hr'].includes(parentKey) ? 2999 : 2250);
+                const isToggling = togglingModule === parentKey;
                 return (
-                  <div key={m} className={`flex items-center justify-between px-3 py-2 rounded-xl ${s.bg}`}>
-                    <span className={`text-sm font-medium ${s.text}`}>{s.label}</span>
-                    <span className={`text-xs font-semibold ${s.text}`}>Rs. {price.toLocaleString()}</span>
+                  <div key={parentKey} className={`flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all ${isActive ? s.bg + ' border-transparent' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${isActive ? s.text : 'text-slate-400'}`}>{s.label}</span>
+                      {isActive && <span className={`text-xs ${s.text} opacity-70`}>Rs. {price.toLocaleString()}/mo</span>}
+                    </div>
+                    <button
+                      onClick={() => toggleModule(parentKey, mods)}
+                      disabled={!!togglingModule}
+                      className={`relative w-10 h-5 rounded-full transition-all focus:outline-none disabled:opacity-50 ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    >
+                      {isToggling ? (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        </span>
+                      ) : (
+                        <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${isActive ? 'left-5' : 'left-0.5'}`} />
+                      )}
+                    </button>
                   </div>
                 );
               })}

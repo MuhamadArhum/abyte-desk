@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, UserX, TrendingUp, Building2, ChevronRight, Zap, AlertTriangle } from 'lucide-react';
+import { Users, UserCheck, UserX, TrendingUp, Building2, ChevronRight, Zap, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,15 @@ interface Tenant {
   tenant_id: number; tenant_code: string; tenant_name: string;
   company_name: string; is_active: number; modules_enabled: string | string[];
   created_at: string;
+}
+interface ExpiringTenant {
+  tenant_id: number;
+  tenant_name: string;
+  display_name: string;
+  subscription_ends_at: string;
+  subscription_status: string;
+  days_remaining: number;
+  is_active: number;
 }
 
 function SkeletonCard() {
@@ -57,6 +66,9 @@ export default function Dashboard() {
   const [recent, setRecent] = useState<Tenant[]>([]);
   const [loading, setLoading]           = useState(true);
   const [recentLoading, setRecentLoading] = useState(true);
+  const [expiring, setExpiring]         = useState<ExpiringTenant[]>([]);
+  const [expiringLoading, setExpiringLoading] = useState(false);
+  const [renewingId, setRenewingId]     = useState<number | null>(null);
 
   useEffect(() => {
     api.get('/tenants/stats')
@@ -68,7 +80,27 @@ export default function Dashboard() {
       .then(r => setRecent((r.data.data as Tenant[]).slice(0, 6)))
       .catch(() => { setRecent([]); })
       .finally(() => setRecentLoading(false));
+
+    setExpiringLoading(true);
+    api.get('/tenants/expiring')
+      .then(r => setExpiring(r.data.data || []))
+      .catch(() => setExpiring([]))
+      .finally(() => setExpiringLoading(false));
   }, []);
+
+  const renewSubscription = async (tenantId: number, _name: string) => {
+    setRenewingId(tenantId);
+    try {
+      await api.post(`/tenants/${tenantId}/renew`, { months: 1 });
+      setExpiring(prev => prev.filter(t => t.tenant_id !== tenantId));
+      // Also refresh stats
+      api.get('/tenants/stats').then(r => setStats(r.data)).catch(() => {});
+    } catch {
+      // silent
+    } finally {
+      setRenewingId(null);
+    }
+  };
 
   const activeRate = stats && stats.total > 0
     ? Math.round((stats.active / stats.total) * 100) : 0;
@@ -327,6 +359,84 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Expiring Subscriptions List */}
+      {(expiring.length > 0 || expiringLoading) && (
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
+                <AlertTriangle size={14} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-700">Expiring Subscriptions</h3>
+                <p className="text-[11px] text-slate-400">Requires attention within 30 days</p>
+              </div>
+            </div>
+            <button onClick={() => navigate('/clients')}
+              className="text-xs text-slate-500 hover:text-emerald-600 flex items-center gap-1 transition-colors font-semibold">
+              View all <ChevronRight size={13} />
+            </button>
+          </div>
+
+          {expiringLoading ? (
+            <div className="divide-y divide-slate-50">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
+                  <div className="w-9 h-9 bg-slate-100 rounded-xl flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-4 bg-slate-100 rounded w-40" />
+                    <div className="h-3 bg-slate-100 rounded w-28" />
+                  </div>
+                  <div className="h-7 bg-slate-100 rounded w-20" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {expiring.map((t) => {
+                const days = Number(t.days_remaining);
+                const isExpired = days < 0;
+                const isUrgent = days >= 0 && days <= 7;
+                const isRenewing = renewingId === t.tenant_id;
+                return (
+                  <div key={t.tenant_id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-slate-50/80 transition-colors">
+                    <div
+                      onClick={() => navigate(`/clients/${t.tenant_id}`)}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold text-white flex-shrink-0 shadow-sm cursor-pointer ${
+                        isExpired ? 'bg-gradient-to-br from-red-400 to-red-600' :
+                        isUrgent  ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
+                                    'bg-gradient-to-br from-slate-400 to-slate-500'
+                      }`}>
+                      {t.display_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/clients/${t.tenant_id}`)}>
+                      <p className="font-semibold text-slate-800 text-sm truncate">{t.display_name}</p>
+                      <p className={`text-xs font-medium ${isExpired ? 'text-red-500' : isUrgent ? 'text-amber-600' : 'text-slate-400'}`}>
+                        {isExpired
+                          ? `Expired ${Math.abs(days)} day${Math.abs(days) !== 1 ? 's' : ''} ago`
+                          : days === 0 ? 'Expires today'
+                          : `Expires in ${days} day${days !== 1 ? 's' : ''}`}
+                        {' · '}{new Date(t.subscription_ends_at).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => renewSubscription(t.tenant_id, t.display_name)}
+                      disabled={isRenewing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 flex-shrink-0 shadow-sm shadow-emerald-200"
+                    >
+                      {isRenewing
+                        ? <><span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Renewing...</>
+                        : <><RefreshCw size={11} /> Renew 1mo</>
+                      }
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
