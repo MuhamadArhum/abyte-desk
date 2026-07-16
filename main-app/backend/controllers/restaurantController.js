@@ -12,7 +12,7 @@ async function ensureTableSchema() {
         table_name VARCHAR(50) NOT NULL,
         floor VARCHAR(50) DEFAULT 'Main',
         capacity INT DEFAULT 4,
-        status ENUM('available','occupied') DEFAULT 'available',
+        status ENUM('available','occupied','needs_cleaning') DEFAULT 'available',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -73,6 +73,26 @@ exports.updateTable = async (req, res) => {
       return res.status(404).json({ message: 'Table not found' });
     }
     res.json({ message: 'Table updated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['available', 'needs_cleaning'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Use available or needs_cleaning.' });
+    }
+    const result = await query(
+      'UPDATE restaurant_tables SET status = ? WHERE table_id = ?',
+      [status, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Table not found' });
+    }
+    res.json({ message: 'Table status updated', status });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

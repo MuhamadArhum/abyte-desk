@@ -191,6 +191,7 @@ exports.createSale = async (req, res) => {
       order_type = 'on_spot',
       customer_name = null,
       customer_phone = null,
+      covers = null,
     } = req.body;
     // items = array of { product_id, quantity, unit_price, variant_id, variant_name }
 
@@ -307,8 +308,8 @@ exports.createSale = async (req, res) => {
         sub_total, total_amount, discount, bundle_discount, bundle_count, net_amount, user_id, customer_id,
         payment_method, amount_paid, status,
         tax_percent, tax_amount, additional_charges_percent, additional_charges_amount, note,
-        token_no, invoice_no, table_id, order_type, branch_id, customer_name, customer_phone
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        token_no, invoice_no, table_id, order_type, branch_id, customer_name, customer_phone, covers
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         subtotal,
         total_amount,
@@ -333,6 +334,7 @@ exports.createSale = async (req, res) => {
         branch_id,
         customer_name || null,
         customer_phone || null,
+        covers ? parseInt(covers) : null,
       ]
     );
 

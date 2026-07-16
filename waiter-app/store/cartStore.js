@@ -7,6 +7,7 @@ const useCartStore = create((set, get) => ({
   existingSaleId: null,
   customerName: '',
   customerPhone: '',
+  guestCount: 1,
 
   setTable: (tableId, tableName, existingSaleId = null) =>
     set({ tableId, tableName, existingSaleId, items: [] }),
@@ -14,6 +15,8 @@ const useCartStore = create((set, get) => ({
   setItems: (newItems) => set({ items: newItems }),
 
   setCustomerInfo: (name, phone) => set({ customerName: name, customerPhone: phone }),
+
+  setGuestCount: (n) => set({ guestCount: n }),
 
   addItem: (product) => {
     const items = get().items;
@@ -70,7 +73,10 @@ const useCartStore = create((set, get) => ({
       ),
     }),
 
-  clearCart: () => set({ items: [], tableId: null, tableName: '', existingSaleId: null, customerName: '', customerPhone: '' }),
+  removeItem: (product_id) =>
+    set({ items: get().items.filter((i) => i.product_id !== product_id) }),
+
+  clearCart: () => set({ items: [], tableId: null, tableName: '', existingSaleId: null, customerName: '', customerPhone: '', guestCount: 1 }),
 }));
 
 export default useCartStore;

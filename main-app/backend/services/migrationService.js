@@ -467,6 +467,20 @@ const MIGRATIONS = [
     },
   },
   {
+    version: 21,
+    name: 'restaurant_tables_cleaning_status',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE restaurant_tables MODIFY COLUMN status ENUM('available','occupied','needs_cleaning') DEFAULT 'available'`);
+    },
+  },
+  {
+    version: 20,
+    name: 'sales_covers_column',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE sales ADD COLUMN IF NOT EXISTS covers SMALLINT UNSIGNED NULL`);
+    },
+  },
+  {
     version: 18,
     name: 'performance_indexes',
     async run(db) {

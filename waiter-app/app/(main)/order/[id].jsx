@@ -54,11 +54,13 @@ export default function OrderScreen() {
   const [note, setNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [openNoteId, setOpenNoteId] = useState(null);
+  const [kotModalData, setKotModalData] = useState(null);
 
   const {
-    items, addItem, incrementItem, decrementItem,
+    items, addItem, incrementItem, decrementItem, removeItem,
     setItems, clearCart, existingSaleId,
     updateItemNote, customerName, customerPhone, setCustomerInfo,
+    guestCount, setGuestCount,
   } = useCartStore();
   const { showToast } = useToastStore();
   const { show: showConfirm } = useConfirmStore();
@@ -213,8 +215,7 @@ export default function OrderScreen() {
         });
 
         showToast('Order has been updated successfully.', 'success');
-        clearCart();
-        router.back();
+        setKotModalData(buildKOTData(saleInfo?.token_no));
       } else {
         const res = await api.post('/sales', {
           items: items.map((i) => ({
@@ -234,12 +235,12 @@ export default function OrderScreen() {
           note: note.trim() || null,
           customer_name: NEEDS_CUSTOMER_INFO.includes(orderType) && customerName.trim() ? customerName.trim() : null,
           customer_phone: NEEDS_CUSTOMER_INFO.includes(orderType) && customerPhone.trim() ? customerPhone.trim() : null,
+          covers: orderType === 'dine_in' ? (guestCount || 1) : null,
         });
 
         const token = res.data?.token_no || res.data?.sale?.token_no;
         showToast(`Order sent! Token: ${token || '—'}`, 'success');
-        clearCart();
-        router.back();
+        setKotModalData(buildKOTData(token));
       }
     } catch (err) {
       // Network error (no response) — save to offline queue
@@ -262,6 +263,7 @@ export default function OrderScreen() {
           note: note.trim() || null,
           customer_name: NEEDS_CUSTOMER_INFO.includes(orderType) && customerName.trim() ? customerName.trim() : null,
           customer_phone: NEEDS_CUSTOMER_INFO.includes(orderType) && customerPhone.trim() ? customerPhone.trim() : null,
+          covers: orderType === 'dine_in' ? (guestCount || 1) : null,
         };
         await addToQueue({ payload, tableName, orderType });
         showToast(`No internet. Order saved — will sync when online.`, 'warning');
@@ -319,6 +321,45 @@ export default function OrderScreen() {
     };
   };
 
+  const buildKOTData = (token) => {
+    const s = settings || {};
+    return {
+      docType:   'kot',
+      tokenNo:   token || saleInfo?.token_no || '—',
+      tableNo:   tableName,
+      orderType: ORDER_TYPE_LABEL[orderType] || orderType,
+      date:      new Date().toLocaleString('en-PK'),
+      storeName: s.store_name || 'Restaurant',
+      items: items.map((i) => ({ name: i.product_name, quantity: i.quantity, note: i.note || undefined })),
+    };
+  };
+
+  const handleKOTPrint = async (data) => {
+    try {
+      await api.post('/settings/print-queue', {
+        type: 'kot',
+        receiptData: {
+          storeName:  data.storeName,
+          tokenNo:    data.tokenNo,
+          tableName:  data.tableNo || '',
+          orderType:  data.orderType || '',
+          date:       data.date,
+          items:      data.items.map((i) => ({ name: i.name, quantity: i.quantity, note: i.note || '' })),
+        },
+      });
+      haptic();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err?.response?.data?.message || 'Could not reach printer' };
+    }
+  };
+
+  const handleKOTClose = () => {
+    setKotModalData(null);
+    clearCart();
+    router.back();
+  };
+
   const handlePrintFromModal = async (data) => {
     try {
       await api.post('/settings/print-queue', {
@@ -367,6 +408,7 @@ export default function OrderScreen() {
   }
 
   const showCustomerInfo = NEEDS_CUSTOMER_INFO.includes(orderType) && !isEditMode;
+  const showGuestCount   = orderType === 'dine_in' && !isEditMode;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -410,7 +452,7 @@ export default function OrderScreen() {
         <View style={styles.editBar}>
           <Ionicons name="create-outline" size={14} color={C.amber} />
           <Text style={styles.editBarText}>
-            You can add items to this order — reducing or deleting is not allowed
+            Editing order — tap + or − to adjust quantities, or trash to remove items
           </Text>
         </View>
       )}
@@ -489,6 +531,11 @@ export default function OrderScreen() {
                   <Ionicons name="checkmark" size={10} color="#FFFFFF" />
                 </View>
               )}
+              {inCart?.note ? (
+                <View style={styles.prodNoteDot}>
+                  <Ionicons name="chatbubble" size={7} color="#FFFFFF" />
+                </View>
+              ) : null}
               <Text style={[styles.prodName, inCart && styles.prodNameActive]} numberOfLines={2}>
                 {item.product_name}
               </Text>
@@ -497,15 +544,13 @@ export default function OrderScreen() {
               </Text>
               {inCart ? (
                 <View style={styles.qtyRow}>
-                  {!isEditMode && (
-                    <TouchableOpacity
-                      style={styles.qtyBtn}
-                      onPress={() => { haptic(); decrementItem(item.product_id); }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons name="remove" size={15} color={C.primary} />
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    style={styles.qtyBtn}
+                    onPress={() => { haptic(); decrementItem(item.product_id); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="remove" size={15} color={C.primary} />
+                  </TouchableOpacity>
                   <Text style={styles.qtyNum}>{inCart.quantity}</Text>
                   <TouchableOpacity
                     style={styles.qtyBtn}
@@ -675,18 +720,57 @@ export default function OrderScreen() {
                   </View>
                 )}
 
+                {/* Guest count (dine-in only) */}
+                {showGuestCount && (
+                  <View style={styles.customerSection}>
+                    <View style={styles.customerSectionHeader}>
+                      <Ionicons name="people-outline" size={16} color={C.t2} />
+                      <Text style={styles.customerSectionTitle}>Covers / Guests</Text>
+                    </View>
+                    <View style={styles.guestCountRow}>
+                      <TouchableOpacity
+                        style={styles.guestBtn}
+                        onPress={() => setGuestCount(Math.max(1, guestCount - 1))}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="remove" size={16} color={C.primary} />
+                      </TouchableOpacity>
+                      <View style={styles.guestCountBox}>
+                        <Text style={styles.guestCountNum}>{guestCount}</Text>
+                        <Text style={styles.guestCountLabel}>guest{guestCount !== 1 ? 's' : ''}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.guestBtn}
+                        onPress={() => setGuestCount(guestCount + 1)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="add" size={16} color={C.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
                 {/* Cart items */}
                 {items.map((item) => (
                   <View key={item.product_id} style={styles.cartItemWrap}>
                     <View style={styles.cartItem}>
+                      <TouchableOpacity
+                        style={styles.cartTrashBtn}
+                        onPress={() => showConfirm(
+                          `Remove "${item.product_name}"?`,
+                          'This item will be removed from your cart.',
+                          () => { haptic(); removeItem(item.product_id); }
+                        )}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="trash-outline" size={14} color={C.red} />
+                      </TouchableOpacity>
                       <Text style={styles.cartItemName} numberOfLines={2}>{item.product_name}</Text>
                       <View style={styles.cartItemRight}>
                         <View style={styles.qtyRow}>
-                          {!isEditMode && (
-                            <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
-                              <Ionicons name="remove" size={15} color={C.primary} />
-                            </TouchableOpacity>
-                          )}
+                          <TouchableOpacity style={styles.qtyBtn} onPress={() => decrementItem(item.product_id)}>
+                            <Ionicons name="remove" size={15} color={C.primary} />
+                          </TouchableOpacity>
                           <Text style={styles.qtyNum}>{item.quantity}</Text>
                           <TouchableOpacity style={styles.qtyBtn} onPress={() => incrementItem(item.product_id)}>
                             <Ionicons name="add" size={15} color={C.primary} />
@@ -803,6 +887,15 @@ export default function OrderScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* KOT Modal — shown after order sent/updated */}
+      {kotModalData && (
+        <ReceiptModal
+          data={kotModalData}
+          onClose={handleKOTClose}
+          onPrint={handleKOTPrint}
+        />
+      )}
     </View>
   );
 }
@@ -879,6 +972,11 @@ const styles = StyleSheet.create({
     width: 18, height: 18, borderRadius: 9,
     backgroundColor: C.primary,
     alignItems: 'center', justifyContent: 'center',
+  },
+  prodNoteDot: {
+    position: 'absolute', top: 8, left: 8,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: C.amber, alignItems: 'center', justifyContent: 'center',
   },
   prodName: {
     fontSize: 13, fontWeight: '700', color: C.t1,
@@ -962,6 +1060,19 @@ const styles = StyleSheet.create({
   customerFieldIcon: { paddingHorizontal: 10 },
   customerFieldInput: { flex: 1, fontSize: 13, color: C.t1, height: 40 },
 
+  // Guest count
+  guestCountRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16,
+  },
+  guestBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: C.primaryLt, borderWidth: 1.5, borderColor: C.primaryBd,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  guestCountBox: { alignItems: 'center' },
+  guestCountNum: { fontSize: 28, fontWeight: '800', color: C.t1, letterSpacing: -1 },
+  guestCountLabel: { fontSize: 11, color: C.t3, fontWeight: '500', marginTop: -2 },
+
   // Cart items
   cartItemWrap: {
     borderBottomWidth: 1, borderBottomColor: C.borderLt,
@@ -969,6 +1080,12 @@ const styles = StyleSheet.create({
   cartItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 13, paddingHorizontal: 20, gap: 12,
+  },
+  cartTrashBtn: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#FCA5A5',
+    flexShrink: 0,
   },
   cartItemName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.t1, lineHeight: 20 },
   cartItemRight: { alignItems: 'flex-end', gap: 6 },

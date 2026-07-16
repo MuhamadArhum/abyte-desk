@@ -104,6 +104,17 @@ export default function TabsLayout() {
             ),
           }}
         />
+        <Tabs.Screen
+          name="report"
+          options={{
+            title: 'My Report',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
+                <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={24} color={color} />
+              </View>
+            ),
+          }}
+        />
       </Tabs>
 
       <Sidebar visible={sidebarOpen} onClose={() => setSidebarOpen(false)} />

@@ -107,16 +107,16 @@ const sk = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function OccupancyScreen() {
-  const [tables, setTables]       = useState([]);
-  const [orderMap, setOrderMap]   = useState({}); // table_id → pending sale
-  const [loading, setLoading]     = useState(true);
+  const [tables, setTables]         = useState([]);
+  const [orderMap, setOrderMap]     = useState({});
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFloor, setActiveFloor] = useState('All');
-  const [viewMode, setViewMode]   = useState('card'); // 'card' | 'list'
-  const [tick, setTick]           = useState(0); // force elapsed re-render every minute
-  const { setTable }              = useCartStore();
+  const [viewMode, setViewMode]     = useState('card');
+  const [tick, setTick]             = useState(0);
+  const [updatingId, setUpdatingId] = useState(null);
+  const { setTable }                = useCartStore();
 
-  // Re-render elapsed times every 60s
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60000);
     return () => clearInterval(id);
@@ -128,18 +128,13 @@ export default function OccupancyScreen() {
         api.get('/restaurant/tables'),
         api.get('/sales/pending'),
       ]);
-
-      const allTables  = tablesRes.status  === 'fulfilled' ? (tablesRes.value.data  || []) : [];
+      const allTables    = tablesRes.status === 'fulfilled' ? (tablesRes.value.data || []) : [];
       const pendingSales = pendingRes.status === 'fulfilled'
-        ? (pendingRes.value.data?.data || pendingRes.value.data || [])
-        : [];
-
-      // Build table_id → sale map
+        ? (pendingRes.value.data?.data || pendingRes.value.data || []) : [];
       const map = {};
       (Array.isArray(pendingSales) ? pendingSales : []).forEach((sale) => {
         if (sale.table_id) map[sale.table_id] = sale;
       });
-
       setTables(Array.isArray(allTables) ? allTables : []);
       setOrderMap(map);
     } catch (err) {
@@ -150,7 +145,6 @@ export default function OccupancyScreen() {
     }
   }, []);
 
-  // Auto-refresh every 30s while focused
   useFocusEffect(useCallback(() => {
     setLoading(true);
     load();
@@ -158,15 +152,25 @@ export default function OccupancyScreen() {
     return () => clearInterval(interval);
   }, [load]));
 
-  // Floors list
+  const updateTableStatus = async (tableId, status) => {
+    haptic();
+    setUpdatingId(tableId);
+    try {
+      await api.patch(`/restaurant/tables/${tableId}/status`, { status });
+      setTables((prev) => prev.map((t) => t.table_id === tableId ? { ...t, status } : t));
+    } catch {
+      // silently ignore — next auto-refresh will correct state
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const floors = ['All', ...Array.from(new Set(tables.map((t) => t.floor || 'Main').filter(Boolean))).sort()];
+  const visibleTables = activeFloor === 'All' ? tables : tables.filter((t) => (t.floor || 'Main') === activeFloor);
 
-  const visibleTables = activeFloor === 'All'
-    ? tables
-    : tables.filter((t) => (t.floor || 'Main') === activeFloor);
-
-  const freeCount     = tables.filter((t) => !orderMap[t.table_id] && Number(t.has_pending_order) === 0).length;
-  const occupiedCount = tables.length - freeCount;
+  const freeCount     = tables.filter((t) => !orderMap[t.table_id] && Number(t.has_pending_order) === 0 && t.status !== 'needs_cleaning').length;
+  const occupiedCount = tables.filter((t) => !!orderMap[t.table_id] || Number(t.has_pending_order) > 0).length;
+  const cleaningCount = tables.filter((t) => t.status === 'needs_cleaning' && !orderMap[t.table_id] && Number(t.has_pending_order) === 0).length;
 
   const handleFreePress = (table) => {
     haptic();
@@ -178,6 +182,14 @@ export default function OccupancyScreen() {
     haptic();
     setTable(table.table_id, table.table_name, sale.sale_id);
     router.push(`/(main)/order/${table.table_id}?saleId=${sale.sale_id}&name=${encodeURIComponent(table.table_name)}`);
+  };
+
+  const getTableState = (table) => {
+    const sale     = orderMap[table.table_id];
+    const occupied = !!sale || Number(table.has_pending_order) > 0;
+    const cleaning = !occupied && table.status === 'needs_cleaning';
+    const free     = !occupied && !cleaning;
+    return { sale, occupied, cleaning, free };
   };
 
   if (loading) return <OccupancySkeleton viewMode={viewMode} />;
@@ -193,8 +205,14 @@ export default function OccupancyScreen() {
           </View>
           <View style={[styles.summaryChip, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
             <View style={[styles.summaryDot, { backgroundColor: C.red }]} />
-            <Text style={[styles.summaryChipText, { color: C.red }]}>{occupiedCount} Occupied</Text>
+            <Text style={[styles.summaryChipText, { color: C.red }]}>{occupiedCount} Busy</Text>
           </View>
+          {cleaningCount > 0 && (
+            <View style={[styles.summaryChip, { backgroundColor: C.purpleBg, borderColor: C.purpleBd }]}>
+              <View style={[styles.summaryDot, { backgroundColor: C.purple }]} />
+              <Text style={[styles.summaryChipText, { color: C.purple }]}>{cleaningCount} Cleaning</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.summaryRight}>
@@ -269,9 +287,35 @@ export default function OccupancyScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[C.primary]} />}
           extraData={tick}
           renderItem={({ item: table }) => {
-            const sale     = orderMap[table.table_id];
-            const occupied = !!sale || Number(table.has_pending_order) > 0;
-            if (!occupied) {
+            const { sale, occupied, cleaning, free } = getTableState(table);
+            const isUpdating = updatingId === table.table_id;
+
+            if (cleaning) {
+              return (
+                <View style={[styles.card, styles.cardCleaning]}>
+                  <View style={[styles.statusDot, { backgroundColor: C.purple, borderColor: C.purpleBg }]} />
+                  <View style={[styles.cardIconWrapOccupied, { backgroundColor: C.purpleBg }]}>
+                    <Ionicons name="brush-outline" size={22} color={C.purple} />
+                  </View>
+                  <Text style={[styles.tableName, { color: C.purple }]}>{table.table_name}</Text>
+                  <View style={[styles.elapsedBadge, { backgroundColor: C.purpleBg, borderColor: C.purpleBd }]}>
+                    <Ionicons name="brush" size={11} color={C.purple} />
+                    <Text style={[styles.elapsedText, { color: C.purple }]}>Needs Cleaning</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.cleanBtn, isUpdating && { opacity: 0.5 }]}
+                    onPress={() => updateTableStatus(table.table_id, 'available')}
+                    disabled={isUpdating}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={13} color={C.primary} />
+                    <Text style={styles.cleanBtnText}>Mark Clean</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+
+            if (free) {
               return (
                 <TouchableOpacity style={[styles.card, styles.cardFree]} onPress={() => handleFreePress(table)} activeOpacity={0.8}>
                   <View style={[styles.statusDot, { backgroundColor: '#4ADE80', borderColor: C.card }]} />
@@ -297,7 +341,8 @@ export default function OccupancyScreen() {
                 </TouchableOpacity>
               );
             }
-            const mins = sale ? getElapsedMins(sale.sale_date) : 0;
+
+            const mins    = sale ? getElapsedMins(sale.sale_date) : 0;
             const urgency = getUrgencyColor(mins);
             const elapsed = sale ? getElapsed(sale.sale_date) : '—';
             const amount  = sale ? parseFloat(sale.total_amount || 0).toFixed(0) : '—';
@@ -321,6 +366,15 @@ export default function OccupancyScreen() {
                       <Ionicons name="create-outline" size={13} color={C.blue} />
                       <Text style={[styles.actionBtnText, { color: C.blue }]}>Edit</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: C.purpleBg, borderColor: C.purpleBd }, isUpdating && { opacity: 0.5 }]}
+                      onPress={() => updateTableStatus(table.table_id, 'needs_cleaning')}
+                      disabled={isUpdating}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="brush-outline" size={13} color={C.purple} />
+                      <Text style={[styles.actionBtnText, { color: C.purple }]}>Dirty</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </TouchableOpacity>
@@ -339,44 +393,76 @@ export default function OccupancyScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[C.primary]} />}
           extraData={tick}
           renderItem={({ item: table }) => {
-            const sale     = orderMap[table.table_id];
-            const occupied = !!sale || Number(table.has_pending_order) > 0;
+            const { sale, occupied, cleaning, free } = getTableState(table);
             const mins     = sale ? getElapsedMins(sale.sale_date) : 0;
             const urgency  = occupied ? getUrgencyColor(mins) : null;
             const elapsed  = sale ? getElapsed(sale.sale_date) : null;
             const amount   = sale ? parseFloat(sale.total_amount || 0).toFixed(0) : null;
+            const isUpdating = updatingId === table.table_id;
+
+            const barColor  = cleaning ? C.purple : occupied ? urgency.dot : '#4ADE80';
+            const iconBg    = cleaning ? C.purpleBg : occupied ? urgency.color + '18' : C.primaryLt;
+            const iconColor = cleaning ? C.purple : occupied ? urgency.color : C.primary;
+            const iconName  = cleaning ? 'brush-outline' : 'restaurant';
 
             return (
               <TouchableOpacity
-                style={[styles.listItem, occupied && { borderColor: urgency.border, backgroundColor: urgency.bg }]}
-                onPress={() => occupied && sale ? handleOccupiedPress(table, sale) : handleFreePress(table)}
-                activeOpacity={0.8}
+                style={[
+                  styles.listItem,
+                  occupied && { borderColor: urgency.border, backgroundColor: urgency.bg },
+                  cleaning && { borderColor: C.purpleBd, backgroundColor: C.purpleBg },
+                ]}
+                onPress={() => {
+                  if (cleaning) return;
+                  occupied && sale ? handleOccupiedPress(table, sale) : handleFreePress(table);
+                }}
+                activeOpacity={cleaning ? 1 : 0.8}
               >
-                {/* Status indicator */}
-                <View style={[styles.listStatusBar, { backgroundColor: occupied ? urgency.dot : '#4ADE80' }]} />
-
-                {/* Icon */}
-                <View style={[styles.listIcon, { backgroundColor: occupied ? urgency.color + '18' : C.primaryLt }]}>
-                  <Ionicons name="restaurant" size={20} color={occupied ? urgency.color : C.primary} />
+                <View style={[styles.listStatusBar, { backgroundColor: barColor }]} />
+                <View style={[styles.listIcon, { backgroundColor: iconBg }]}>
+                  <Ionicons name={iconName} size={20} color={iconColor} />
                 </View>
-
-                {/* Info */}
                 <View style={styles.listInfo}>
-                  <Text style={[styles.listName, occupied && { color: urgency.color }]}>{table.table_name}</Text>
+                  <Text style={[styles.listName, (occupied || cleaning) && { color: cleaning ? C.purple : urgency.color }]}>
+                    {table.table_name}
+                  </Text>
                   <View style={styles.listMeta}>
                     {table.floor ? <><Ionicons name="layers-outline" size={11} color={C.t3} /><Text style={styles.listMetaText}>{table.floor}</Text></> : null}
-                    {table.capacity ? <><View style={styles.metaDot} /><Ionicons name="people-outline" size={11} color={C.t3} /><Text style={styles.listMetaText}>{table.capacity} seats</Text></> : null}
+                    {table.capacity ? <><View style={styles.metaDot} /><Ionicons name="people-outline" size={11} color={C.t3} /><Text style={styles.listMetaText}>{table.capacity}</Text></> : null}
                     {occupied && elapsed ? <><View style={styles.metaDot} /><Ionicons name="time-outline" size={11} color={urgency.color} /><Text style={[styles.listMetaText, { color: urgency.color, fontWeight: '700' }]}>{elapsed}</Text></> : null}
                   </View>
                 </View>
-
-                {/* Right: status + amount */}
                 <View style={styles.listRight}>
-                  {occupied ? (
+                  {cleaning ? (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.listCleanBtn, isUpdating && { opacity: 0.5 }]}
+                        onPress={() => updateTableStatus(table.table_id, 'available')}
+                        disabled={isUpdating}
+                      >
+                        <Ionicons name="checkmark-circle" size={14} color={C.primary} />
+                        <Text style={styles.listCleanBtnText}>Clean</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.listDirtyBtn}
+                        onPress={() => updateTableStatus(table.table_id, 'needs_cleaning')}
+                        disabled
+                      >
+                        <Text style={[styles.listBadgeText, { color: C.purple }]}>Cleaning</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : occupied ? (
                     <>
                       {amount && <Text style={[styles.listAmt, { color: urgency.color }]}>PKR {amount}</Text>}
+                      <TouchableOpacity
+                        style={[styles.listDirtyBtn, { backgroundColor: C.purpleBg, borderColor: C.purpleBd }, isUpdating && { opacity: 0.5 }]}
+                        onPress={() => updateTableStatus(table.table_id, 'needs_cleaning')}
+                        disabled={isUpdating}
+                      >
+                        <Ionicons name="brush-outline" size={12} color={C.purple} />
+                      </TouchableOpacity>
                       <View style={[styles.listBadge, { backgroundColor: urgency.color + '18', borderColor: urgency.border }]}>
-                        <Text style={[styles.listBadgeText, { color: urgency.color }]}>Occupied</Text>
+                        <Text style={[styles.listBadgeText, { color: urgency.color }]}>Busy</Text>
                       </View>
                     </>
                   ) : (
@@ -384,7 +470,7 @@ export default function OccupancyScreen() {
                       <Text style={styles.listBadgeText}>Free</Text>
                     </View>
                   )}
-                  <Ionicons name="chevron-forward" size={16} color={occupied ? urgency.color : C.t3} />
+                  {!cleaning && <Ionicons name="chevron-forward" size={16} color={occupied ? urgency.color : C.t3} />}
                 </View>
               </TouchableOpacity>
             );
@@ -472,6 +558,17 @@ const styles = StyleSheet.create({
   cardFree: {
     backgroundColor: C.card, borderColor: C.border,
   },
+
+  // Cleaning card
+  cardCleaning: {
+    backgroundColor: C.purpleBg, borderColor: C.purpleBd,
+  },
+  cleanBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: C.primaryLt, paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 10, borderWidth: 1, borderColor: C.primaryBd, marginTop: 6,
+  },
+  cleanBtnText: { fontSize: 12, fontWeight: '700', color: C.primary },
   cardIconWrap: {
     width: 56, height: 56, borderRadius: 18,
     backgroundColor: C.primaryLt,
@@ -561,4 +658,15 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, borderColor: C.primaryBd,
   },
   listBadgeText: { fontSize: 10, fontWeight: '700', color: C.primary },
+  listCleanBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: C.primaryLt, paddingHorizontal: 8, paddingVertical: 5,
+    borderRadius: 10, borderWidth: 1, borderColor: C.primaryBd,
+  },
+  listCleanBtnText: { fontSize: 11, fontWeight: '700', color: C.primary },
+  listDirtyBtn: {
+    width: 30, height: 30, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
 });

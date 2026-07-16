@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, ScrollView,
-  Dimensions, Vibration, Animated,
+  Dimensions, Vibration, Animated, TextInput,
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,6 +105,7 @@ export default function RunningScreen() {
   const [billLoading, setBillLoading] = useState(false);
   const [billStep, setBillStep] = useState('payment');
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [billDiscount, setBillDiscount] = useState('');
   const [receiptModalData, setReceiptModalData] = useState(null);
 
   // Table swap state
@@ -196,9 +197,10 @@ export default function RunningScreen() {
     setBillData(null);
     setSelectedPayment(null);
     setBillStep('payment');
+    setBillDiscount('');
   };
 
-  const buildReceiptData = (bd, payMethod) => {
+  const buildReceiptData = (bd, payMethod, discountOverride = 0) => {
     const s    = bd.settings || {};
     const sale = bd.sale || {};
     const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
@@ -213,10 +215,11 @@ export default function RunningScreen() {
       return parseFloat(s.tax_on_cash || s.tax_rate || 0);
     })();
 
-    const sub    = bd.subtotal || 0;
-    const taxAmt = round2(sub * taxPct / 100);
-    const addAmt = bd.addAmt || 0;
-    const total  = round2(sub + taxAmt + addAmt);
+    const sub        = bd.subtotal || 0;
+    const taxAmt     = round2(sub * taxPct / 100);
+    const addAmt     = bd.addAmt || 0;
+    const discountAmt = discountOverride > 0 ? discountOverride : parseFloat(sale.discount || 0);
+    const total      = round2(Math.max(0, sub + taxAmt + addAmt - discountAmt));
 
     return {
       docType:        'sale',
@@ -240,7 +243,7 @@ export default function RunningScreen() {
         note:     i.note,
       })),
       subtotal:      sub,
-      discount:      parseFloat(sale.discount || 0) || undefined,
+      discount:      discountAmt || undefined,
       taxAmount:     taxAmt || undefined,
       taxPercent:    taxPct || undefined,
       chargesAmount: addAmt || undefined,
@@ -457,11 +460,37 @@ export default function RunningScreen() {
             {billStep === 'payment' && (
               <View style={styles.payStepWrap}>
                 <View style={styles.sheetHeaderRow}>
-                  <Text style={styles.sheetTitle}>Select Payment Type</Text>
+                  <Text style={styles.sheetTitle}>Bill</Text>
                   <TouchableOpacity onPress={closeBill} style={styles.closeBtn}>
                     <Ionicons name="close" size={20} color="#6B7280" />
                   </TouchableOpacity>
                 </View>
+
+                {/* Discount input */}
+                <View style={styles.discountWrap}>
+                  <View style={styles.discountLabelRow}>
+                    <Ionicons name="pricetag-outline" size={14} color={C.t3} />
+                    <Text style={styles.discountLabel}>Discount (optional)</Text>
+                  </View>
+                  <View style={styles.discountInputRow}>
+                    <Text style={styles.discountCurrency}>PKR</Text>
+                    <TextInput
+                      style={styles.discountInput}
+                      value={billDiscount}
+                      onChangeText={(v) => setBillDiscount(v.replace(/[^0-9.]/g, ''))}
+                      placeholder="0"
+                      placeholderTextColor={C.t3}
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                    />
+                    {billDiscount.length > 0 && (
+                      <TouchableOpacity onPress={() => setBillDiscount('')} style={styles.discountClear}>
+                        <Ionicons name="close-circle" size={16} color={C.t3} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+
                 <Text style={styles.payStepSub}>
                   How will the customer pay? This will appear on the bill.
                 </Text>
@@ -473,7 +502,8 @@ export default function RunningScreen() {
                       onPress={() => {
                         haptic();
                         setSelectedPayment(pm.value);
-                        const rd = buildReceiptData(billData, pm.value);
+                        const discAmt = parseFloat(billDiscount) || 0;
+                        const rd = buildReceiptData(billData, pm.value, discAmt);
                         closeBill();
                         setReceiptModalData(rd);
                       }}
@@ -699,6 +729,24 @@ const styles = StyleSheet.create({
 
   printingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 16 },
   printingText: { fontSize: 15, fontWeight: '600', color: C.t2 },
+  // Discount input
+  discountWrap: {
+    marginHorizontal: 16, marginTop: 14, marginBottom: 4,
+    backgroundColor: C.surface, borderRadius: 14,
+    borderWidth: 1.5, borderColor: C.border, padding: 12,
+  },
+  discountLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  discountLabel: { fontSize: 12, fontWeight: '700', color: C.t2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  discountInputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderRadius: 10,
+    borderWidth: 1.5, borderColor: C.primaryBd, height: 44,
+    paddingHorizontal: 12,
+  },
+  discountCurrency: { fontSize: 14, fontWeight: '700', color: C.t2, marginRight: 6 },
+  discountInput: { flex: 1, fontSize: 18, fontWeight: '700', color: C.t1 },
+  discountClear: { padding: 4 },
+
   payStepWrap: { paddingBottom: 28 },
   payStepSub: { fontSize: 13, color: C.t2, textAlign: 'center', paddingHorizontal: 20, marginTop: 12, marginBottom: 20, lineHeight: 20 },
   payGrid: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
