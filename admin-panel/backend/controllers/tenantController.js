@@ -362,7 +362,7 @@ exports.getStats = async (req, res) => {
     const [{ total }]  = await query('SELECT COUNT(*) as total FROM tenants');
     const [{ active }] = await query('SELECT COUNT(*) as active FROM tenants WHERE is_active = 1');
 
-    const tenants = await query('SELECT db_name, modules_enabled FROM tenants t JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id WHERE t.is_active = 1');
+    const tenants = await query('SELECT db_name, tc.modules_enabled FROM tenants t LEFT JOIN tenant_configs tc ON tc.tenant_id = t.tenant_id WHERE t.is_active = 1');
     const prices = await getModulePrices();
 
     let monthlyRevenue = 0;
