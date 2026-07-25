@@ -35,7 +35,7 @@ const https    = require('https');
 
 const app     = express();
 const PORT    = process.env.PORT || 3001;
-const VERSION = '3.0.0';
+const VERSION = '3.1.0';
 
 // ── Config path — works both as Node script AND as pkg EXE ────
 // When running as EXE, __dirname is inside the bundle (read-only).
@@ -43,7 +43,6 @@ const VERSION = '3.0.0';
 const isPkg     = typeof process.pkg !== 'undefined';
 const BASE_DIR  = isPkg ? path.dirname(process.execPath) : __dirname;
 const CONFIG_FILE = path.join(BASE_DIR, 'config.json');
-const LOG_FILE    = path.join(BASE_DIR, 'agent.log');
 
 const DEFAULT_CONFIG = { printers: [], server_url: '', tenant_code: '', agent_token: '' };
 
@@ -1156,6 +1155,7 @@ app.post('/server-config', (req, res) => {
   config.tenant_code = (tenant_code || '').trim();
   config.agent_token = (agent_token || '').trim();
   saveConfig();
+  startPolling();
   res.json({ success: true });
 });
 
@@ -1328,7 +1328,7 @@ async function pollBackend() {
           ? { kotData:     job.payload.kotData }
           : { receiptData: job.payload.receiptData };
         const pr = await backendRequest(`http://localhost:${PORT}${endpoint}`, { method: 'POST' }, body);
-        if (pr.status === 200) status = 'done';
+        if (pr.status === 200 || pr.status === 207) status = 'done';
         else errMsg = (pr.data && pr.data.error) || `Agent error ${pr.status}`;
       } catch (e) { errMsg = e.message; }
 
@@ -1342,6 +1342,15 @@ async function pollBackend() {
     }
   } catch { /* network unavailable — skip silently */ }
   finally { _polling = false; }
+}
+
+// ── Polling lifecycle ─────────────────────────────────────────
+let _pollTimer = null;
+function startPolling() {
+  if (_pollTimer) return;
+  if (!config.server_url || !config.tenant_code || !config.agent_token) return;
+  _pollTimer = setInterval(pollBackend, 3000);
+  console.log(`[poll] Started — ${config.server_url}`);
 }
 
 // ── Start ─────────────────────────────────────────────────────
@@ -1359,13 +1368,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`    [${p.type.toUpperCase()}] ${p.name} → ${t}`);
   });
   console.log(`========================================\n`);
-  if (config.server_url && config.tenant_code && config.agent_token) {
-    console.log(`  Server  : ${config.server_url}`);
-    console.log(`  Tenant  : ${config.tenant_code}`);
-    console.log(`  Polling : every 3s`);
-    console.log(`========================================\n`);
-  }
-  setInterval(pollBackend, 3000);
+  startPolling();
 });
 
 server.on('error', (err) => {
@@ -1378,3 +1381,11 @@ server.on('error', (err) => {
   }
   process.exit(1);
 });
+
+function shutdown() {
+  console.log('\n[agent] Shutting down…');
+  if (_pollTimer) clearInterval(_pollTimer);
+  server.close(() => process.exit(0));
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT',  shutdown);
