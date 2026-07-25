@@ -203,7 +203,8 @@ export default function RunningScreen() {
   const buildReceiptData = (bd, payMethod, discountOverride = 0) => {
     const s    = bd.settings || {};
     const sale = bd.sale || {};
-    const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+    const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
 
     const taxPct = (() => {
       if (s.pos_mode === 'category' && s.pos_tax_config) {

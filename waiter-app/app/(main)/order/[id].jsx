@@ -280,7 +280,8 @@ export default function OrderScreen() {
 
   const buildOrderReceiptData = (payMethod) => {
     const s = settings || {};
-    const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+    const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
     const taxPct = (() => {
       if (s.pos_mode === 'category' && s.pos_tax_config) {
         const cat = s.pos_tax_config[getCatKey(orderType)] || {};
@@ -756,11 +757,11 @@ export default function OrderScreen() {
                     <View style={styles.cartItem}>
                       <TouchableOpacity
                         style={styles.cartTrashBtn}
-                        onPress={() => showConfirm(
-                          `Remove "${item.product_name}"?`,
-                          'This item will be removed from your cart.',
-                          () => { haptic(); removeItem(item.product_id); }
-                        )}
+                        onPress={() => showConfirm({
+                          title: `Remove "${item.product_name}"?`,
+                          message: 'This item will be removed from your cart.',
+                          onConfirm: () => { haptic(); removeItem(item.product_id); },
+                        })}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                       >
                         <Ionicons name="trash-outline" size={14} color={C.red} />

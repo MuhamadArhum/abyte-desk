@@ -38,7 +38,8 @@ function isThisWeek(d) {
 
 function buildReceiptData(sale, settings) {
   const s = settings || {};
-  const logoUrl = s.receipt_logo ? `https://erp.abytesol.com${s.receipt_logo}` : undefined;
+  const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+  const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
   const items = (sale.items || []).map((i) => ({
     name:     i.product_name || 'Item',
     quantity: i.quantity,
