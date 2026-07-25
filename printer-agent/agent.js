@@ -268,8 +268,8 @@ function printWindows(buf, printerName) {
   const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}_${Math.random().toString(36).slice(2)}.bin`);
   fs.writeFileSync(tmpFile, buf);
   return new Promise((resolve, reject) => {
-    // Try direct share path first, then local printer name
-    const cmd = `copy /B "${tmpFile}" "\\\\.\\${printerName}" >nul 2>&1 || copy /B "${tmpFile}" "\\\\localhost\\${printerName}" >nul 2>&1`;
+    const safeName = printerName.replace(/"/g, '');
+    const cmd = `copy /B "${tmpFile}" "\\\\.\\${safeName}" >nul 2>&1 || copy /B "${tmpFile}" "\\\\localhost\\${safeName}" >nul 2>&1`;
     exec(cmd, { shell: 'cmd.exe' }, (err) => {
       try { fs.unlinkSync(tmpFile); } catch {}
       if (err) reject(new Error(`Windows print failed. Check printer name: "${printerName}"`));
@@ -283,7 +283,8 @@ function printUSB(buf, comPort) {
   return new Promise((resolve, reject) => {
     const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}.bin`);
     fs.writeFileSync(tmpFile, buf);
-    exec(`copy /B "${tmpFile}" ${comPort}`, { shell: 'cmd.exe' }, (err) => {
+    const safePort = comPort.replace(/"/g, '');
+    exec(`copy /B "${tmpFile}" "${safePort}"`, { shell: 'cmd.exe' }, (err) => {
       try { fs.unlinkSync(tmpFile); } catch {}
       if (err) reject(new Error(`USB print to ${comPort} failed: ${err.message}`));
       else resolve();
@@ -1293,6 +1294,7 @@ function backendRequest(url, options = {}, body = null) {
     const req = lib.request(reqOpts, (res) => {
       let data = '';
       res.on('data', c => data += c);
+      res.on('error', reject);
       res.on('end', () => {
         try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
         catch  { resolve({ status: res.statusCode, data }); }
