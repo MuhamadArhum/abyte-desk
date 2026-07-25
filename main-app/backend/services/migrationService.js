@@ -407,6 +407,52 @@ const MIGRATIONS = [
     },
   },
   {
+    version: 18,
+    name: 'performance_indexes',
+    async run(db) {
+      const idxs = [
+        // Sales — hot paths hit on every report and POS lookup
+        ['sales',                'idx_sales_branch_date_status', '(branch_id, sale_date, status)'],
+        ['sales',                'idx_sales_branch_invoice',     '(branch_id, invoice_no)'],
+        ['sales',                'idx_sales_token_no',           '(token_no)'],
+        // Sale details — join target for every order fetch
+        ['sale_details',         'idx_sd_sale_product',          '(sale_id, product_id)'],
+        // Journal entries — accounting report queries filter by status + date
+        ['journal_entries',      'idx_je_status_date',           '(status, entry_date)'],
+        // Journal entry lines — general ledger queries filter by account + entry
+        ['journal_entry_lines',  'idx_jel_account_entry',        '(account_id, entry_id)'],
+        // Payment vouchers — lookup by voucher_number and account
+        ['payment_vouchers',     'idx_pv_voucher_number',        '(voucher_number)'],
+        ['payment_vouchers',     'idx_pv_account_id',            '(account_id)'],
+        // Receipt vouchers — same pattern
+        ['receipt_vouchers',     'idx_rv_voucher_number',        '(voucher_number)'],
+        ['receipt_vouchers',     'idx_rv_account_id',            '(account_id)'],
+        // Accounts — tree traversal on parent_account_id
+        ['accounts',             'idx_accounts_parent',          '(parent_account_id)'],
+        // Credit payments — lookup by credit_sale_id
+        ['credit_payments',      'idx_cp_credit_sale',           '(credit_sale_id)'],
+        // Deliveries — join from sales
+        ['deliveries',           'idx_deliveries_sale_id',       '(sale_id)'],
+        // Purchase vouchers — lookup by account
+        ['inv_purchase_vouchers','idx_ipv_account_id',           '(account_id)'],
+        // Cash movements — filtered by shift/register
+        ['cash_movements',       'idx_cm_register_created',      '(register_id, created_at)'],
+        // Return details — join from returns
+        ['return_details',       'idx_rd_return_product',        '(return_id, product_id)'],
+        // Stock issue items — join from stock issues
+        ['stock_issue_items',    'idx_sii_issue_product',        '(issue_id, product_id)'],
+      ];
+      for (const [table, idx, cols] of idxs) {
+        try {
+          await queryDb(db, `ALTER TABLE \`${table}\` ADD INDEX IF NOT EXISTS \`${idx}\` ${cols}`);
+        } catch (e) {
+          // Table may not exist in all tenant configs; skip gracefully
+          if (!e.message?.includes("doesn't exist") && !e.message?.includes('Duplicate key name')) throw e;
+        }
+      }
+    },
+  },
+  {
     version: 19,
     name: 'runtime_alter_table_cleanup',
     async run(db) {
@@ -467,13 +513,6 @@ const MIGRATIONS = [
     },
   },
   {
-    version: 21,
-    name: 'restaurant_tables_cleaning_status',
-    async run(db) {
-      await queryDb(db, `ALTER TABLE restaurant_tables MODIFY COLUMN status ENUM('available','occupied','needs_cleaning') DEFAULT 'available'`);
-    },
-  },
-  {
     version: 20,
     name: 'sales_covers_column',
     async run(db) {
@@ -481,49 +520,10 @@ const MIGRATIONS = [
     },
   },
   {
-    version: 18,
-    name: 'performance_indexes',
+    version: 21,
+    name: 'restaurant_tables_cleaning_status',
     async run(db) {
-      const idxs = [
-        // Sales — hot paths hit on every report and POS lookup
-        ['sales',                'idx_sales_branch_date_status', '(branch_id, sale_date, status)'],
-        ['sales',                'idx_sales_branch_invoice',     '(branch_id, invoice_no)'],
-        ['sales',                'idx_sales_token_no',           '(token_no)'],
-        // Sale details — join target for every order fetch
-        ['sale_details',         'idx_sd_sale_product',          '(sale_id, product_id)'],
-        // Journal entries — accounting report queries filter by status + date
-        ['journal_entries',      'idx_je_status_date',           '(status, entry_date)'],
-        // Journal entry lines — general ledger queries filter by account + entry
-        ['journal_entry_lines',  'idx_jel_account_entry',        '(account_id, entry_id)'],
-        // Payment vouchers — lookup by voucher_number and account
-        ['payment_vouchers',     'idx_pv_voucher_number',        '(voucher_number)'],
-        ['payment_vouchers',     'idx_pv_account_id',            '(account_id)'],
-        // Receipt vouchers — same pattern
-        ['receipt_vouchers',     'idx_rv_voucher_number',        '(voucher_number)'],
-        ['receipt_vouchers',     'idx_rv_account_id',            '(account_id)'],
-        // Accounts — tree traversal on parent_account_id
-        ['accounts',             'idx_accounts_parent',          '(parent_account_id)'],
-        // Credit payments — lookup by credit_sale_id
-        ['credit_payments',      'idx_cp_credit_sale',           '(credit_sale_id)'],
-        // Deliveries — join from sales
-        ['deliveries',           'idx_deliveries_sale_id',       '(sale_id)'],
-        // Purchase vouchers — lookup by account
-        ['inv_purchase_vouchers','idx_ipv_account_id',           '(account_id)'],
-        // Cash movements — filtered by shift/register
-        ['cash_movements',       'idx_cm_register_created',      '(register_id, created_at)'],
-        // Return details — join from returns
-        ['return_details',       'idx_rd_return_product',        '(return_id, product_id)'],
-        // Stock issue items — join from stock issues
-        ['stock_issue_items',    'idx_sii_issue_product',        '(issue_id, product_id)'],
-      ];
-      for (const [table, idx, cols] of idxs) {
-        try {
-          await queryDb(db, `ALTER TABLE \`${table}\` ADD INDEX IF NOT EXISTS \`${idx}\` ${cols}`);
-        } catch (e) {
-          // Table may not exist in all tenant configs; skip gracefully
-          if (!e.message?.includes("doesn't exist") && !e.message?.includes('Duplicate key name')) throw e;
-        }
-      }
+      await queryDb(db, `ALTER TABLE restaurant_tables MODIFY COLUMN status ENUM('available','occupied','needs_cleaning') DEFAULT 'available'`);
     },
   },
 ];
