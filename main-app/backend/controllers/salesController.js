@@ -275,13 +275,17 @@ exports.createSale = async (req, res) => {
     // Acquire a named lock so concurrent sales don't generate the same invoice number
     const lockKey = `invoice_gen_${req.tenantDb || 'default'}_${branch_id || 'all'}`;
     await conn.query('SELECT GET_LOCK(?, 10) as locked', [lockKey]);
-    const invResult = await conn.query(
-      `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
-       FROM sales WHERE invoice_no IS NOT NULL${branchClause}`,
-      branchParam
-    );
-    const invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
-    await conn.query('SELECT RELEASE_LOCK(?)', [lockKey]);
+    let invoice_no;
+    try {
+      const invResult = await conn.query(
+        `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
+         FROM sales WHERE invoice_no IS NOT NULL${branchClause}`,
+        branchParam
+      );
+      invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
+    } finally {
+      await conn.query('SELECT RELEASE_LOCK(?)', [lockKey]);
+    }
 
     if (status === 'pending') {
       // Token prefix by order type: DIN = dine_in, TA = takeaway, DL = delivery, WI = on_spot/walk_in

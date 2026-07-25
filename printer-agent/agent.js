@@ -79,7 +79,13 @@ function addJob(job) {
 }
 
 // ── Middleware ─────────────────────────────────────────────────
-app.use(cors({ origin: '*' }));
+app.use(cors({
+  origin: (origin, cb) => {
+    // allow requests with no origin (Electron, curl, same-origin) or any localhost port
+    if (!origin || /^https?:\/\/localhost(:\d+)?$/.test(origin)) cb(null, true);
+    else cb(new Error('CORS: origin not allowed'));
+  }
+}));
 app.use(express.json({ limit: '4mb' }));
 
 // ── ESC/POS Commands ──────────────────────────────────────────

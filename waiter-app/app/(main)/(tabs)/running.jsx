@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../services/api';
+import api, { BASE_URL } from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
 import useAuthStore from '../../../store/authStore';
 import useToastStore from '../../../store/toastStore';
@@ -203,7 +203,7 @@ export default function RunningScreen() {
   const buildReceiptData = (bd, payMethod, discountOverride = 0) => {
     const s    = bd.settings || {};
     const sale = bd.sale || {};
-    const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const apiBase = BASE_URL.replace(/\/api$/, '');
     const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
 
     const taxPct = (() => {

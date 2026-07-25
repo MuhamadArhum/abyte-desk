@@ -8,8 +8,10 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const bc = require('../controllers/biometricController');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { requireModule }                   = require('../middleware/moduleGuard');
 
 router.use(authenticate);
+router.use(requireModule('hr'));
 
 // Device management
 router.get('/devices',           bc.getDevices);

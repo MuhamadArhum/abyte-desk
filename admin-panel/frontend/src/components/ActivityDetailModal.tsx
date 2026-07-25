@@ -59,6 +59,7 @@ export default function ActivityDetailModal({ tenantId, tenantName, onClose }: P
   useEffect(() => {
     api.get(`/tenants/${tenantId}/activity`)
       .then(r => setData(r.data))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [tenantId]);
 

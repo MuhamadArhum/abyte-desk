@@ -8,7 +8,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import api from '../../../services/api';
+import api, { BASE_URL } from '../../../services/api';
 import useCartStore from '../../../store/cartStore';
 import useToastStore from '../../../store/toastStore';
 import useConfirmStore from '../../../store/confirmStore';
@@ -280,7 +280,7 @@ export default function OrderScreen() {
 
   const buildOrderReceiptData = (payMethod) => {
     const s = settings || {};
-    const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+    const apiBase = BASE_URL.replace(/\/api$/, '');
     const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
     const taxPct = (() => {
       if (s.pos_mode === 'category' && s.pos_tax_config) {

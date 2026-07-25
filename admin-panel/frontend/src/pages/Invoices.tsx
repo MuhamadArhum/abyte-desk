@@ -223,7 +223,7 @@ function GenerateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onC
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get('/tenants').then(r => setTenants(r.data.data || []));
+    api.get('/tenants').then(r => setTenants(r.data.data || [])).catch(() => {});
   }, []);
 
   const handleTenantChange = (id: string) => {

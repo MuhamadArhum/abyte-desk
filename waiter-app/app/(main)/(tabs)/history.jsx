@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../services/api';
+import api, { BASE_URL } from '../../../services/api';
 import useAuthStore from '../../../store/authStore';
 import { C, shadow } from '../../../constants/theme';
 import { ReceiptModal } from '../../../components/ReceiptView';
@@ -38,7 +38,7 @@ function isThisWeek(d) {
 
 function buildReceiptData(sale, settings) {
   const s = settings || {};
-  const apiBase = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
+  const apiBase = BASE_URL.replace(/\/api$/, '');
   const logoUrl = s.receipt_logo ? `${apiBase}${s.receipt_logo}` : undefined;
   const items = (sale.items || []).map((i) => ({
     name:     i.product_name || 'Item',
