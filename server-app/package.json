@@ -1,0 +1,61 @@
+{
+  "name": "abyte-erp-server",
+  "version": "1.0.0",
+  "description": "AByte ERP Server - Local LAN Server Manager",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "node-os-utils": "^1.3.7"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.abytesolutions.erp-server",
+    "productName": "AByte ERP Server",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../main-app/backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!node_modules/**",
+          "!tests/**",
+          "!*.test.js",
+          "!.env*"
+        ]
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "../main-app/backend/node_modules",
+        "to": "resources/backend/node_modules"
+      }
+    ]
+  }
+}

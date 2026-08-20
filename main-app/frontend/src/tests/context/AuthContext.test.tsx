@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from '../../context/AuthContext';
 
 // Mock the api utility so no real axios calls happen
 vi.mock('../../utils/api', () => ({
-  branchFilter: { id: null },
   default: {
     get: vi.fn(),
     post: vi.fn(),

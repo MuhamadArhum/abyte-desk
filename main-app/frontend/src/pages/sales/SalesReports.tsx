@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../context/SettingsContext';
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers, Percent, Tag, Receipt, RotateCcw, Clock, XCircle, Package, Users, CreditCard, GitBranch, Vault } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, ShoppingCart, Download, UtensilsCrossed, Coffee, Truck, ShoppingBag, Layers, Percent, Tag, Receipt, RotateCcw, Clock, XCircle, Package, Users, CreditCard, Vault } from 'lucide-react';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../../utils/api';
@@ -30,7 +30,6 @@ const SalesReports = () => {
   const [productPerf, setProductPerf]           = useState<{ summary: any; data: any[] }>({ summary: {}, data: [] });
   const [customerHistory, setCustomerHistory]   = useState<{ summary: any; data: any[] }>({ summary: {}, data: [] });
   const [creditAging, setCreditAging]           = useState<{ summary: any; aging_buckets: any; data: any[] }>({ summary: {}, aging_buckets: {}, data: [] });
-  const [branchSales, setBranchSales]           = useState<{ summary: any; data: any[] }>({ summary: {}, data: [] });
   const [cashRecon, setCashRecon]               = useState<{ summary: any; data: any[] }>({ summary: {}, data: [] });
 
   const fetchReports = async () => {
@@ -38,7 +37,7 @@ const SalesReports = () => {
     try {
       const params = { date_from: dateFrom, date_to: dateTo };
       const [sumRes, compRes, hourRes, payRes, cashRes, trendRes, custRes, catRes, pmRes, daRes, taxRes,
-             retRes, shiftRes, voidRes, perfRes, custHistRes, agingRes, branchRes, reconRes] = await Promise.all([
+             retRes, shiftRes, voidRes, perfRes, custHistRes, agingRes, reconRes] = await Promise.all([
         api.get('/sales-reports/summary', { params }),
         api.get('/sales-reports/comparison', { params }),
         api.get('/sales-reports/hourly', { params: { date: dateFrom } }),
@@ -56,7 +55,6 @@ const SalesReports = () => {
         api.get('/sales-reports/product-performance', { params }),
         api.get('/sales-reports/customer-history', { params }),
         api.get('/sales-reports/credit-aging'),
-        api.get('/sales-reports/branch-sales', { params }),
         api.get('/sales-reports/cash-reconciliation', { params }),
       ]);
       setSummary(sumRes.data);
@@ -76,7 +74,6 @@ const SalesReports = () => {
       setProductPerf({ summary: perfRes.data.summary || {}, data: perfRes.data.data || [] });
       setCustomerHistory({ summary: custHistRes.data.summary || {}, data: custHistRes.data.data || [] });
       setCreditAging({ summary: agingRes.data.summary || {}, aging_buckets: agingRes.data.aging_buckets || {}, data: agingRes.data.data || [] });
-      setBranchSales({ summary: branchRes.data.summary || {}, data: branchRes.data.data || [] });
       setCashRecon({ summary: reconRes.data.summary || {}, data: reconRes.data.data || [] });
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -704,55 +701,6 @@ const SalesReports = () => {
                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${r.status === 'overdue' ? 'bg-red-100 text-red-700' : r.status === 'partial' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
                             {r.status}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* ── Sales by Branch ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
-            <div className="flex justify-between items-center mb-5">
-              <div className="flex items-center gap-2"><GitBranch size={18} className="text-teal-600" /><h3 className="font-semibold text-gray-800">Sales by Branch</h3></div>
-              <button onClick={() => exportCSV(branchSales.data, 'branch_sales.csv')} className="text-xs text-gray-500 hover:text-emerald-600 flex items-center gap-1"><Download size={14} /> CSV</button>
-            </div>
-            <div className="grid grid-cols-3 gap-4 mb-5">
-              {[
-                { label: 'Active Branches', value: String(branchSales.summary.branch_count || 0), color: 'text-gray-800' },
-                { label: 'Total Orders', value: String(branchSales.summary.grand_orders || 0), color: 'text-teal-600' },
-                { label: 'Grand Total', value: `${currency}${Number(branchSales.summary.grand_total || 0).toFixed(0)}`, color: 'text-emerald-600' },
-              ].map(({ label, value, color }) => (
-                <div key={label} className="bg-gray-50 rounded-xl p-4 text-center">
-                  <p className={`text-xl font-bold ${color}`}>{value}</p>
-                  <p className="text-xs text-gray-500 mt-1">{label}</p>
-                </div>
-              ))}
-            </div>
-            {branchSales.data.length === 0 ? <p className="text-center text-gray-400 py-6">No data in this period</p> : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[650px]">
-                  <thead className="bg-gray-50"><tr>
-                    {['Branch', 'Orders', 'Revenue', 'Avg Order', 'Discount', 'Tax', 'Share'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left font-semibold text-gray-600">{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {branchSales.data.map(r => (
-                      <tr key={r.branch_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-semibold text-gray-800">{r.branch_name}</td>
-                        <td className="px-4 py-3 text-gray-700">{r.total_orders}</td>
-                        <td className="px-4 py-3 font-bold text-emerald-600">{currency}{Number(r.total_sales).toFixed(0)}</td>
-                        <td className="px-4 py-3 text-gray-600">{currency}{Number(r.avg_order).toFixed(0)}</td>
-                        <td className="px-4 py-3 text-red-500">{currency}{Number(r.total_discount).toFixed(0)}</td>
-                        <td className="px-4 py-3 text-blue-500">{currency}{Number(r.total_tax).toFixed(0)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-gray-100 rounded-full h-2"><div className="bg-teal-500 h-2 rounded-full" style={{ width: `${r.share_pct}%` }} /></div>
-                            <span className="text-xs font-bold text-teal-600">{r.share_pct}%</span>
-                          </div>
                         </td>
                       </tr>
                     ))}

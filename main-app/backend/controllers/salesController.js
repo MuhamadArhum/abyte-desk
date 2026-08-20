@@ -266,21 +266,15 @@ exports.createSale = async (req, res) => {
     }
 
     // Step 3: Always generate invoice_no; also generate token_no for pending orders
-    // branch_id scopes the counters so each branch has its own TA-01, INV-00001, etc.
-    const branch_id = req.user.branch_id || null;
-    const branchParam = branch_id ? [branch_id] : [];
-    const branchClause = branch_id ? ' AND branch_id = ?' : '';
-
     let token_no = null;
     // Acquire a named lock so concurrent sales don't generate the same invoice number
-    const lockKey = `invoice_gen_${req.tenantDb || 'default'}_${branch_id || 'all'}`;
+    const lockKey = `invoice_gen_${req.tenantDb || 'default'}`;
     await conn.query('SELECT GET_LOCK(?, 10) as locked', [lockKey]);
     let invoice_no;
     try {
       const invResult = await conn.query(
         `SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_no, 5) AS UNSIGNED)), 0) + 1 as next_inv
-         FROM sales WHERE invoice_no IS NOT NULL${branchClause}`,
-        branchParam
+         FROM sales WHERE invoice_no IS NOT NULL`
       );
       invoice_no = `INV-${String(invResult[0].next_inv).padStart(5, '0')}`;
     } finally {
@@ -298,8 +292,8 @@ exports.createSale = async (req, res) => {
       const shiftStart = shiftRows.length > 0 ? shiftRows[0].opened_at : new Date().toISOString().slice(0, 10);
       const tokenResult = await conn.query(
         `SELECT COALESCE(MAX(CAST(REPLACE(token_no, ?, '') AS UNSIGNED)), 0) + 1 as next_token
-         FROM sales WHERE token_no LIKE ? AND sale_date >= ?${branchClause}`,
-        [`${prefix}-`, `${prefix}-%`, shiftStart, ...branchParam]
+         FROM sales WHERE token_no LIKE ? AND sale_date >= ?`,
+        [`${prefix}-`, `${prefix}-%`, shiftStart]
       );
       token_no = `${prefix}-${String(tokenResult[0].next_token).padStart(2, '0')}`;
     }
@@ -335,7 +329,7 @@ exports.createSale = async (req, res) => {
         invoice_no,
         table_id || null,
         order_type || 'on_spot',
-        branch_id,
+        null,
         customer_name || null,
         customer_phone || null,
         covers ? parseInt(covers) : null,
@@ -372,9 +366,9 @@ exports.createSale = async (req, res) => {
     // Step 6: Create credit sale record if credit payment (B-004: use balance_due + pending status)
     if (is_credit) {
       await conn.query(
-        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, branch_id)
-         VALUES (?, ?, ?, 0, ?, ?, 'pending', ?)`,
-        [sale_id, customer_id, total_amount, total_amount, credit_due_date, branch_id]
+        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status)
+         VALUES (?, ?, ?, 0, ?, ?, 'pending')`,
+        [sale_id, customer_id, total_amount, total_amount, credit_due_date]
       );
     }
 
@@ -442,16 +436,6 @@ exports.getPending = async (req, res) => {
       }
     }
 
-    // Branch isolation for pending sales
-    let branchClause = '';
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      branchClause = ' AND s.branch_id = ?';
-      filterParams.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      branchClause = ' AND s.branch_id = ?';
-      filterParams.push(req.query.filter_branch);
-    }
-
     // Per-waiter filter: waiter=1 uses the token's own user_id; user_id param for admin overrides
     let userClause = '';
     if (waiter === '1') {
@@ -467,7 +451,7 @@ exports.getPending = async (req, res) => {
       `SELECT COUNT(*) as order_count, COALESCE(SUM(total_amount), 0) as total_amount
        FROM sales s WHERE status = 'pending'
        AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-       ${orderTypeClause}${branchClause}${userClause}`,
+       ${orderTypeClause}${userClause}`,
       filterParams
     );
     const summary = {
@@ -484,7 +468,7 @@ exports.getPending = async (req, res) => {
       LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
       WHERE s.status = 'pending'
       AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.sale_id = s.sale_id)
-      ${orderTypeClause}${branchClause}${userClause}
+      ${orderTypeClause}${userClause}
     `;
     const params = [...filterParams];
 
@@ -515,14 +499,8 @@ exports.getPending = async (req, res) => {
 // --- Get users assignable to a pending sale (branch-scoped) ---
 exports.getAssignableUsers = async (req, res) => {
   try {
-    let sql = 'SELECT user_id, name, role_name FROM users WHERE is_active = 1';
-    const params = [];
-    if (req.user.branch_id) {
-      sql += ' AND branch_id = ?';
-      params.push(req.user.branch_id);
-    }
-    sql += ' ORDER BY name ASC';
-    const users = await query(sql, params);
+    const sql = 'SELECT user_id, name, role_name FROM users WHERE is_active = 1 ORDER BY name ASC';
+    const users = await query(sql);
     res.json(users);
   } catch (error) {
     logger.error('Get assignable users error:', error);
@@ -537,9 +515,7 @@ exports.assignUser = async (req, res) => {
     const { user_id } = req.body;
     if (!user_id) return res.status(400).json({ message: 'user_id is required' });
 
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const sale = await query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
+    const sale = await query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending"`, [id]);
     if (sale.length === 0) return res.status(404).json({ message: 'Pending sale not found' });
 
     const userRows = await query('SELECT user_id, name FROM users WHERE user_id = ? AND is_active = 1', [user_id]);
@@ -649,9 +625,7 @@ exports.completeSale = async (req, res) => {
 exports.markKotPrinted = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const result = await query(`UPDATE sales SET kot_printed = 1 WHERE sale_id = ? ${branchCond}`, [id, ...branchPrm]);
+    const result = await query(`UPDATE sales SET kot_printed = 1 WHERE sale_id = ?`, [id]);
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Sale not found' });
     res.json({ success: true });
   } catch (e) {
@@ -685,10 +659,7 @@ exports.updateSaleItems = async (req, res) => {
       }
     }
 
-    // Must be a pending sale scoped to the user's branch
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const sale = await conn.query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
+    const sale = await conn.query(`SELECT * FROM sales WHERE sale_id = ? AND status = "pending"`, [id]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Pending sale not found' });
@@ -804,21 +775,14 @@ exports.getToday = async (req, res) => {
   try {
     await ensureSalesSchema(req.tenantDb);
     const today = new Date().toISOString().split('T')[0];
-    const activeBranch = (req.user.role_name !== 'Admin' && req.user.branch_id)
-      ? req.user.branch_id
-      : (req.user.role_name === 'Admin' && req.query.filter_branch ? req.query.filter_branch : null);
-    const branchFilter = activeBranch ? ' AND s.branch_id = ?' : '';
-    const branchParam  = activeBranch ? [activeBranch] : [];
-
     const sales = await query(`
       SELECT s.*, u.name as cashier_name
       FROM sales s
       LEFT JOIN users u ON s.user_id = u.user_id
       WHERE s.sale_date >= ? AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)
         AND (s.status = 'completed' OR s.status = 'refunded')
-        ${branchFilter}
       ORDER BY s.sale_date DESC
-    `, [today, today, ...branchParam]);
+    `, [today, today]);
     res.json(sales);
   } catch (error) {
     logger.error('Get today sales error:', error);
@@ -897,15 +861,6 @@ exports.getAll = async (req, res) => {
     `;
     let params = [];
 
-    // Branch isolation: non-admin sees their branch; admin can filter via ?filter_branch
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      sql += ' AND s.branch_id = ?';
-      params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      sql += ' AND s.branch_id = ?';
-      params.push(req.query.filter_branch);
-    }
-
     [sql, params] = applyOrderTypeClause(sql, params);
     [sql, params] = applyCashierClause(sql, params);
     [sql, params] = applyTableClause(sql, params);
@@ -946,15 +901,6 @@ exports.getAll = async (req, res) => {
         WHERE 1=1
       `;
       let countParams = [];
-
-      // Branch isolation for count query
-      if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-        countSql += ' AND s.branch_id = ?';
-        countParams.push(req.user.branch_id);
-      } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-        countSql += ' AND s.branch_id = ?';
-        countParams.push(req.query.filter_branch);
-      }
 
       [countSql, countParams] = applyOrderTypeClause(countSql, countParams);
       [countSql, countParams] = applyCashierClause(countSql, countParams);
@@ -1012,8 +958,6 @@ exports.getAll = async (req, res) => {
 // --- Get Sale by ID ---
 exports.getById = async (req, res) => {
   try {
-    const branchCondition = req.user.role_name === 'Admin' ? '' : 'AND s.branch_id = ?';
-    const branchParam = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
     const sale = await query(`
       SELECT s.*, u.name as cashier_name,
              rt.table_name
@@ -1021,8 +965,8 @@ exports.getById = async (req, res) => {
       LEFT JOIN customers c ON s.customer_id = c.customer_id
       LEFT JOIN users u ON s.user_id = u.user_id
       LEFT JOIN restaurant_tables rt ON s.table_id = rt.table_id
-      WHERE s.sale_id = ? ${branchCondition}
-    `, [req.params.id, ...branchParam]);
+      WHERE s.sale_id = ?
+    `, [req.params.id]);
 
     if (sale.length === 0) {
       return res.status(404).json({ message: 'Sale not found' });
@@ -1051,10 +995,7 @@ exports.refundSale = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    // Check sale status — scope to branch for non-admins
-    const branchCondition = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchParams = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchCondition} FOR UPDATE`, [id, ...branchParams]);
+    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? FOR UPDATE`, [id]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });
@@ -1091,9 +1032,7 @@ exports.swapTable = async (req, res) => {
     const { id } = req.params;
     const { table_id } = req.body;
 
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const sale = await query(`SELECT sale_id FROM sales WHERE sale_id = ? AND status = "pending" ${branchCond}`, [id, ...branchPrm]);
+    const sale = await query(`SELECT sale_id FROM sales WHERE sale_id = ? AND status = "pending"`, [id]);
     if (!sale.length) return res.status(404).json({ message: 'Pending sale not found' });
 
     await query('UPDATE sales SET table_id = ? WHERE sale_id = ?', [table_id || null, id]);

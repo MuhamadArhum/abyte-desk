@@ -18,31 +18,11 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Admin-selected branch filter — null means all branches
-export const branchFilter = { id: null as number | null };
-
 // ── Request interceptor ───────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
-
-    const method = config.method?.toLowerCase();
-
-    // Inject branch filter on GET requests when admin has selected one
-    if (branchFilter.id !== null && method === 'get') {
-      config.params = { ...config.params, filter_branch: branchFilter.id };
-    }
-
-    // Inject branch_id into POST/PUT/PATCH bodies when admin has a branch selected
-    if (branchFilter.id !== null && (method === 'post' || method === 'put' || method === 'patch')) {
-      if (config.data && typeof config.data === 'object' && !Array.isArray(config.data)) {
-        if (!('branch_id' in config.data)) {
-          config.data = { ...config.data, branch_id: branchFilter.id };
-        }
-      }
-    }
-
     return config;
   },
   (error) => Promise.reject(error)

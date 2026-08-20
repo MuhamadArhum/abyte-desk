@@ -41,7 +41,6 @@ const FinishedGoods       = lazy(() => import('./pages/inventory/FinishedGoods')
 const RawMaterials        = lazy(() => import('./pages/inventory/RawMaterials'));
 const Categories          = lazy(() => import('./pages/inventory/Categories'));
 const PurchaseOrders      = lazy(() => import('./pages/inventory/PurchaseOrders'));
-const StockTransfers      = lazy(() => import('./pages/inventory/StockTransfers'));
 const StockAdjustments    = lazy(() => import('./pages/inventory/StockAdjustments'));
 const StockAlerts         = lazy(() => import('./pages/inventory/StockAlerts'));
 const InventoryReports    = lazy(() => import('./pages/inventory/InventoryReports'));
@@ -124,7 +123,6 @@ const RawMaterialItems        = lazy(() => import('./pages/inventory/RawMaterial
 const SemiFinishedCategories  = lazy(() => import('./pages/inventory/SemiFinishedCategories'));
 
 // System
-const Stores        = lazy(() => import('./pages/system/Stores'));
 const Users         = lazy(() => import('./pages/system/Users'));
 const Tenants       = lazy(() => import('./pages/system/Tenants'));
 const AccessControl = lazy(() => import('./pages/system/AccessControl'));
@@ -233,7 +231,6 @@ function App() {
                                   <Route path="/raw-material-items"        element={<G k="inventory.products"><RawMaterialItems /></G>} />
                                   <Route path="/semi-finished-categories"  element={<G k="inventory.categories"><SemiFinishedCategories /></G>} />
                                   <Route path="/purchase-orders"       element={<G k="inventory.purchases"><PurchaseOrders /></G>} />
-                                  <Route path="/stock-transfers"       element={<G k="inventory.transfers"><StockTransfers /></G>} />
                                   <Route path="/stock-adjustments"     element={<G k="inventory.adjustments"><StockAdjustments /></G>} />
                                   <Route path="/stock-alerts"          element={<G k="inventory.alerts"><StockAlerts /></G>} />
                                   <Route path="/inventory-reports"     element={<G k="inventory.reports"><InventoryReports /></G>} />
@@ -301,7 +298,6 @@ function App() {
                                   <Route path="/cash-position"      element={<G k="accounts.cash-position"><CashPosition /></G>} />
 
                                   {/* System */}
-                                  <Route path="/stores"         element={<G k="system.stores"><Stores /></G>} />
                                   <Route path="/users"          element={<Suspense fallback={<PageLoader />}><AdminGuard><Users /></AdminGuard></Suspense>} />
                                   <Route path="/access-control" element={<Suspense fallback={<PageLoader />}><AdminGuard><AccessControl /></AdminGuard></Suspense>} />
                                   <Route path="/audit-log"      element={<G k="system.audit"><AuditLog /></G>} />

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { UserPlus, Edit2, Trash2, Shield, Eye, EyeOff, Search, RefreshCw, Store } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, Eye, EyeOff, Search, RefreshCw } from 'lucide-react';
 import api from '../../utils/api';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
@@ -12,8 +12,6 @@ interface AppUser {
   email:       string;
   role:        string;
   role_id:     number;
-  branch_id:   number | null;
-  branch_name: string | null;
   created_at:  string;
 }
 
@@ -22,29 +20,22 @@ interface Role {
   role_name: string;
 }
 
-interface Branch {
-  store_id:   number;
-  store_name: string;
-}
-
 const ROLE_COLORS: Record<string, string> = {
   Admin:   'bg-red-100 text-red-700',
   Manager: 'bg-blue-100 text-blue-700',
   Cashier: 'bg-emerald-100 text-emerald-700',
 };
 
-const emptyForm = { username: '', name: '', email: '', password: '', role_id: '', branch_id: '' };
+const emptyForm = { username: '', name: '', email: '', password: '', role_id: '' };
 
 export default function Users() {
   const toast = useToast();
   const confirm = useConfirm();
   const [users, setUsers]       = useState<AppUser[]>([]);
   const [roles, setRoles]       = useState<Role[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
-  const [roleFilter, setRoleFilter]     = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   // Pagination
   const [currentPage, setCurrentPage]   = useState(1);
@@ -58,19 +49,15 @@ export default function Users() {
   const [saving, setSaving]             = useState(false);
   const [formError, setFormError]       = useState('');
 
-  // Detect selected role to hide branch for Admin
-  const selectedRoleName = roles.find(r => String(r.role_id) === form.role_id)?.role_name ?? '';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [usersRes, rolesRes, branchRes] = await Promise.all([
+    const [usersRes, rolesRes] = await Promise.all([
       api.get('/users').catch(() => ({ data: { data: [] } })),
       api.get('/users/roles').catch(() => ({ data: { data: [] } })),
-      api.get('/stores').catch(() => ({ data: { data: [] } })),
     ]);
     setUsers(usersRes.data.data || []);
     setRoles(rolesRes.data.data || []);
-    setBranches((branchRes.data.data || []).filter((s: any) => s.is_active !== 0));
     setLoading(false);
   }, []);
 
@@ -79,10 +66,9 @@ export default function Users() {
   // ── Filtering & Pagination ───────────────────────────────────
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    const matchSearch  = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-    const matchRole    = !roleFilter || u.role === roleFilter;
-    const matchBranch  = !branchFilter || String(u.branch_id) === branchFilter;
-    return matchSearch && matchRole && matchBranch;
+    const matchSearch = !q || u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchRole   = !roleFilter || u.role === roleFilter;
+    return matchSearch && matchRole;
   });
 
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -99,7 +85,7 @@ export default function Users() {
 
   const openEdit = (u: AppUser) => {
     setEditingUser(u);
-    setForm({ username: u.username, name: u.name, email: u.email, password: '', role_id: String(u.role_id), branch_id: u.branch_id ? String(u.branch_id) : '' });
+    setForm({ username: u.username, name: u.name, email: u.email, password: '', role_id: String(u.role_id) });
     setFormError('');
     setShowPassword(false);
     setModalOpen(true);
@@ -111,9 +97,6 @@ export default function Users() {
     setFormError('');
     if (!form.username.trim() || !form.name.trim() || !form.email.trim() || !form.role_id) {
       return setFormError('Username, name, email and role are required.');
-    }
-    if (selectedRoleName !== 'Admin' && !form.branch_id) {
-      return setFormError('Branch is required. Please select a branch for this user.');
     }
     if (!editingUser && form.password.length < 8) {
       return setFormError('Password must be at least 8 characters.');
@@ -129,7 +112,6 @@ export default function Users() {
         name: form.name.trim(),
         email: form.email.trim(),
         role_id: Number(form.role_id),
-        branch_id: selectedRoleName === 'Admin' ? null : Number(form.branch_id),
       };
       if (form.password) payload.password = form.password;
 
@@ -210,16 +192,6 @@ export default function Users() {
             <option value="">All Roles</option>
             {roles.map(r => <option key={r.role_id} value={r.role_name}>{r.role_name}</option>)}
           </select>
-          {branches.length > 1 && (
-            <select
-              value={branchFilter}
-              onChange={e => { setBranchFilter(e.target.value); setCurrentPage(1); }}
-              className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white"
-            >
-              <option value="">All Branches</option>
-              {branches.map(b => <option key={b.store_id} value={b.store_id}>{b.store_name}</option>)}
-            </select>
-          )}
           <button onClick={fetchData} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors" title="Refresh">
             <RefreshCw size={15} className="text-gray-500" />
           </button>
@@ -240,7 +212,7 @@ export default function Users() {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
-                {['#', 'Name', 'Username', 'Email', 'Role', 'Branch', 'Created', 'Actions'].map(h => (
+                {['#', 'Name', 'Username', 'Email', 'Role', 'Created', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -263,15 +235,6 @@ export default function Users() {
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
                       <Shield size={10} />{u.role}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.branch_name ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                        <Store size={10} />{u.branch_name}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">All Branches</span>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {new Date(u.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -387,11 +350,7 @@ export default function Users() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Role *</label>
                 <select
                   value={form.role_id}
-                  onChange={e => {
-                    const newRoleName = roles.find(r => String(r.role_id) === e.target.value)?.role_name ?? '';
-                    const autoBranch = newRoleName !== 'Admin' && branches.length === 1 ? String(branches[0].store_id) : '';
-                    setForm(f => ({ ...f, role_id: e.target.value, branch_id: autoBranch }));
-                  }}
+                  onChange={e => setForm(f => ({ ...f, role_id: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white"
                 >
                   <option value="">Select role...</option>
@@ -400,37 +359,6 @@ export default function Users() {
                   ))}
                 </select>
               </div>
-
-              {/* Branch assignment — required for all non-Admin roles */}
-              {selectedRoleName && selectedRoleName !== 'Admin' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Assign Branch <span className="text-red-500">*</span>
-                  </label>
-                  {branches.length === 0 ? (
-                    <div className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm text-red-500 bg-red-50">
-                      No active branches found. Please create a branch first.
-                    </div>
-                  ) : (
-                    <select
-                      value={form.branch_id}
-                      onChange={e => setForm(f => ({ ...f, branch_id: e.target.value }))}
-                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 bg-white ${!form.branch_id ? 'border-red-300' : 'border-gray-200'}`}
-                    >
-                      <option value="">— Select branch —</option>
-                      {branches.map(b => (
-                        <option key={b.store_id} value={b.store_id}>{b.store_name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">User will only see data for this branch.</p>
-                </div>
-              )}
-              {selectedRoleName === 'Admin' && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs text-blue-600">
-                  Admin users have access to all branches and cannot be restricted to a single branch.
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3 p-5 border-t border-gray-100">

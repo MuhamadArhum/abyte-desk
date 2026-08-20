@@ -9,12 +9,6 @@
 const logger = require('../config/logger');
 const { query } = require('../config/database');  // Database query helper
 
-// Branch scope helper — Admin sees all; non-Admin scoped to their branch
-function branchScope(req, alias = 's') {
-  if (req.user.role_name === 'Admin') return { sql: '', params: [] };
-  return { sql: ` AND ${alias}.branch_id = ?`, params: [req.branchId || 0] };
-}
-
 // --- Daily Report ---
 // Returns a summary of today's sales activity.
 // Includes: total transactions, total sales, total discount, total revenue.
@@ -22,15 +16,13 @@ function branchScope(req, alias = 's') {
 // Used on the Reports page "Daily" tab.
 exports.dailyReport = async (req, res) => {
   try {
-    const b = branchScope(req);
     const summary = await query(
       `SELECT
          COUNT(*) as total_transactions,
          COALESCE(SUM(total_amount), 0) as total_sales,
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue
-       FROM sales WHERE sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)${b.sql}`,
-      b.params
+       FROM sales WHERE sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
     );
     res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
@@ -55,8 +47,6 @@ exports.dateRangeReport = async (req, res) => {
       return res.status(400).json({ message: 'Start and end dates are required' });
     }
 
-    const b = branchScope(req);
-
     // Overall summary for the date range
     const summary = await query(
       `SELECT
@@ -65,8 +55,8 @@ exports.dateRangeReport = async (req, res) => {
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue,
          COALESCE(AVG(net_amount), 0) as avg_transaction
-       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)${b.sql}`,
-      [start_date, end_date, ...b.params]
+       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)`,
+      [start_date, end_date]
     );
 
     // Daily breakdown - GROUP BY date to show revenue per day
@@ -75,9 +65,9 @@ exports.dateRangeReport = async (req, res) => {
          DATE(sale_date) as date,
          COUNT(*) as transactions,
          SUM(net_amount) as revenue
-       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)${b.sql}
+       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
        GROUP BY DATE(sale_date) ORDER BY date`,
-      [start_date, end_date, ...b.params]
+      [start_date, end_date]
     );
 
     res.json({ summary: summary[0], daily });
@@ -97,7 +87,6 @@ exports.productReport = async (req, res) => {
     const { start_date, end_date } = req.query;
 
     // Build query: aggregate sale_details grouped by product
-    const b = branchScope(req);
     let sql = `SELECT
          p.product_name,
          SUM(sd.quantity) as total_quantity,
@@ -105,8 +94,8 @@ exports.productReport = async (req, res) => {
        FROM sale_details sd
        JOIN products p ON sd.product_id = p.product_id
        JOIN sales s ON sd.sale_id = s.sale_id
-       WHERE 1=1${b.sql}`;
-    const params = [...b.params];
+       WHERE 1=1`;
+    const params = [];
 
     // Optional date range filter
     if (start_date && end_date) {
@@ -140,16 +129,14 @@ exports.productReport = async (req, res) => {
 exports.inventoryReport = async (req, res) => {
   try {
     // Fetch all products with their stock levels and calculated stock value
-    const b = branchScope(req, 'p');
     const all = await query(
       `SELECT p.product_name, p.price, i.available_stock, c.category_name,
               (p.price * i.available_stock) as stock_value
        FROM inventory i
        JOIN products p ON i.product_id = p.product_id
        LEFT JOIN categories c ON p.category_id = c.category_id
-       WHERE 1=1${b.sql}
-       ORDER BY p.product_name`,
-      b.params
+       WHERE 1=1
+       ORDER BY p.product_name`
     );
 
     // Filter into categories in JavaScript (more readable than multiple SQL queries)
@@ -185,7 +172,6 @@ exports.dashboardSummary = async (req, res) => {
     const weekStart = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
     const monthStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
 
-    const b = branchScope(req);
     const [s] = await query(`
       SELECT
         COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as today_revenue,
@@ -195,7 +181,7 @@ exports.dashboardSummary = async (req, res) => {
         COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as week_revenue,
         COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as month_revenue
       FROM sales
-      WHERE status IN ('completed', 'refunded') AND sale_date >= ?${b.sql}
+      WHERE status IN ('completed', 'refunded') AND sale_date >= ?
     `, [
       today, today,
       today, today,
@@ -204,15 +190,14 @@ exports.dashboardSummary = async (req, res) => {
       weekStart, today,
       monthStart, today,
       monthStart,
-      ...b.params
     ]);
 
     const chartRows = chart_start ? await query(`
       SELECT DATE(sale_date) as date, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
       FROM sales
-      WHERE status IN ('completed', 'refunded') AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)${b.sql}
+      WHERE status IN ('completed', 'refunded') AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY DATE(sale_date) ORDER BY date
-    `, [chart_start, today, ...b.params]) : [];
+    `, [chart_start, today]) : [];
 
     res.json({
       today_revenue: Number(s.today_revenue),

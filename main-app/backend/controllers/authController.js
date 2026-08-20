@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
     const tenantDb = tenant.db_name;
 
     // Find user in tenant DB
-    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, branch_id, is_active, password_hash FROM users WHERE email = ?', [email]);
+    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE email = ?', [email]);
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -69,7 +69,7 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: 'Your account has been deactivated. Contact admin.' });
     }
 
-    // Generate JWT — includes tenant_db and branch_id so middleware can route correctly
+    // Generate JWT — includes tenant_db so middleware can route correctly
     const token = jwt.sign(
       {
         user_id:    user.user_id,
@@ -78,7 +78,6 @@ exports.login = async (req, res) => {
         tenant_db:  tenantDb,
         tenant_id:  tenant.tenant_id,
         modules:    modulesEnabled,
-        branch_id:  user.branch_id || null,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
@@ -109,13 +108,6 @@ exports.login = async (req, res) => {
       });
     } catch { /* audit failure must not block login */ }
 
-    // Fetch branch name if user is assigned to a branch
-    let branch_name = null;
-    if (user.branch_id) {
-      const branchRows = await queryDb(tenantDb, 'SELECT store_name FROM stores WHERE store_id = ?', [user.branch_id]);
-      if (branchRows.length > 0) branch_name = branchRows[0].store_name;
-    }
-
     res.json({
       token,
       user: {
@@ -124,8 +116,6 @@ exports.login = async (req, res) => {
         name:        user.name,
         email:       user.email,
         role_name:   user.role_name,
-        branch_id:   user.branch_id || null,
-        branch_name: branch_name,
       },
       permissions,
       modules: modulesEnabled,
@@ -152,16 +142,6 @@ exports.verify = async (req, res) => {
       permissions = [...new Set([...keys, ...parents])];
     }
 
-    let branch_name = null;
-    if (req.user.branch_id) {
-      const branchRows = await queryDb(
-        req.tenantDb,
-        'SELECT store_name FROM stores WHERE store_id = ?',
-        [req.user.branch_id]
-      );
-      if (branchRows.length > 0) branch_name = branchRows[0].store_name;
-    }
-
     res.json({
       user: {
         user_id:     req.user.user_id,
@@ -169,8 +149,6 @@ exports.verify = async (req, res) => {
         name:        req.user.name,
         email:       req.user.email,
         role_name:   req.user.role_name,
-        branch_id:   req.user.branch_id || null,
-        branch_name: branch_name,
       },
       permissions,
       modules: req.modules || [],
@@ -190,7 +168,7 @@ exports.updateProfile = async (req, res) => {
     const tenantDb = req.tenantDb;
     const { name, email, current_password, new_password } = req.body;
 
-    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, branch_id, is_active, password_hash FROM users WHERE user_id = ?', [userId]);
+    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE user_id = ?', [userId]);
     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
     const user = rows[0];
 

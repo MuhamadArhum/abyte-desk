@@ -2,12 +2,6 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-async function ensureColumns() {
-  try {
-    await query(`ALTER TABLE stock_adjustments ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
-  } catch (_) {}
-}
-
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -23,20 +17,11 @@ const ADDITIVE_TYPES = ['addition', 'return', 'opening_stock'];
 
 exports.getAll = async (req, res) => {
   try {
-    await ensureColumns();
     const { type, product_id, date_from, date_to, search } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let where = ' WHERE 1=1';
     const params = [];
-
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      where += ' AND sa.branch_id = ?';
-      params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      where += ' AND sa.branch_id = ?';
-      params.push(req.query.filter_branch);
-    }
 
     if (type) {
       where += ' AND sa.adjustment_type = ?';
@@ -89,15 +74,13 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND sa.branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const [adjustment] = await query(
       `SELECT sa.*, p.product_name, p.barcode, u.name as created_by_name
        FROM stock_adjustments sa
        JOIN products p ON sa.product_id = p.product_id
        JOIN users u ON sa.created_by = u.user_id
-       WHERE sa.adjustment_id = ?${bClause}`,
-      [req.params.id, ...bParam]
+       WHERE sa.adjustment_id = ?`,
+      [req.params.id]
     );
     if (!adjustment) return res.status(404).json({ message: 'Adjustment not found' });
     res.json(adjustment);
@@ -155,11 +138,10 @@ exports.create = async (req, res) => {
     const ref = reference_number || `SA-${Date.now()}`;
 
     // Insert adjustment record
-    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      `INSERT INTO stock_adjustments (product_id, adjustment_type, quantity_before, quantity_adjusted, quantity_after, reason, reference_number, created_by, branch_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [product_id, adjustment_type, quantity_before, quantity_adjusted, quantity_after, reason || null, ref, req.user.user_id, branch_id]
+      `INSERT INTO stock_adjustments (product_id, adjustment_type, quantity_before, quantity_adjusted, quantity_after, reason, reference_number, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [product_id, adjustment_type, quantity_before, quantity_adjusted, quantity_after, reason || null, ref, req.user.user_id]
     );
 
     // Update product stock
@@ -205,29 +187,20 @@ exports.getAdjustmentTypes = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
-    let branchWhere = '';
-    const branchParam = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      branchWhere = ' AND branch_id = ?';
-      branchParam.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      branchWhere = ' AND branch_id = ?';
-      branchParam.push(req.query.filter_branch);
-    }
     const stats = await query(`
       SELECT
         adjustment_type,
         COUNT(*) as count,
         SUM(quantity_adjusted) as total_qty
       FROM stock_adjustments
-      WHERE MONTH(created_at) = MONTH(CURRENT_DATE) AND YEAR(created_at) = YEAR(CURRENT_DATE)${branchWhere}
+      WHERE MONTH(created_at) = MONTH(CURRENT_DATE) AND YEAR(created_at) = YEAR(CURRENT_DATE)
       GROUP BY adjustment_type
-    `, branchParam);
+    `);
 
     const totalThisMonth = await query(`
       SELECT COUNT(*) as total FROM stock_adjustments
-      WHERE MONTH(created_at) = MONTH(CURRENT_DATE) AND YEAR(created_at) = YEAR(CURRENT_DATE)${branchWhere}
-    `, branchParam);
+      WHERE MONTH(created_at) = MONTH(CURRENT_DATE) AND YEAR(created_at) = YEAR(CURRENT_DATE)
+    `);
 
     res.json({
       total: Number(totalThisMonth[0].total),

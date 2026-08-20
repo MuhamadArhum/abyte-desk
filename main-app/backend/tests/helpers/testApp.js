@@ -27,7 +27,6 @@ function buildTestApp() {
   app.use('/api/customers',         require('../../routes/customerRoutes'));
   app.use('/api/settings',          require('../../routes/settingsRoutes'));
   app.use('/api/permissions',       require('../../routes/permissionRoutes'));
-  app.use('/api/stores',            require('../../routes/storeRoutes'));
   // Sales
   app.use('/api/sales',             require('../../routes/salesRoutes'));
   app.use('/api/register',          require('../../routes/registerRoutes'));
@@ -37,7 +36,6 @@ function buildTestApp() {
   app.use('/api/products',          require('../../routes/productRoutes'));
   app.use('/api/inventory',         require('../../routes/inventoryRoutes'));
   app.use('/api/suppliers',         require('../../routes/supplierRoutes'));
-  app.use('/api/stock-transfers',   require('../../routes/stockTransferRoutes'));
   app.use('/api/stock-adjustments', require('../../routes/stockAdjustmentRoutes'));
   // HR
   app.use('/api/staff',             require('../../routes/staffRoutes'));

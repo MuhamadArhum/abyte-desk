@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { branchFilter } from '../utils/api';
 
 // ─── Types ────────────────────────────────────────────────────
 interface User {
@@ -9,8 +8,6 @@ interface User {
   email:       string;
   role?:       string;
   role_name:   string;
-  branch_id?:  number | null;
-  branch_name?: string | null;
 }
 
 // Kept for invoice template compatibility
@@ -54,9 +51,6 @@ interface AuthContextType {
   currentPlan:          string;
   currencySymbol:       string;
   refreshPermissions:   () => void;
-  // Multi-branch: admin can select a specific branch to view, or null = all branches
-  activeBranchId:       number | null;
-  setActiveBranchId:    (id: number | null) => void;
   isAdmin:              boolean;
 }
 
@@ -70,12 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [modules,        setModules]        = useState<string[]>([]);
   const [tenantConfig,   setTenantConfig]   = useState<TenantConfig | null>(null);
   const [isLoading,      setIsLoading]      = useState(true);
-  const [activeBranchId, _setActiveBranchId] = useState<number | null>(null);
-
-  const setActiveBranchId = useCallback((id: number | null) => {
-    branchFilter.id = id;  // sync axios interceptor
-    _setActiveBranchId(id);
-  }, []);
 
   // Restore session from localStorage on app load — only token is persisted, user data always fetched fresh
   useEffect(() => {
@@ -244,10 +232,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentPlan,
     currencySymbol,
     refreshPermissions,
-    activeBranchId,
-    setActiveBranchId,
     isAdmin,
-  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, canDo, hasModule, currencySymbol, refreshPermissions, activeBranchId, isAdmin]);
+  }), [user, token, tenantConfig, login, logout, updateUser, saveTenantConfig, isLoading, permissions, modules, hasPermission, canDo, hasModule, currencySymbol, refreshPermissions, isAdmin]);
 
   return (
     <AuthContext.Provider value={value}>

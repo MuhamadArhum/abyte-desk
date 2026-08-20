@@ -23,7 +23,6 @@ router.get('/voided', controller.getVoidedSales);
 router.get('/product-performance', controller.getProductPerformance);
 router.get('/customer-history', controller.getCustomerHistory);
 router.get('/credit-aging', controller.getCreditAging);
-router.get('/branch-sales', controller.getBranchSales);
 router.get('/cash-reconciliation', controller.getCashReconciliation);
 
 module.exports = router;

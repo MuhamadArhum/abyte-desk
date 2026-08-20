@@ -11,17 +11,6 @@ const { logAction } = require('../services/auditService');
 
 // Column migrations handled by migrationService.js at server startup
 
-// Branch filter helper — works for any aliased table with a branch_id column
-function branchWhere(req, alias = 'p') {
-  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.user.branch_id] };
-  }
-  if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.query.filter_branch] };
-  }
-  return { clause: '', params: [] };
-}
-
 // --- Get All Products ---
 // Returns all products with their category names and stock levels.
 // Supports optional filters via query parameters:
@@ -32,14 +21,13 @@ function branchWhere(req, alias = 'p') {
 exports.getAll = async (req, res) => {
   try {
     const { search, category, stock, type } = req.query;
-    const branch = branchWhere(req, 'p');
 
     let sql = `SELECT p.*, c.category_name, i.available_stock
                FROM products p
                LEFT JOIN categories c ON p.category_id = c.category_id
                LEFT JOIN inventory i ON p.product_id = i.product_id
-               WHERE 1=1${branch.clause}`;
-    const params = [...branch.params];
+               WHERE 1=1`;
+    const params = [];
 
     if (search) {
       sql += ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)';
@@ -60,14 +48,14 @@ exports.getAll = async (req, res) => {
                       FROM products p
                       LEFT JOIN categories c ON p.category_id = c.category_id
                       LEFT JOIN inventory i ON p.product_id = i.product_id
-                      WHERE 1=1${branch.clause}` +
+                      WHERE 1=1` +
                       (search ? ' AND (p.product_name LIKE ? OR p.barcode LIKE ?)' : '') +
                       (category ? ' AND p.category_id = ?' : '') +
                       (type ? ' AND p.product_type = ?' : '') +
                       (stock === 'low' ? ' AND i.available_stock > 0 AND i.available_stock < 10' : '') +
                       (stock === 'out' ? ' AND (i.available_stock = 0 OR i.available_stock IS NULL)' : '');
 
-      const countParams = [...branch.params];
+      const countParams = [];
       if (search) countParams.push(`%${search}%`, `%${search}%`);
       if (category) countParams.push(category);
       if (type) countParams.push(type);
@@ -166,10 +154,9 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Price is required for finished goods' });
     }
 
-    const branch_id = req.user.branch_id || null;
     const result = await query(
-      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [product_name, category_id || null, price || 0, stock_quantity || 0, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null, branch_id]
+      'INSERT INTO products (product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [product_name, category_id || null, price || 0, stock_quantity || 0, barcode || null, product_type || 'finished_good', unit || 'pcs', cost_price || 0, min_stock_level || 0, sku || null, description || null]
     );
 
     // Also create a corresponding inventory record to track stock separately
@@ -200,9 +187,7 @@ exports.update = async (req, res) => {
     const { id } = req.params;  // Product ID from URL
     const { product_name, category_id, price, stock_quantity, barcode, product_type, unit, cost_price, min_stock_level, sku, description } = req.body;
 
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const existing = await query(`SELECT product_id FROM products WHERE product_id = ? ${branchCond}`, [id, ...branchPrm]);
+    const existing = await query(`SELECT product_id FROM products WHERE product_id = ?`, [id]);
     if (!existing.length) return res.status(404).json({ message: 'Product not found' });
 
     // Update the product record
@@ -237,17 +222,14 @@ exports.remove = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-
     // Check if this product appears in any sale records
     const sales = await query('SELECT sale_detail_id FROM sale_details WHERE product_id = ? LIMIT 1', [id]);
     if (sales.length > 0) {
       return res.status(400).json({ message: 'Cannot delete product with sales history' });
     }
 
-    // Get product name before deleting for audit log (also enforces branch ownership)
-    const product = await query(`SELECT product_name FROM products WHERE product_id = ? ${branchCond}`, [id, ...branchPrm]);
+    // Get product name before deleting for audit log
+    const product = await query(`SELECT product_name FROM products WHERE product_id = ?`, [id]);
     if (!product.length) return res.status(404).json({ message: 'Product not found' });
     const productName = product[0].product_name;
 
@@ -269,13 +251,12 @@ exports.remove = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
     const { type } = req.query;
-    const branch = branchWhere(req, 'c');
 
     let sql = `SELECT c.*, COUNT(p.product_id) as product_count
                FROM categories c
                LEFT JOIN products p ON c.category_id = p.category_id
-               WHERE 1=1${branch.clause}`;
-    const params = [...branch.params];
+               WHERE 1=1`;
+    const params = [];
     if (type) {
       sql += ' AND c.category_type = ?';
       params.push(type);
@@ -305,10 +286,9 @@ exports.createCategory = async (req, res) => {
       resolvedType = parent.category_type;
     }
 
-    const branch_id = req.user.branch_id || null;
     const result = await query(
-      'INSERT INTO categories (category_name, category_type, parent_id, description, is_active, branch_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [category_name, resolvedType, parent_id || null, description || null, is_active !== undefined ? is_active : 1, branch_id]
+      'INSERT INTO categories (category_name, category_type, parent_id, description, is_active) VALUES (?, ?, ?, ?, ?)',
+      [category_name, resolvedType, parent_id || null, description || null, is_active !== undefined ? is_active : 1]
     );
     await logAction(req.user.user_id, req.user.name, 'CATEGORY_CREATED', 'category', result.insertId, { category_name, category_type: resolvedType, parent_id: parent_id || null }, req.ip);
     res.status(201).json({ message: 'Category created', category_id: Number(result.insertId) });
@@ -325,9 +305,7 @@ exports.updateCategory = async (req, res) => {
     const { category_name, category_type, description, is_active, parent_id } = req.body;
     if (!category_name) return res.status(400).json({ message: 'Category name is required' });
 
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const [existing] = await query(`SELECT category_id FROM categories WHERE category_id = ? ${branchCond}`, [id, ...branchPrm]);
+    const [existing] = await query(`SELECT category_id FROM categories WHERE category_id = ?`, [id]);
     if (!existing) return res.status(404).json({ message: 'Category not found' });
 
     // Prevent circular reference
@@ -354,9 +332,7 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const branchCond = req.user.role_name === 'Admin' ? '' : 'AND branch_id = ?';
-    const branchPrm = req.user.role_name === 'Admin' ? [] : [req.branchId || 0];
-    const [owned] = await query(`SELECT category_id FROM categories WHERE category_id = ? ${branchCond}`, [id, ...branchPrm]);
+    const [owned] = await query(`SELECT category_id FROM categories WHERE category_id = ?`, [id]);
     if (!owned) return res.status(404).json({ message: 'Category not found' });
     const [productCount] = await query('SELECT COUNT(*) as cnt FROM products WHERE category_id = ?', [id]);
     if (productCount.cnt > 0) {

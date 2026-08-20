@@ -19,14 +19,6 @@ const getAll = async (req, res) => {
     let where = 'WHERE 1=1';
     const params = [];
 
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      where += ' AND q.branch_id = ?';
-      params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      where += ' AND q.branch_id = ?';
-      params.push(req.query.filter_branch);
-    }
-
     if (status) {
       where += ' AND q.status = ?';
       params.push(status);
@@ -79,17 +71,14 @@ const getAll = async (req, res) => {
 const getById = async (req, res) => {
   try {
     const { id } = req.params;
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND q.branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-
     const quotations = await query(
       `SELECT q.*, c.customer_name AS customer_name, c.phone_number AS customer_phone,
               u.name AS created_by_name
        FROM quotations q
        LEFT JOIN customers c ON q.customer_id = c.customer_id
        LEFT JOIN users u ON q.created_by = u.user_id
-       WHERE q.quotation_id = ?${bClause}`,
-      [id, ...bParam]
+       WHERE q.quotation_id = ?`,
+      [id]
     );
 
     if (quotations.length === 0) {
@@ -131,11 +120,10 @@ const create = async (req, res) => {
     const taxAmt = round2(tax_amount || 0);
     const total = round2(subtotal + taxAmt - discountAmt);
 
-    const branch_id = req.user.branch_id || null;
     const result = await conn.query(
-      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total_amount, notes, valid_until, status, branch_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`,
-      [quotation_number, customer_id || 1, req.user.user_id, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null, branch_id]
+      `INSERT INTO quotations (quotation_number, customer_id, created_by, subtotal, discount, tax_amount, total_amount, notes, valid_until, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft')`,
+      [quotation_number, customer_id || 1, req.user.user_id, subtotal, discountAmt, taxAmt, total, notes || null, valid_until || null]
     );
 
     const quotation_id = Number(result.insertId);
@@ -171,9 +159,7 @@ const update = async (req, res) => {
     const { id } = req.params;
     const { customer_id, items, discount, tax_amount, notes, valid_until } = req.body;
 
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-    const existing = await conn.query(`SELECT * FROM quotations WHERE quotation_id = ?${bClause}`, [id, ...bParam]);
+    const existing = await conn.query(`SELECT * FROM quotations WHERE quotation_id = ?`, [id]);
     if (existing.length === 0) {
       await conn.rollback();
       conn.release();
@@ -233,10 +219,7 @@ const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-
-    const existing = await query(`SELECT * FROM quotations WHERE quotation_id = ?${bClause}`, [id, ...bParam]);
+    const existing = await query(`SELECT * FROM quotations WHERE quotation_id = ?`, [id]);
     if (existing.length === 0) {
       return res.status(404).json({ message: 'Quotation not found' });
     }
@@ -416,13 +399,6 @@ const deleteFn = async (req, res) => {
 // GET /api/quotations/stats
 const getStats = async (req, res) => {
   try {
-    let where = 'WHERE 1=1';
-    const params = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      where += ' AND branch_id = ?'; params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      where += ' AND branch_id = ?'; params.push(req.query.filter_branch);
-    }
     const rows = await query(
       `SELECT
          COUNT(*) AS total,
@@ -430,8 +406,7 @@ const getStats = async (req, res) => {
          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) AS sent,
          SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) AS accepted,
          SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END) AS converted
-       FROM quotations ${where}`,
-      params
+       FROM quotations`
     );
 
     res.json(rows[0]);

@@ -34,18 +34,6 @@ exports.getAll = async (req, res) => {
                     WHERE 1=1`;
     const params = [], countParams = [];
 
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      sql += ' AND cs.branch_id = ?';
-      countSql += ' AND cs.branch_id = ?';
-      params.push(req.user.branch_id);
-      countParams.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      sql += ' AND cs.branch_id = ?';
-      countSql += ' AND cs.branch_id = ?';
-      params.push(req.query.filter_branch);
-      countParams.push(req.query.filter_branch);
-    }
-
     if (status) {
       sql += ' AND cs.status = ?';
       countSql += ' AND cs.status = ?';
@@ -94,8 +82,6 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND cs.branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const creditSales = await query(
       `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone,
               u.name as created_by_name, s.sale_date, s.total_amount as sale_total
@@ -103,8 +89,8 @@ exports.getById = async (req, res) => {
        JOIN sales s ON cs.sale_id = s.sale_id
        JOIN customers c ON cs.customer_id = c.customer_id
        LEFT JOIN users u ON cs.created_by = u.user_id
-       WHERE cs.credit_sale_id = ?${bClause}`,
-      [id, ...bParam]
+       WHERE cs.credit_sale_id = ?`,
+      [id]
     );
 
     if (creditSales.length === 0) {
@@ -160,11 +146,10 @@ exports.create = async (req, res) => {
     try {
       await conn.beginTransaction();
 
-      const branch_id = req.user.branch_id || null;
       const result = await conn.query(
-        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, created_by, branch_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [sale_id, customer_id, totalAmt, paidAmt, balanceDue, due_date, status, req.user.user_id, branch_id]
+        `INSERT INTO credit_sales (sale_id, customer_id, total_amount, paid_amount, balance_due, due_date, status, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sale_id, customer_id, totalAmt, paidAmt, balanceDue, due_date, status, req.user.user_id]
       );
 
       const creditSaleId = Number(result.insertId);
@@ -288,18 +273,12 @@ exports.getCustomerBalance = async (req, res) => {
 
 exports.getOverdue = async (req, res) => {
   try {
-    let bClause = '';
-    const bParam = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) { bClause = ' AND cs.branch_id = ?'; bParam.push(req.user.branch_id); }
-    else if (req.user.role_name === 'Admin' && req.query.filter_branch) { bClause = ' AND cs.branch_id = ?'; bParam.push(req.query.filter_branch); }
-
     const overdue = await query(
       `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone
        FROM credit_sales cs
        JOIN customers c ON cs.customer_id = c.customer_id
-       WHERE cs.due_date < CURDATE() AND cs.status IN ('pending', 'partial')${bClause}
-       ORDER BY cs.due_date ASC`,
-      bParam
+       WHERE cs.due_date < CURDATE() AND cs.status IN ('pending', 'partial')
+       ORDER BY cs.due_date ASC`
     );
 
     res.json({ data: overdue });
@@ -311,32 +290,19 @@ exports.getOverdue = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
-    let bClause = '';
-    const bParam = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) { bClause = ' WHERE branch_id = ?'; bParam.push(req.user.branch_id); }
-    else if (req.user.role_name === 'Admin' && req.query.filter_branch) { bClause = ' WHERE branch_id = ?'; bParam.push(req.query.filter_branch); }
-
     const [stats] = await query(
       `SELECT
          COALESCE(SUM(CASE WHEN status != 'paid' THEN balance_due ELSE 0 END), 0) as total_outstanding,
          COALESCE(SUM(CASE WHEN due_date < CURDATE() AND status IN ('pending', 'partial') THEN 1 ELSE 0 END), 0) as overdue_count,
          COALESCE(SUM(CASE WHEN status IN ('pending', 'partial') THEN 1 ELSE 0 END), 0) as active_count
-       FROM credit_sales${bClause}`,
-      bParam
+       FROM credit_sales`
     );
 
-    // B-021: Apply branch filter via join through credit_sales
-    let collectedSql = `SELECT COALESCE(SUM(cp.amount), 0) as collected_this_month
+    const [collected] = await query(
+      `SELECT COALESCE(SUM(cp.amount), 0) as collected_this_month
        FROM credit_payments cp
-       JOIN credit_sales cs ON cp.credit_sale_id = cs.credit_sale_id
-       WHERE MONTH(cp.payment_date) = MONTH(CURDATE()) AND YEAR(cp.payment_date) = YEAR(CURDATE())`;
-    const collectedParams = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      collectedSql += ' AND cs.branch_id = ?'; collectedParams.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      collectedSql += ' AND cs.branch_id = ?'; collectedParams.push(req.query.filter_branch);
-    }
-    const [collected] = await query(collectedSql, collectedParams);
+       WHERE MONTH(cp.payment_date) = MONTH(CURDATE()) AND YEAR(cp.payment_date) = YEAR(CURDATE())`
+    );
 
     res.json({
       total_outstanding: stats.total_outstanding,

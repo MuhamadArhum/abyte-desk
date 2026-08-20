@@ -10,8 +10,6 @@ export interface User {
   name: string;
   email: string;
   role_name: 'Admin' | 'Manager' | 'Cashier' | 'Staff';
-  branch_id: number | null;
-  branch_name: string | null;
   is_active: 0 | 1;
 }
 
@@ -55,7 +53,6 @@ export interface Product {
   barcode: string | null;
   description: string | null;
   is_active: 0 | 1;
-  branch_id?: number | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -105,7 +102,6 @@ export interface Sale {
   note?: string | null;
   token_no?: string | null;
   invoice_no?: string | null;
-  branch_id?: number | null;
   profit?: number;
   items?: SaleItem[];
 }
@@ -129,7 +125,6 @@ export interface Staff {
   employment_status?: 'active' | 'inactive' | 'terminated';
   is_active: 0 | 1;
   leave_balance: number;
-  branch_id?: number | null;
 }
 
 // ── Supplier ──────────────────────────────────────────────────

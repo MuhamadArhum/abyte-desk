@@ -258,28 +258,8 @@ function AnnouncementBanner() {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, hasPermission, hasModule, isAdmin, activeBranchId, setActiveBranchId } = useAuth();
+  const { user, logout, hasPermission, hasModule, isAdmin } = useAuth();
   usePrintQueue();
-  const [branches, setBranches] = useState<{ store_id: number; store_name: string }[]>([]);
-  const [isBranchOpen, setIsBranchOpen] = useState(false);
-  const branchRef = useRef<HTMLDivElement>(null);
-
-  // Load branches for admin branch selector — auto-select first branch on login
-  useEffect(() => {
-    if (!isAdmin) return;
-    const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
-    const token = localStorage.getItem('token');
-    fetch(`${apiBase}/stores`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : { data: [] })
-      .then(d => {
-        const active = (d.data || []).filter((s: any) => s.is_active);
-        setBranches(active);
-        if (active.length > 0 && activeBranchId === null) {
-          setActiveBranchId(active[0].store_id);
-        }
-      })
-      .catch(() => {});
-  }, [isAdmin]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -295,9 +275,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       }
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setIsNotificationOpen(false);
-      }
-      if (branchRef.current && !branchRef.current.contains(e.target as Node)) {
-        setIsBranchOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -708,11 +685,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{user?.name || 'User'}</p>
                 <p className="text-xs text-emerald-400 font-medium capitalize">{user?.role_name || user?.role || 'Staff'}</p>
-                {user?.branch_name && (
-                  <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
-                    <Store size={9} className="text-slate-500" />{user.branch_name}
-                  </p>
-                )}
               </div>
               <div className="flex-shrink-0">
                 <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wide bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">Online</span>
@@ -829,47 +801,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               )}
             </div>
 
-            {/* Branch Selector — Admin only, shown when multiple branches exist */}
-            {isAdmin && branches.length > 1 && (
-              <div className="relative" ref={branchRef}>
-                <button
-                  onClick={() => { setIsBranchOpen(!isBranchOpen); setIsProfileOpen(false); setIsNotificationOpen(false); }}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 rounded-xl transition-all text-sm font-medium text-emerald-700"
-                >
-                  <Store size={14} className="flex-shrink-0" />
-                  <span className="max-w-[120px] truncate">
-                    {activeBranchId ? (branches.find(b => b.store_id === activeBranchId)?.store_name ?? 'Branch') : 'All Branches'}
-                  </span>
-                  <ChevronDown size={12} className={`text-emerald-500 transition-transform ${isBranchOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isBranchOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Select Branch</p>
-                    </div>
-                    <button
-                      onClick={() => { setActiveBranchId(null); setIsBranchOpen(false); }}
-                      className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${activeBranchId === null ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      <Building2 size={14} />
-                      All Branches
-                    </button>
-                    {branches.map(b => (
-                      <button
-                        key={b.store_id}
-                        onClick={() => { setActiveBranchId(b.store_id); setIsBranchOpen(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${activeBranchId === b.store_id ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
-                      >
-                        <Store size={14} />
-                        {b.store_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* User Profile */}
             <div className="relative" ref={profileRef}>
               <button
@@ -949,7 +880,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         <main className="flex-1 overflow-y-auto flex flex-col relative">
           <AnnouncementBanner />
           <motion.div
-            key={`${location.pathname}-${activeBranchId ?? 'all'}`}
+            key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}

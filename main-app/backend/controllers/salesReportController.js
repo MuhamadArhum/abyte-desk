@@ -1,22 +1,12 @@
 const logger = require('../config/logger');
 const { query } = require('../config/database');
 
-function getBranchFilter(req) {
-  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-    return { clause: ' AND branch_id = ?', param: req.user.branch_id };
-  } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-    return { clause: ' AND branch_id = ?', param: req.query.filter_branch };
-  }
-  return { clause: '', param: null };
-}
-
 exports.getSalesSummary = async (req, res) => {
   try {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -26,7 +16,7 @@ exports.getSalesSummary = async (req, res) => {
         COALESCE(SUM(discount), 0) as total_discount,
         COALESCE(SUM(tax_amount), 0) as total_tax
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
     `, params);
 
     res.json({
@@ -42,12 +32,11 @@ exports.getSalesSummary = async (req, res) => {
 exports.getHourlySales = async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [date, ...(bf.param ? [bf.param] : [])];
+    const params = [date];
 
     const rows = await query(`
       SELECT HOUR(sale_date) as hour, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) = ?${bf.clause}
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) = ?
       GROUP BY HOUR(sale_date) ORDER BY hour
     `, params);
 
@@ -64,12 +53,11 @@ exports.getPaymentBreakdown = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT payment_method, COUNT(*) as count, COALESCE(SUM(net_amount), 0) as total
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY payment_method ORDER BY total DESC
     `, params);
 
@@ -84,14 +72,13 @@ exports.getCashierPerformance = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT s.user_id, u.name as cashier_name, COUNT(*) as order_count,
         COALESCE(SUM(s.net_amount), 0) as total_sales, COALESCE(AVG(s.net_amount), 0) as avg_sale
       FROM sales s JOIN users u ON s.user_id = u.user_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : ''}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       GROUP BY s.user_id ORDER BY total_sales DESC
     `, params);
 
@@ -104,12 +91,11 @@ exports.getDailyTrend = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT DATE(sale_date) as date, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
-      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      FROM sales WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY DATE(sale_date) ORDER BY date
     `, params);
 
@@ -122,13 +108,12 @@ exports.getTopCustomers = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT s.customer_id, c.customer_name, COUNT(*) as order_count, COALESCE(SUM(s.net_amount), 0) as total_spent
       FROM sales s JOIN customers c ON s.customer_id = c.customer_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : ''}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       GROUP BY s.customer_id ORDER BY total_spent DESC LIMIT 15
     `, params);
 
@@ -142,17 +127,16 @@ exports.getSalesComparison = async (req, res) => {
     const from = new Date(date_from || new Date().toISOString().split('T')[0]);
     const to = new Date(date_to || new Date().toISOString().split('T')[0]);
     const days = Math.max(1, Math.ceil((to - from) / 86400000) + 1);
-    const bf = getBranchFilter(req);
 
     const prevFrom = new Date(from.getTime() - days * 86400000).toISOString().split('T')[0];
     const prevTo = new Date(from.getTime() - 86400000).toISOString().split('T')[0];
 
-    const currentParams = ['completed', from.toISOString().split('T')[0], to.toISOString().split('T')[0], ...(bf.param ? [bf.param] : [])];
-    const prevParams = ['completed', prevFrom, prevTo, ...(bf.param ? [bf.param] : [])];
+    const currentParams = ['completed', from.toISOString().split('T')[0], to.toISOString().split('T')[0]];
+    const prevParams = ['completed', prevFrom, prevTo];
 
     const [[current], [previous]] = await Promise.all([
-      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}`, currentParams),
-      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}`, prevParams)
+      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?`, currentParams),
+      query(`SELECT COALESCE(SUM(net_amount), 0) as total, COUNT(*) as orders FROM sales WHERE status = ? AND DATE(sale_date) BETWEEN ? AND ?`, prevParams)
     ]);
 
     const currentTotal = Number(current.total);
@@ -169,9 +153,7 @@ exports.getProfitMargin = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -181,7 +163,7 @@ exports.getProfitMargin = async (req, res) => {
       FROM sale_details sd
       JOIN sales s    ON sd.sale_id    = s.sale_id
       JOIN products p ON sd.product_id = p.product_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ? AND p.cost_price IS NOT NULL${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ? AND p.cost_price IS NOT NULL
     `, params);
 
     const rows = await query(`
@@ -199,7 +181,7 @@ exports.getProfitMargin = async (req, res) => {
       JOIN sales s    ON sd.sale_id    = s.sale_id
       JOIN products p ON sd.product_id = p.product_id
       LEFT JOIN categories c ON p.category_id = c.category_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ? AND p.cost_price IS NOT NULL${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ? AND p.cost_price IS NOT NULL
       GROUP BY p.product_id
       ORDER BY gross_profit DESC
     `, params);
@@ -232,9 +214,7 @@ exports.getDiscountAnalysis = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -246,7 +226,7 @@ exports.getDiscountAnalysis = async (req, res) => {
           THEN ROUND(SUM(s.discount) / SUM(s.total_amount) * 100, 1)
           ELSE 0 END                                                        as discount_pct
       FROM sales s
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
     `, params);
 
     const bycashier = await query(`
@@ -261,7 +241,7 @@ exports.getDiscountAnalysis = async (req, res) => {
           ELSE 0 END                                                           as discount_pct
       FROM sales s
       JOIN users u ON s.user_id = u.user_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       GROUP BY s.user_id
       ORDER BY total_discount DESC
     `, params);
@@ -273,7 +253,7 @@ exports.getDiscountAnalysis = async (req, res) => {
         COALESCE(SUM(s.total_amount), 0)         as gross_sales,
         COUNT(CASE WHEN s.discount > 0 THEN 1 END) as discounted_orders
       FROM sales s
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       GROUP BY DATE(s.sale_date)
       ORDER BY date
     `, params);
@@ -310,8 +290,7 @@ exports.getTaxReport = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -324,7 +303,7 @@ exports.getTaxReport = async (req, res) => {
         COALESCE(SUM(CASE WHEN tax_amount > 0 THEN net_amount ELSE 0 END), 0) as taxable_sales,
         COALESCE(SUM(CASE WHEN tax_amount = 0 THEN net_amount ELSE 0 END), 0) as non_taxable_sales
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
     `, params);
 
     const daily = await query(`
@@ -335,7 +314,7 @@ exports.getTaxReport = async (req, res) => {
         COALESCE(SUM(tax_amount), 0)              as tax_collected,
         COALESCE(SUM(net_amount), 0)              as net_amount
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY DATE(sale_date)
       ORDER BY date
     `, params);
@@ -368,9 +347,7 @@ exports.getSalesReturns = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -379,7 +356,7 @@ exports.getSalesReturns = async (req, res) => {
         COALESCE(AVG(r.refund_amount),0) as avg_refund
       FROM returns r
       JOIN sales s ON r.sale_id = s.sale_id
-      WHERE DATE(r.return_date) BETWEEN ? AND ?${branchClause}
+      WHERE DATE(r.return_date) BETWEEN ? AND ?
     `, params);
 
     const data = await query(`
@@ -389,7 +366,7 @@ exports.getSalesReturns = async (req, res) => {
       FROM returns r
       JOIN sales s ON r.sale_id = s.sale_id
       LEFT JOIN users u ON r.user_id = u.user_id
-      WHERE DATE(r.return_date) BETWEEN ? AND ?${branchClause}
+      WHERE DATE(r.return_date) BETWEEN ? AND ?
       ORDER BY r.return_date DESC
     `, params);
 
@@ -419,8 +396,7 @@ exports.getShiftReport = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT
@@ -436,7 +412,7 @@ exports.getShiftReport = async (req, res) => {
         COALESCE(SUM(discount),0)         as total_discount,
         COALESCE(SUM(tax_amount),0)       as total_tax
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY shift_name
       ORDER BY MIN(HOUR(sale_date))
     `, params);
@@ -452,7 +428,7 @@ exports.getShiftReport = async (req, res) => {
         END AS shift,
         COALESCE(SUM(net_amount),0) as total_sales
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY DATE(sale_date), shift
       ORDER BY date
     `, params);
@@ -481,9 +457,7 @@ exports.getVoidedSales = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT
@@ -491,7 +465,7 @@ exports.getVoidedSales = async (req, res) => {
         COALESCE(SUM(net_amount),0)          as total_voided_amount,
         COUNT(DISTINCT user_id)              as cashiers_involved
       FROM sales
-      WHERE status != 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status != 'completed' AND DATE(sale_date) BETWEEN ? AND ?
     `, params);
 
     const data = await query(`
@@ -500,7 +474,7 @@ exports.getVoidedSales = async (req, res) => {
         s.payment_method, s.note, u.name as cashier_name
       FROM sales s
       JOIN users u ON s.user_id = u.user_id
-      WHERE s.status != 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status != 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       ORDER BY s.sale_date DESC
     `, params);
 
@@ -531,9 +505,7 @@ exports.getProductPerformance = async (req, res) => {
     const { date_from, date_to, sort_by } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
     const sortCol = sort_by === 'qty' ? 'total_qty' : sort_by === 'orders' ? 'order_count' : 'revenue';
 
     const [totals] = await query(`
@@ -542,7 +514,7 @@ exports.getProductPerformance = async (req, res) => {
         COUNT(DISTINCT sd.product_id) as unique_products
       FROM sale_details sd
       JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
     `, params);
 
     const data = await query(`
@@ -556,7 +528,7 @@ exports.getProductPerformance = async (req, res) => {
       JOIN sales s ON sd.sale_id = s.sale_id
       JOIN products p ON sd.product_id = p.product_id
       LEFT JOIN categories c ON p.category_id = c.category_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
       GROUP BY p.product_id
       ORDER BY ${sortCol} DESC
       LIMIT 50
@@ -587,9 +559,7 @@ exports.getCustomerHistory = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const to   = date_to   || new Date().toISOString().split('T')[0];
-    const bf   = getBranchFilter(req);
-    const branchClause = bf.clause ? bf.clause.replace('branch_id', 's.branch_id') : '';
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const [summary] = await query(`
       SELECT COUNT(DISTINCT s.customer_id) as total_customers,
@@ -597,7 +567,7 @@ exports.getCustomerHistory = async (req, res) => {
         COALESCE(SUM(s.net_amount),0) as total_revenue,
         COALESCE(AVG(s.net_amount),0) as avg_order_value
       FROM sales s
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
         AND s.customer_id != 1
     `, params);
 
@@ -610,7 +580,7 @@ exports.getCustomerHistory = async (req, res) => {
         MIN(s.sale_date)              as first_visit
       FROM sales s
       JOIN customers c ON s.customer_id = c.customer_id
-      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?${branchClause}
+      WHERE s.status = 'completed' AND DATE(s.sale_date) BETWEEN ? AND ?
         AND s.customer_id != 1
       GROUP BY c.customer_id
       ORDER BY total_spent DESC
@@ -695,54 +665,6 @@ exports.getCreditAging = async (req, res) => {
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
 
-// ── 7. Sales by Branch ────────────────────────────────────────
-exports.getBranchSales = async (req, res) => {
-  try {
-    const { date_from, date_to } = req.query;
-    const from = date_from || new Date().toISOString().split('T')[0];
-    const to   = date_to   || new Date().toISOString().split('T')[0];
-
-    const [totals] = await query(`
-      SELECT COALESCE(SUM(net_amount),0) as grand_total, COUNT(*) as grand_orders
-      FROM sales WHERE status='completed' AND DATE(sale_date) BETWEEN ? AND ?
-    `, [from, to]);
-
-    const data = await query(`
-      SELECT COALESCE(st.store_id,0) as branch_id,
-        COALESCE(st.store_name,'Main Branch') as branch_name,
-        COUNT(s.sale_id)             as total_orders,
-        COALESCE(SUM(s.net_amount),0) as total_sales,
-        COALESCE(AVG(s.net_amount),0) as avg_order,
-        COALESCE(SUM(s.discount),0)   as total_discount,
-        COALESCE(SUM(s.tax_amount),0) as total_tax
-      FROM sales s
-      LEFT JOIN stores st ON s.branch_id = st.store_id
-      WHERE s.status='completed' AND DATE(s.sale_date) BETWEEN ? AND ?
-      GROUP BY s.branch_id
-      ORDER BY total_sales DESC
-    `, [from, to]);
-
-    const grandTotal = Number(totals.grand_total);
-    res.json({
-      summary: {
-        grand_total:  grandTotal,
-        grand_orders: Number(totals.grand_orders),
-        branch_count: data.length,
-      },
-      data: data.map(r => ({
-        branch_id:      Number(r.branch_id),
-        branch_name:    r.branch_name,
-        total_orders:   Number(r.total_orders),
-        total_sales:    Number(r.total_sales),
-        avg_order:      Number(r.avg_order),
-        total_discount: Number(r.total_discount),
-        total_tax:      Number(r.total_tax),
-        share_pct:      grandTotal > 0 ? Math.round((Number(r.total_sales) / grandTotal) * 100) : 0,
-      })),
-    });
-  } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
-};
-
 // ── 8. Daily Cash Reconciliation ─────────────────────────────
 exports.getCashReconciliation = async (req, res) => {
   try {
@@ -814,8 +736,7 @@ exports.getCategoryBreakdown = async (req, res) => {
     const { date_from, date_to } = req.query;
     const from = date_from || new Date().toISOString().split('T')[0];
     const to = date_to || new Date().toISOString().split('T')[0];
-    const bf = getBranchFilter(req);
-    const params = [from, to, ...(bf.param ? [bf.param] : [])];
+    const params = [from, to];
 
     const rows = await query(`
       SELECT
@@ -832,7 +753,7 @@ exports.getCategoryBreakdown = async (req, res) => {
         COALESCE(SUM(additional_charges_amount), 0) as total_charges,
         COALESCE(AVG(net_amount), 0) as avg_order
       FROM sales
-      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?${bf.clause}
+      WHERE status = 'completed' AND DATE(sale_date) BETWEEN ? AND ?
       GROUP BY order_type
       ORDER BY total_sales DESC
     `, params);

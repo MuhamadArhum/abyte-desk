@@ -72,10 +72,9 @@ exports.createReturn = async (req, res) => {
       totalRefund += item.refund_price;
     }
 
-    const branch_id = req.user.branch_id || null;
     const returnResult = await conn.query(
-      'INSERT INTO returns (sale_id, user_id, reason, refund_amount, branch_id) VALUES (?, ?, ?, ?, ?)',
-      [sale_id, req.user.user_id, reason, totalRefund, branch_id]
+      'INSERT INTO returns (sale_id, user_id, reason, refund_amount) VALUES (?, ?, ?, ?)',
+      [sale_id, req.user.user_id, reason, totalRefund]
     );
 
     const returnId = Number(returnResult.insertId);
@@ -97,12 +96,8 @@ exports.createReturn = async (req, res) => {
       );
     }
 
-    // Update cash register for refund (branch-specific)
-    const branchId = req.user.branch_id || null;
-    const regQuery = branchId
-      ? "SELECT register_id FROM cash_registers WHERE status = 'open' AND branch_id = ? LIMIT 1"
-      : "SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1";
-    const openRegister = await conn.query(regQuery, branchId ? [branchId] : []);
+    // Update cash register for refund
+    const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
     if (openRegister.length > 0) {
       await conn.query(
         'UPDATE cash_registers SET total_cash_out = total_cash_out + ? WHERE register_id = ?',
@@ -148,14 +143,6 @@ exports.getReturns = async (req, res) => {
                JOIN sales s ON r.sale_id = s.sale_id
                WHERE 1=1`;
     const params = [];
-
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      sql += ' AND r.branch_id = ?';
-      params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      sql += ' AND r.branch_id = ?';
-      params.push(req.query.filter_branch);
-    }
 
     if (date_start) {
       sql += ' AND r.return_date >= ?';

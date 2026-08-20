@@ -28,18 +28,6 @@ exports.getAll = async (req, res) => {
     let countSql = 'SELECT COUNT(*) as total FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id WHERE 1=1';
     const params = [], countParams = [];
 
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      sql += ' AND po.branch_id = ?';
-      countSql += ' AND po.branch_id = ?';
-      params.push(req.user.branch_id);
-      countParams.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      sql += ' AND po.branch_id = ?';
-      countSql += ' AND po.branch_id = ?';
-      params.push(req.query.filter_branch);
-      countParams.push(req.query.filter_branch);
-    }
-
     if (search) {
       sql += ' AND (po.po_number LIKE ? OR s.supplier_name LIKE ?)';
       countSql += ' AND (po.po_number LIKE ? OR s.supplier_name LIKE ?)';
@@ -78,11 +66,9 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
   try {
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND po.branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const [po] = await query(
-      `SELECT po.*, s.supplier_name, u.name as created_by_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id LEFT JOIN users u ON po.created_by = u.user_id WHERE po.po_id = ?${bClause}`,
-      [req.params.id, ...bParam]
+      `SELECT po.*, s.supplier_name, u.name as created_by_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id LEFT JOIN users u ON po.created_by = u.user_id WHERE po.po_id = ?`,
+      [req.params.id]
     );
     if (!po) return res.status(404).json({ message: 'PO not found' });
 
@@ -110,10 +96,9 @@ exports.create = async (req, res) => {
     const total = items.reduce((sum, item) => sum + (item.quantity_ordered * item.unit_cost), 0) + extraCharges;
     const po_number = await nextPONumber();
 
-    const branch_id = req.user.branch_id || null;
     const poResult = await conn.query(
-      'INSERT INTO purchase_orders (po_number, supplier_id, order_date, expected_date, total_amount, additional_charges, notes, created_by, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [po_number, supplier_id, order_date, expected_date || null, total, extraCharges, notes || null, req.user.user_id, branch_id]
+      'INSERT INTO purchase_orders (po_number, supplier_id, order_date, expected_date, total_amount, additional_charges, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [po_number, supplier_id, order_date, expected_date || null, total, extraCharges, notes || null, req.user.user_id]
     );
 
     const poiPh = items.map(() => '(?, ?, ?, ?, ?)').join(', ');

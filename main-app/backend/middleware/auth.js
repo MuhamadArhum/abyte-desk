@@ -29,7 +29,7 @@ const authenticate = async (req, res, next) => {
 
     const rows = await queryDb(
       tenantDb,
-      'SELECT user_id, username, name, email, role_id, role_name, branch_id, is_active FROM users WHERE user_id = ?',
+      'SELECT user_id, username, name, email, role_id, role_name, is_active FROM users WHERE user_id = ?',
       [decoded.user_id]
     );
 
@@ -41,11 +41,10 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'Account has been deactivated. Please contact your administrator.' });
     }
 
-    req.user      = rows[0]; // includes branch_id
+    req.user      = rows[0];
     req.tenantDb  = tenantDb;
     req.tenantId  = decoded.tenant_id;
     req.modules   = decoded.modules || [];
-    req.branchId  = rows[0].branch_id || null; // null = Admin (sees all branches)
 
     // Run inside tenant storage context so query() works in all controllers
     tenantStorage.run(tenantDb, next);

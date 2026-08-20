@@ -1,21 +1,10 @@
 const logger = require('../config/logger');
 const { query } = require('../config/database');
 
-function getBranchFilter(req, alias) {
-  const col = alias ? `${alias}.branch_id` : 'branch_id';
-  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-    return { clause: ` AND ${col} = ?`, param: req.user.branch_id };
-  } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-    return { clause: ` AND ${col} = ?`, param: req.query.filter_branch };
-  }
-  return { clause: '', param: null };
-}
-
 exports.getCustomerAnalytics = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const bf = getBranchFilter(req);
-    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const params = [start_date, end_date];
 
     const topCustomers = await query(`
       SELECT
@@ -25,7 +14,7 @@ exports.getCustomerAnalytics = async (req, res) => {
         AVG(net_amount) as avg_order_value,
         MAX(sale_date) as last_purchase
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
       GROUP BY COALESCE(customer_name, 'Walk-in')
       ORDER BY total_spent DESC
       LIMIT 10
@@ -37,7 +26,7 @@ exports.getCustomerAnalytics = async (req, res) => {
         COUNT(CASE WHEN customer_name IS NULL OR customer_name = '' THEN 1 END) as walkin_count,
         COUNT(*) as total_transactions
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
     `, params);
 
     res.json({ top_customers: topCustomers, summary: customerCounts || {} });
@@ -50,8 +39,7 @@ exports.getCustomerAnalytics = async (req, res) => {
 exports.getPaymentMethods = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const bf = getBranchFilter(req);
-    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const params = [start_date, end_date];
 
     const methods = await query(`
       SELECT
@@ -60,7 +48,7 @@ exports.getPaymentMethods = async (req, res) => {
         SUM(net_amount) as total_amount,
         ROUND(SUM(net_amount) * 100.0 / SUM(SUM(net_amount)) OVER (), 1) as percentage
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
       GROUP BY COALESCE(payment_method, 'Cash')
       ORDER BY total_amount DESC
     `, params);
@@ -75,8 +63,7 @@ exports.getPaymentMethods = async (req, res) => {
 exports.getHourlySales = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const bf = getBranchFilter(req);
-    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const params = [start_date, end_date];
 
     const hourly = await query(`
       SELECT
@@ -84,7 +71,7 @@ exports.getHourlySales = async (req, res) => {
         COUNT(*) as transaction_count,
         SUM(net_amount) as total_sales
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
       GROUP BY HOUR(sale_date)
       ORDER BY hour ASC
     `, params);
@@ -105,8 +92,7 @@ exports.getHourlySales = async (req, res) => {
 exports.getDashboardStats = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const bf = getBranchFilter(req, 's');
-    const salesParams = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const salesParams = [start_date, end_date];
 
     const [salesStats] = await query(`
       SELECT
@@ -116,7 +102,7 @@ exports.getDashboardStats = async (req, res) => {
         SUM(net_amount) as net_sales,
         AVG(net_amount) as avg_transaction
       FROM sales s
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
     `, salesParams);
 
     const [expenseStats] = await query(`
@@ -130,7 +116,7 @@ exports.getDashboardStats = async (req, res) => {
       FROM sale_details sd
       JOIN products p ON sd.product_id = p.product_id
       JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE s.sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE s.sale_date BETWEEN ? AND ?
       GROUP BY sd.product_id, p.product_name
       ORDER BY revenue DESC
       LIMIT 5
@@ -156,8 +142,7 @@ exports.getSalesTrend = async (req, res) => {
     if (!['daily', 'weekly', 'monthly'].includes(period)) {
       return res.status(400).json({ message: 'Invalid period. Must be daily, weekly, or monthly.' });
     }
-    const bf = getBranchFilter(req);
-    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const params = [start_date, end_date];
 
     let groupBy;
     if (period === 'daily') groupBy = 'DATE(sale_date)';
@@ -171,7 +156,7 @@ exports.getSalesTrend = async (req, res) => {
         SUM(total_amount) as total_sales,
         SUM(net_amount) as net_sales
       FROM sales
-      WHERE sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE sale_date BETWEEN ? AND ?
       GROUP BY ${groupBy}
       ORDER BY period ASC
     `, params);
@@ -186,8 +171,7 @@ exports.getSalesTrend = async (req, res) => {
 exports.getCategoryBreakdown = async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    const bf = getBranchFilter(req, 's');
-    const params = [start_date, end_date, ...(bf.param ? [bf.param] : [])];
+    const params = [start_date, end_date];
 
     const breakdown = await query(`
       SELECT c.category_name, SUM(sd.total_price) as revenue, SUM(sd.quantity) as units_sold
@@ -195,7 +179,7 @@ exports.getCategoryBreakdown = async (req, res) => {
       JOIN products p ON sd.product_id = p.product_id
       JOIN categories c ON p.category_id = c.category_id
       JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE s.sale_date BETWEEN ? AND ?${bf.clause}
+      WHERE s.sale_date BETWEEN ? AND ?
       GROUP BY c.category_id, c.category_name
       ORDER BY revenue DESC
     `, params);

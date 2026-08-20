@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>AByte ERP Server — Setup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 28px 32px;
+    }
+
+    h1 { font-size: 18px; color: #f1f5f9; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #64748b;
+      margin: 18px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 9px 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      color: #f1f5f9;
+      font-size: 14px;
+      margin-bottom: 14px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #3b82f6; }
+
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+
+    .btn-save {
+      width: 100%;
+      padding: 11px;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: opacity .15s;
+    }
+    .btn-save:hover { opacity: .9; }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      display: none;
+    }
+    .msg.success { background: #14532d; color: #4ade80; display: block; }
+    .msg.error   { background: #450a0a; color: #f87171; display: block; }
+
+    .hint { font-size: 11px; color: #475569; margin-top: -10px; margin-bottom: 14px; }
+    .jwt-row { display: flex; gap: 8px; align-items: flex-start; }
+    .jwt-row input { margin-bottom: 0; }
+    .btn-gen {
+      padding: 9px 12px;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 7px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+      height: 38px;
+      margin-top: 0;
+    }
+    .btn-gen:hover { background: #334155; }
+  </style>
+</head>
+<body>
+
+<h1>Server Configuration</h1>
+<p class="subtitle">Configure MariaDB connection and security settings.</p>
+
+<div class="section-title">Database Connection</div>
+
+<div class="row">
+  <div>
+    <label>Host</label>
+    <input id="db-host" type="text" value="localhost" placeholder="localhost" />
+  </div>
+  <div>
+    <label>Port</label>
+    <input id="db-port" type="text" value="3306" placeholder="3306" style="margin-bottom:14px" />
+  </div>
+</div>
+
+<label>Database User</label>
+<input id="db-user" type="text" value="root" placeholder="root" />
+
+<label>Database Password</label>
+<input id="db-pass" type="password" placeholder="Enter MariaDB password" />
+
+<div class="row">
+  <div>
+    <label>ERP Database Name</label>
+    <input id="db-name" type="text" value="abyte_pos" placeholder="abyte_pos" />
+  </div>
+  <div>
+    <label>Master DB Name</label>
+    <input id="db-master" type="text" value="abyte_master" placeholder="abyte_master" />
+  </div>
+</div>
+
+<div class="section-title">Security</div>
+
+<label>JWT Secret Key</label>
+<div class="jwt-row">
+  <input id="jwt-secret" type="text" placeholder="Auto-generated if left empty" />
+  <button class="btn-gen" id="btn-gen">Generate</button>
+</div>
+<p class="hint" style="margin-top:6px;margin-bottom:18px">Leave empty to auto-generate a secure key on save.</p>
+
+<button class="btn-save" id="btn-save">Save & Restart Server</button>
+
+<div class="msg" id="msg"></div>
+
+<script src="setup.js"></script>
+</body>
+</html>

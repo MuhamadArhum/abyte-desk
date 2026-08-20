@@ -40,23 +40,11 @@ exports.getStats = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    let branchWhere = '';
-    const branchParam = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      branchWhere = ' AND branch_id = ?';
-      branchParam.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      branchWhere = ' AND branch_id = ?';
-      branchParam.push(req.query.filter_branch);
-    }
-
     const [total, byStatus, deliveredToday, charges] = await Promise.all([
-      query(`SELECT COUNT(*) as count FROM deliveries WHERE 1=1${branchWhere}`, branchParam),
-      query(`SELECT status, COUNT(*) as count FROM deliveries WHERE 1=1${branchWhere} GROUP BY status`, branchParam),
-      query(`SELECT COUNT(*) as count FROM deliveries
-             WHERE status = 'delivered' AND DATE(actual_delivery) = ?${branchWhere}`, [today, ...branchParam]),
-      query(`SELECT COALESCE(SUM(delivery_charges), 0) as total FROM deliveries
-             WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())${branchWhere}`, branchParam),
+      query(`SELECT COUNT(*) as count FROM deliveries`),
+      query(`SELECT status, COUNT(*) as count FROM deliveries GROUP BY status`),
+      query(`SELECT COUNT(*) as count FROM deliveries WHERE status = 'delivered' AND DATE(actual_delivery) = ?`, [today]),
+      query(`SELECT COALESCE(SUM(delivery_charges), 0) as total FROM deliveries WHERE MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())`),
     ]);
 
     const statusMap = {};
@@ -88,14 +76,6 @@ exports.getAll = async (req, res) => {
 
     const conditions = [];
     const params = [];
-
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      conditions.push('d.branch_id = ?');
-      params.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      conditions.push('d.branch_id = ?');
-      params.push(req.query.filter_branch);
-    }
 
     if (search) {
       conditions.push('(d.delivery_number LIKE ? OR c.customer_name LIKE ? OR d.rider_name LIKE ? OR d.delivery_city LIKE ?)');
@@ -176,8 +156,6 @@ exports.getAll = async (req, res) => {
 // GET /api/deliveries/:id
 exports.getById = async (req, res) => {
   try {
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND d.branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
     const rows = await query(`
       SELECT d.*,
              c.customer_name, c.phone_number AS customer_phone, c.email AS customer_email,
@@ -187,8 +165,8 @@ exports.getById = async (req, res) => {
       JOIN customers c ON d.customer_id = c.customer_id
       LEFT JOIN users u ON d.created_by = u.user_id
       LEFT JOIN sales s ON d.sale_id = s.sale_id
-      WHERE d.delivery_id = ?${bClause}
-    `, [req.params.id, ...bParam]);
+      WHERE d.delivery_id = ?
+    `, [req.params.id]);
 
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
     res.json(rows[0]);
@@ -215,13 +193,12 @@ exports.create = async (req, res) => {
     const delivery_number = await generateDeliveryNumber(conn);
     const status = (rider_name && rider_name.trim()) ? 'assigned' : 'pending';
 
-    const branch_id = req.user.branch_id || null;
     const result = await conn.query(`
       INSERT INTO deliveries
         (delivery_number, sale_id, customer_id, delivery_address, delivery_city,
          delivery_phone, rider_name, rider_phone, status, delivery_charges,
-         estimated_delivery, notes, created_by, branch_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         estimated_delivery, notes, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       delivery_number,
       sale_id || null,
@@ -236,7 +213,6 @@ exports.create = async (req, res) => {
       estimated_delivery || null,
       notes || '',
       req.user.user_id,
-      branch_id,
     ]);
 
     const newId = Number(result.insertId);
@@ -263,9 +239,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-    const existing = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [id, ...bParam]);
+    const existing = await query(`SELECT * FROM deliveries WHERE delivery_id = ?`, [id]);
     if (!existing.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const old = existing[0];
@@ -331,9 +305,7 @@ exports.updateStatus = async (req, res) => {
     const valid = ['pending', 'assigned', 'dispatched', 'in_transit', 'delivered', 'failed', 'cancelled'];
     if (!valid.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [id, ...bParam]);
+    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?`, [id]);
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const old = rows[0];
@@ -363,9 +335,7 @@ exports.updateStatus = async (req, res) => {
 // DELETE /api/deliveries/:id  (only pending/cancelled can be deleted)
 exports.remove = async (req, res) => {
   try {
-    const bClause = req.user.role_name !== 'Admin' && req.user.branch_id ? ' AND branch_id = ?' : '';
-    const bParam  = req.user.role_name !== 'Admin' && req.user.branch_id ? [req.user.branch_id] : [];
-    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?${bClause}`, [req.params.id, ...bParam]);
+    const rows = await query(`SELECT * FROM deliveries WHERE delivery_id = ?`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Delivery not found' });
 
     const d = rows[0];

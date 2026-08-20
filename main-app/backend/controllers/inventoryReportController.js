@@ -8,19 +8,8 @@
 const logger = require('../config/logger');
 const { query } = require('../config/database');
 
-function branchWhere(req, alias = 'p') {
-  if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.user.branch_id] };
-  }
-  if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-    return { clause: ` AND ${alias}.branch_id = ?`, params: [req.query.filter_branch] };
-  }
-  return { clause: '', params: [] };
-}
-
 exports.getStockSummary = async (req, res) => {
   try {
-    const branch = branchWhere(req, 'p');
     const [row] = await query(`
       SELECT
         COUNT(p.product_id) as total_products,
@@ -31,8 +20,8 @@ exports.getStockSummary = async (req, res) => {
                     AND COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10) THEN 1 END) as low_stock_count
       FROM products p
       LEFT JOIN inventory i ON p.product_id = i.product_id
-      WHERE p.is_active = 1${branch.clause}
-    `, branch.params);
+      WHERE p.is_active = 1
+    `);
     res.json(row || {});
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
@@ -40,9 +29,8 @@ exports.getStockSummary = async (req, res) => {
 exports.getTopProducts = async (req, res) => {
   try {
     const { limit = 10, date_from, date_to } = req.query;
-    const branch = branchWhere(req, 's');
-    let where = '1=1' + branch.clause;
-    const params = [...branch.params];
+    let where = '1=1';
+    const params = [];
     if (date_from) { where += ' AND s.sale_date >= ?'; params.push(date_from); }
     if (date_to)   { where += ' AND s.sale_date <= ?'; params.push(date_to); }
     params.push(parseInt(limit));
@@ -65,19 +53,17 @@ exports.getTopProducts = async (req, res) => {
 
 exports.getCategoryBreakdown = async (req, res) => {
   try {
-    const branch = branchWhere(req, 'p');
-    const bClause = branch.clause ? `AND p.branch_id = ?` : '';
     const rows = await query(`
       SELECT c.category_id, c.category_name,
              COUNT(p.product_id) as product_count,
              COALESCE(SUM(i.available_stock), 0) as total_stock,
              COALESCE(SUM(i.available_stock * COALESCE(p.cost_price, 0)), 0) as stock_value
       FROM categories c
-      LEFT JOIN products p ON c.category_id = p.category_id AND p.is_active = 1 ${bClause}
+      LEFT JOIN products p ON c.category_id = p.category_id AND p.is_active = 1
       LEFT JOIN inventory i ON p.product_id = i.product_id
       GROUP BY c.category_id, c.category_name
       ORDER BY stock_value DESC
-    `, branch.params);
+    `);
     res.json({ data: rows.map(r => ({ ...r, product_count: Number(r.product_count), total_stock: Number(r.total_stock), stock_value: Number(r.stock_value) })) });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
@@ -85,8 +71,6 @@ exports.getCategoryBreakdown = async (req, res) => {
 exports.getSlowMovers = async (req, res) => {
   try {
     const { days = 30 } = req.query;
-    const branch = branchWhere(req, 'p');
-    const bClause = branch.clause ? `AND p.branch_id = ?` : '';
     const rows = await query(`
       SELECT
         p.product_id, p.product_name, c.category_name,
@@ -99,12 +83,12 @@ exports.getSlowMovers = async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN sale_details sd ON p.product_id = sd.product_id
       LEFT JOIN sales s ON sd.sale_id = s.sale_id
-      WHERE p.is_active = 1 AND COALESCE(i.available_stock, 0) > 0 ${bClause}
+      WHERE p.is_active = 1 AND COALESCE(i.available_stock, 0) > 0
       GROUP BY p.product_id, p.product_name, c.category_name, i.available_stock, p.cost_price
       HAVING last_sale_date IS NULL OR days_since_last_sale >= ?
       ORDER BY days_since_last_sale DESC, current_stock DESC
       LIMIT 50
-    `, [...branch.params, parseInt(days)]);
+    `, [parseInt(days)]);
     res.json({ data: rows.map(r => ({ ...r, current_stock: Number(r.current_stock), value_at_risk: Number(r.value_at_risk) })) });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
@@ -184,8 +168,7 @@ exports.itemsLedger = async (req, res) => {
 exports.itemWisePurchase = async (req, res) => {
   try {
     const { from_date, to_date, supplier_id } = req.query;
-    const branch = branchWhere(req, 'p');
-    let where = 'WHERE 1=1' + branch.clause; const params = [...branch.params];
+    let where = 'WHERE 1=1'; const params = [];
     if (from_date)   { where += ' AND pv.voucher_date >= ?';  params.push(from_date); }
     if (to_date)     { where += ' AND pv.voucher_date <= ?';  params.push(to_date); }
     if (supplier_id) { where += ' AND pv.supplier_id = ?';    params.push(supplier_id); }
@@ -355,8 +338,6 @@ exports.issuanceSummary = async (req, res) => {
 
 exports.stockReconciliation = async (req, res) => {
   try {
-    const branch = branchWhere(req, 'p');
-    const bClause = branch.clause ? `AND p.branch_id = ?` : '';
     const rows = await query(
       'SELECT p.product_id, p.product_name, p.product_type, p.barcode,' +
       ' COALESCE(inv.available_stock, 0) as current_stock,' +
@@ -369,7 +350,7 @@ exports.stockReconciliation = async (req, res) => {
       ' (SELECT COALESCE(SUM(rsi.quantity),0) FROM raw_sale_items rsi WHERE rsi.product_id = p.product_id) as total_raw_sold' +
       ' FROM products p' +
       ' LEFT JOIN inventory inv ON p.product_id = inv.product_id' +
-      ` WHERE p.is_active = 1 ${bClause} ORDER BY p.product_name`, branch.params);
+      ' WHERE p.is_active = 1 ORDER BY p.product_name');
     res.json({ data: rows.map(r => ({
       ...r,
       current_stock: Number(r.current_stock),
@@ -385,7 +366,6 @@ exports.stockReconciliation = async (req, res) => {
 exports.getLowStock = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    const branch = branchWhere(req, 'p');
     const rows = await query(`
       SELECT p.product_id, p.product_name, p.sku,
              COALESCE(i.available_stock, 0) as stock_quantity,
@@ -396,10 +376,9 @@ exports.getLowStock = async (req, res) => {
       LEFT JOIN categories c ON p.category_id = c.category_id
       WHERE p.is_active = 1
         AND COALESCE(i.available_stock, 0) <= COALESCE(p.min_stock_level, 10)
-        ${branch.clause}
       ORDER BY COALESCE(i.available_stock, 0) ASC
       LIMIT ?
-    `, [...branch.params, parseInt(limit)]);
+    `, [parseInt(limit)]);
     res.json({ data: rows.map(r => ({ ...r, stock_quantity: Number(r.stock_quantity), min_stock_level: Number(r.min_stock_level) })) });
   } catch (err) { logger.error(err); res.status(500).json({ message: 'Server error' }); }
 };
@@ -687,8 +666,6 @@ exports.categoryWisePurchase = async (req, res) => {
 // ── 1. Stock Valuation Report ────────────────────────────────
 exports.getStockValuation = async (req, res) => {
   try {
-    const branch = branchWhere(req, 'p');
-
     const [totals] = await query(`
       SELECT
         COUNT(p.product_id) as total_products,
@@ -697,8 +674,8 @@ exports.getStockValuation = async (req, res) => {
         COALESCE(SUM(COALESCE(i.available_stock, 0) * COALESCE(p.selling_price, p.price, 0)), 0) as total_retail_value
       FROM products p
       LEFT JOIN inventory i ON p.product_id = i.product_id
-      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
-    `, branch.params);
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
+    `);
 
     const byCategory = await query(`
       SELECT
@@ -710,10 +687,10 @@ exports.getStockValuation = async (req, res) => {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN inventory i ON p.product_id = i.product_id
-      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
       GROUP BY c.category_id
       ORDER BY cost_value DESC
-    `, branch.params);
+    `);
 
     const products = await query(`
       SELECT
@@ -727,9 +704,9 @@ exports.getStockValuation = async (req, res) => {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN inventory i ON p.product_id = i.product_id
-      WHERE p.is_active = 1 AND p.deleted_at IS NULL ${branch.clause}
+      WHERE p.is_active = 1 AND p.deleted_at IS NULL
       ORDER BY cost_value DESC
-    `, branch.params);
+    `);
 
     const totalCost   = Number(totals.total_cost_value);
     const totalRetail = Number(totals.total_retail_value);
@@ -901,8 +878,6 @@ exports.getStockTransfers = async (req, res) => {
 exports.getDeadStock = async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 90;
-    const branch = branchWhere(req, 'p');
-
     const rows = await query(`
       SELECT
         p.product_id, p.product_name, p.sku, p.unit,
@@ -926,11 +901,11 @@ exports.getDeadStock = async (req, res) => {
         FROM stock_issue_items sii JOIN stock_issues si ON sii.issue_id = si.issue_id
       ) act ON act.product_id = p.product_id
       WHERE p.is_active = 1 AND p.deleted_at IS NULL
-        AND COALESCE(inv.available_stock, 0) > 0 ${branch.clause}
+        AND COALESCE(inv.available_stock, 0) > 0
       GROUP BY p.product_id
       HAVING MAX(act.last_date) IS NULL OR DATEDIFF(CURDATE(), MAX(act.last_date)) >= ?
       ORDER BY dead_stock_value DESC
-    `, [...branch.params, days]);
+    `, [days]);
 
     const totalValue = rows.reduce((s, r) => s + Number(r.dead_stock_value), 0);
     res.json({
@@ -959,8 +934,7 @@ exports.getDeadStock = async (req, res) => {
 exports.getStockAdjustments = async (req, res) => {
   try {
     const { from_date, to_date } = req.query;
-    const branch = branchWhere(req, 'p');
-    const params = [...branch.params];
+    const params = [];
     let dateW = '';
     if (from_date) { dateW += ' AND DATE(sa.created_at) >= ?'; params.push(from_date); }
     if (to_date)   { dateW += ' AND DATE(sa.created_at) <= ?'; params.push(to_date); }
@@ -971,7 +945,7 @@ exports.getStockAdjustments = async (req, res) => {
         SUM(sa.quantity_adjusted) as total_qty
       FROM stock_adjustments sa
       JOIN products p ON sa.product_id = p.product_id
-      WHERE 1=1 ${branch.clause} ${dateW}
+      WHERE 1=1 ${dateW}
       GROUP BY sa.adjustment_type
       ORDER BY count DESC
     `, params);
@@ -988,7 +962,7 @@ exports.getStockAdjustments = async (req, res) => {
       JOIN products p ON sa.product_id = p.product_id
       LEFT JOIN categories c ON p.category_id = c.category_id
       JOIN users u ON sa.created_by = u.user_id
-      WHERE 1=1 ${branch.clause} ${dateW}
+      WHERE 1=1 ${dateW}
       ORDER BY sa.created_at DESC
       LIMIT 200
     `, params);

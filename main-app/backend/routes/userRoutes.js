@@ -12,6 +12,7 @@
 //   DELETE /api/users/:id    - Delete a user
 // =============================================================
 
+
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
@@ -30,6 +31,5 @@ router.get('/', userController.getAll);                     // Get all users
 router.post('/', userController.create);                    // Create new user
 router.put('/:id', userController.update);                  // Update user by ID
 router.delete('/:id', userController.remove);               // Delete user by ID
-router.patch('/:id/branch', userController.assignBranch);   // Assign user to branch
 
 module.exports = router;

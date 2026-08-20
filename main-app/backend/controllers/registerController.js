@@ -18,17 +18,12 @@ const parsePagination = (page, limit) => {
 
 exports.getCurrentRegister = async (req, res) => {
   try {
-    const branchId = req.user.branch_id || null;
-    const branchClause = branchId ? ' AND cr.branch_id = ?' : '';
-    const branchParam = branchId ? [branchId] : [];
-
     const register = await query(
       `SELECT cr.*, u.name as opened_by_name
        FROM cash_registers cr
        JOIN users u ON cr.opened_by = u.user_id
-       WHERE cr.status = 'open'${branchClause}
-       LIMIT 1`,
-      branchParam
+       WHERE cr.status = 'open'
+       LIMIT 1`
     );
 
     if (register.length === 0) {
@@ -50,14 +45,12 @@ exports.getCurrentRegister = async (req, res) => {
     );
     const shift_expenses = parseFloat(expensesResult[0].total);
 
-    const shiftBranchClause = branchId ? ' AND s.branch_id = ?' : '';
-    const shiftBranchParam = branchId ? [branchId] : [];
     const shift_sales = await query(
       `SELECT s.sale_id, s.invoice_no, s.sale_date, s.total_amount, s.payment_method, s.discount
        FROM sales s
-       WHERE s.sale_date >= ? AND s.status = 'completed'${shiftBranchClause}
+       WHERE s.sale_date >= ? AND s.status = 'completed'
        ORDER BY s.sale_date DESC`,
-      [register[0].opened_at, ...shiftBranchParam]
+      [register[0].opened_at]
     );
 
     res.json({ ...register[0], movements, shift_expenses, shift_sales });
@@ -71,12 +64,8 @@ exports.openRegister = async (req, res) => {
   try {
     const { opening_balance } = req.body;
 
-    const branch_id = req.user.branch_id || null;
-    const branchClause = branch_id ? ' AND branch_id = ?' : '';
-    const branchParam = branch_id ? [branch_id] : [];
-
-    // Check if a register is already open for this branch
-    const existing = await query(`SELECT register_id FROM cash_registers WHERE status = 'open'${branchClause} LIMIT 1`, branchParam);
+    // Check if a register is already open
+    const existing = await query(`SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1`);
     if (existing.length > 0) {
       return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
     }
@@ -89,14 +78,14 @@ exports.openRegister = async (req, res) => {
     let registerId;
     try {
       await conn.beginTransaction();
-      const openCheck = await conn.query(`SELECT register_id FROM cash_registers WHERE status = 'open'${branchClause} LIMIT 1 FOR UPDATE`, branchParam);
+      const openCheck = await conn.query(`SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1 FOR UPDATE`);
       if (openCheck.length > 0) {
         await conn.rollback();
         return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
       }
       const result = await conn.query(
-        'INSERT INTO cash_registers (opened_by, opening_balance, branch_id) VALUES (?, ?, ?)',
-        [req.user.user_id, opening_balance, branch_id]
+        'INSERT INTO cash_registers (opened_by, opening_balance) VALUES (?, ?)',
+        [req.user.user_id, opening_balance]
       );
       registerId = Number(result.insertId);
       await conn.commit();
@@ -137,13 +126,9 @@ exports.closeRegister = async (req, res) => {
       return res.status(404).json({ message: 'No open register found' });
     }
 
-    // Block close if there are running (pending) orders for this branch
-    const reg0 = register[0];
-    const pendingBranchClause = reg0.branch_id ? ' AND branch_id = ?' : '';
-    const pendingBranchParam = reg0.branch_id ? [reg0.branch_id] : [];
+    // Block close if there are running (pending) orders
     const pendingCheck = await conn.query(
-      `SELECT COUNT(*) as cnt FROM sales WHERE status = 'pending'${pendingBranchClause}`,
-      pendingBranchParam
+      `SELECT COUNT(*) as cnt FROM sales WHERE status = 'pending'`
     );
     const pendingCount = Number(pendingCheck[0].cnt);
     if (pendingCount > 0) {
@@ -284,17 +269,7 @@ exports.getHistory = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const pg = parsePagination(page, limit);
 
-    let branchClause = '';
-    const branchParam = [];
-    if (req.user.role_name !== 'Admin' && req.user.branch_id) {
-      branchClause = ' WHERE cr.branch_id = ?';
-      branchParam.push(req.user.branch_id);
-    } else if (req.user.role_name === 'Admin' && req.query.filter_branch) {
-      branchClause = ' WHERE cr.branch_id = ?';
-      branchParam.push(req.query.filter_branch);
-    }
-
-    const countResult = await query(`SELECT COUNT(*) as total FROM cash_registers cr${branchClause}`, branchParam);
+    const countResult = await query(`SELECT COUNT(*) as total FROM cash_registers cr`);
     const total = Number(countResult[0].total);
 
     const registers = await query(
@@ -304,10 +279,9 @@ exports.getHistory = async (req, res) => {
        FROM cash_registers cr
        JOIN users u1 ON cr.opened_by = u1.user_id
        LEFT JOIN users u2 ON cr.closed_by = u2.user_id
-       ${branchClause.replace('WHERE', 'WHERE')}
        ORDER BY cr.opened_at DESC
        LIMIT ? OFFSET ?`,
-      [...branchParam, pg.limit, pg.offset]
+      [pg.limit, pg.offset]
     );
 
     res.json({
