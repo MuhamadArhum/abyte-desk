@@ -69,28 +69,28 @@ Remove the `abyte_master` dependency. One DB, one company.
 
 ---
 
-## Phase 5 — Database & Schema Cleanup 🔲 TODO
+## Phase 5 — Database & Schema Cleanup ✅ DONE
 
-- [ ] Remove `stores` table from `database/schema.sql`
-- [ ] Remove `store_inventory` table from schema
-- [ ] Remove `branch_id` column from all tables in schema
-- [ ] Remove `stockTransfer` related tables from schema
-- [ ] Write a migration script to drop branch columns from existing DBs
-- [ ] Remove tenant-related tables from `database/master_schema.sql`
-- [ ] Test fresh DB creation with updated schema
+- [x] Remove `stores` table from `database/schema.sql`
+- [x] Remove `store_inventory` table from schema
+- [x] Remove `branch_id` column from all tables in schema
+- [x] Remove `stockTransfer` related tables from schema
+- [x] Write a migration script to drop branch columns from existing DBs (migration v22)
+- [x] Remove tenant-related tables from `database/master_schema.sql`
+- [x] Test fresh DB creation with updated schema
 
 ---
 
-## Phase 6 — Packaging & Installer 🔲 TODO
+## Phase 6 — Packaging & Installer ✅ DONE
 
-- [ ] Configure `electron-builder` for Server App — NSIS installer
-- [ ] Configure `electron-builder` for Client App — NSIS installer
-- [ ] Bundle backend code into Server App via `extraResources`
-- [ ] Include MariaDB installer or setup guide in Server installer
-- [ ] Server installer: auto-create DB and run schema on first install
-- [ ] Client installer: lightweight, no DB or backend needed
-- [ ] Test install on a clean Windows 11 machine
-- [ ] Test LAN connection between server PC and 2+ client PCs
+- [x] Configure `electron-builder` for Server App — NSIS installer
+- [x] Configure `electron-builder` for Client App — NSIS installer
+- [x] Bundle backend code into Server App via `extraResources`
+- [x] Include MariaDB setup guide (`SETUP_GUIDE.txt`) in Server installer
+- [x] Server installer: `init-db` IPC handler creates DB + applies schema.sql on first run
+- [x] Client installer: lightweight, no DB or backend needed
+- [ ] Test install on a clean Windows 11 machine (manual)
+- [ ] Test LAN connection between server PC and 2+ client PCs (manual)
 
 ---
 

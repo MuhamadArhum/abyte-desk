@@ -21,22 +21,30 @@
     "appId": "com.abytesolutions.erp-server",
     "productName": "AByte ERP Server",
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.png",
+      "sign": null,
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico"
+      "shortcutName": "AByte ERP Server",
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh"
     },
     "files": [
       "main.js",
       "preload.js",
       "renderer/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "SETUP_GUIDE.txt",
+      "installer.nsh"
     ],
     "extraResources": [
       {
@@ -47,8 +55,13 @@
           "!node_modules/**",
           "!tests/**",
           "!*.test.js",
-          "!.env*"
+          "!.env*",
+          "!backups/**"
         ]
+      },
+      {
+        "from": "../database/schema.sql",
+        "to": "schema.sql"
       }
     ],
     "extraFiles": [

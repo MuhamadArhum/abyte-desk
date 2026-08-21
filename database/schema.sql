@@ -36,9 +36,8 @@ CREATE TABLE IF NOT EXISTS categories (
     parent_id INT NULL,
     description TEXT,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
-    branch_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_category_per_branch (category_name, branch_id)
+    UNIQUE KEY unique_category_name (category_name)
 );
 
 -- Variant Types (e.g. Size, Color)
@@ -97,14 +96,11 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role_id INT NOT NULL,
     role_name VARCHAR(50) NOT NULL,
-    branch_id INT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(role_id),
     INDEX idx_user_username (username),
-    INDEX idx_user_active (is_active),
-    INDEX idx_user_branch (branch_id)
-    -- branch_id FK added after stores table: FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL
+    INDEX idx_user_active (is_active)
 );
 
 -- Variant Values (e.g. Small, Medium, Red, Blue)
@@ -237,27 +233,6 @@ CREATE TABLE IF NOT EXISTS suppliers (
     INDEX idx_supplier_active (is_active)
 );
 
--- Stores / Branches
-CREATE TABLE IF NOT EXISTS stores (
-    store_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_name VARCHAR(200) NOT NULL,
-    store_code VARCHAR(20) NOT NULL UNIQUE,
-    address TEXT,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    manager_id INT,
-    monthly_charge DECIMAL(10,2) DEFAULT 0.00,
-    is_active TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (manager_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    INDEX idx_store_active (is_active),
-    INDEX idx_store_code (store_code)
-);
-
-INSERT IGNORE INTO stores (store_id, store_name, store_code, is_active)
-VALUES (1, 'Main Store', 'MAIN', 1);
-
 -- Sections (departments for stock issuance)
 CREATE TABLE IF NOT EXISTS sections (
     section_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -345,12 +320,10 @@ CREATE TABLE IF NOT EXISTS expenses (
     expense_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     description TEXT,
     user_id INT,
-    branch_id INT NULL,
     FOREIGN KEY (category_id) REFERENCES expense_categories(category_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     INDEX idx_expense_date (expense_date),
     INDEX idx_expense_category (category_id),
-    INDEX idx_expense_branch (branch_id),
     CONSTRAINT chk_expense_amount CHECK (amount > 0)
 );
 
@@ -391,17 +364,14 @@ CREATE TABLE IF NOT EXISTS staff (
     salary DECIMAL(10, 2),
     salary_type ENUM('hourly', 'daily', 'monthly') DEFAULT 'monthly',
     hire_date DATE NOT NULL,
-    branch_id INT NULL,
     is_active TINYINT(1) DEFAULT 1,
     leave_balance INT DEFAULT 20,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL,
     INDEX idx_staff_active (is_active),
     INDEX idx_staff_name (full_name),
-    INDEX idx_staff_employee_id (employee_id),
-    INDEX idx_staff_branch (branch_id)
+    INDEX idx_staff_employee_id (employee_id)
 );
 
 -- Staff Loans
@@ -666,20 +636,6 @@ CREATE TABLE IF NOT EXISTS inventory (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
--- Store Inventory (stock per store)
-CREATE TABLE IF NOT EXISTS store_inventory (
-    store_inventory_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_id INT NOT NULL,
-    product_id INT NOT NULL,
-    available_stock INT NOT NULL DEFAULT 0,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (store_id) REFERENCES stores(store_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_store_product (store_id, product_id),
-    INDEX idx_store_inv_store (store_id),
-    INDEX idx_store_inv_product (product_id)
-);
-
 -- Stock Layers (FIFO cost tracking)
 CREATE TABLE IF NOT EXISTS stock_layers (
     layer_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -739,7 +695,6 @@ CREATE TABLE IF NOT EXISTS stock_adjustments (
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(product_id),
-    FOREIGN KEY (store_id) REFERENCES stores(store_id),
     FOREIGN KEY (created_by) REFERENCES users(user_id),
     INDEX idx_adj_product (product_id),
     INDEX idx_adj_type (adjustment_type),
@@ -794,26 +749,6 @@ CREATE TABLE IF NOT EXISTS stock_issue_return_items (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
--- Stock Transfers (between stores)
-CREATE TABLE IF NOT EXISTS stock_transfers (
-    transfer_id INT PRIMARY KEY AUTO_INCREMENT,
-    from_store_id INT NOT NULL,
-    to_store_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
-    notes TEXT,
-    created_by INT NOT NULL,
-    FOREIGN KEY (from_store_id) REFERENCES stores(store_id),
-    FOREIGN KEY (to_store_id) REFERENCES stores(store_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id),
-    INDEX idx_transfer_from (from_store_id),
-    INDEX idx_transfer_to (to_store_id),
-    INDEX idx_transfer_date (transfer_date)
-);
-
 -- Purchase Orders
 CREATE TABLE IF NOT EXISTS purchase_orders (
     po_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -832,11 +767,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
     FOREIGN KEY (created_by) REFERENCES users(user_id),
-    FOREIGN KEY (store_id) REFERENCES stores(store_id),
     INDEX idx_po_number (po_number),
     INDEX idx_po_status (status),
-    INDEX idx_po_supplier (supplier_id),
-    INDEX idx_po_store (store_id)
+    INDEX idx_po_supplier (supplier_id)
 );
 
 -- Purchase Order Items
@@ -1008,19 +941,16 @@ CREATE TABLE IF NOT EXISTS sales (
     amount_paid DECIMAL(10, 2) DEFAULT 0.00,
     token_no VARCHAR(20) NULL,
     invoice_no VARCHAR(20) NULL,
-    branch_id INT NULL,
     table_id INT NULL,
     order_type VARCHAR(30) NULL DEFAULT 'on_spot',
     customer_name VARCHAR(100) NULL,
     customer_phone VARCHAR(20) NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-    FOREIGN KEY (branch_id) REFERENCES stores(store_id) ON DELETE SET NULL,
     INDEX idx_sale_date (sale_date),
     INDEX idx_sale_status (status),
     INDEX idx_sale_payment_method (payment_method),
-    INDEX idx_sale_date_status (sale_date, status),
-    INDEX idx_sale_branch (branch_id)
+    INDEX idx_sale_date_status (sale_date, status)
 );
 
 -- Sale Details

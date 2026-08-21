@@ -1,0 +1,39 @@
+AByte ERP Server — Setup Guide
+================================
+
+STEP 1: Install MariaDB
+-----------------------
+Download MariaDB Community Server from:
+  https://mariadb.org/download/
+
+During installation:
+  - Set a root password (you will need it in Step 3)
+  - Check "Install as Windows Service" (auto-start with Windows)
+  - Default port: 3306
+
+STEP 2: Start AByte ERP Server
+-------------------------------
+Launch "AByte ERP Server" from the Start Menu or Desktop shortcut.
+The Setup Wizard will open automatically on first run.
+
+STEP 3: Configure & Initialize
+-------------------------------
+In the Setup Wizard:
+  1. Enter your MariaDB connection details (host, user, password)
+  2. Set the database name (default: abyte_pos)
+  3. Click "Test Connection" to verify MariaDB is reachable
+  4. Click "Initialize Database" to create the DB and install the schema
+  5. Click "Save & Start Server"
+
+STEP 4: Client PCs
+------------------
+On each client PC, install "AByte ERP Client" and enter this
+server PC's local IP address (shown on the Server dashboard).
+
+TROUBLESHOOTING
+---------------
+- Server won't start: Check that MariaDB service is running
+  (Windows Services → MariaDB)
+- "Access denied": Wrong username or password in Setup Wizard
+- Clients can't connect: Check Windows Firewall — allow port 5000 inbound
+  on the server PC

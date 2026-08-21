@@ -526,6 +526,99 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE restaurant_tables MODIFY COLUMN status ENUM('available','occupied','needs_cleaning') DEFAULT 'available'`);
     },
   },
+  {
+    version: 22,
+    name: 'phase5_drop_branch_columns_and_store_tables',
+    async run(db) {
+      // Phase 5: single-tenant offline conversion — remove multi-branch/store remnants.
+      // Drop dependent tables first (FK order), then drop branch_id columns.
+      const dropTables = [
+        `DROP TABLE IF EXISTS stock_transfers`,
+        `DROP TABLE IF EXISTS store_inventory`,
+      ];
+      for (const sql of dropTables) {
+        try { await queryDb(db, sql); } catch (e) {
+          if (!e.message?.includes("doesn't exist")) throw e;
+        }
+      }
+
+      const dropColumns = [
+        [`sales`,                `branch_id`],
+        [`categories`,           `branch_id`],
+        [`users`,                `branch_id`],
+        [`staff`,                `branch_id`],
+        [`expenses`,             `branch_id`],
+        [`credit_sales`,         `branch_id`],
+        [`deliveries`,           `branch_id`],
+        [`stock_issues`,         `branch_id`],
+        [`stock_issue_returns`,  `branch_id`],
+        [`raw_sales`,            `branch_id`],
+        [`purchase_orders`,      `branch_id`],
+        [`quotations`,           `branch_id`],
+        [`cash_registers`,       `branch_id`],
+        [`returns`,              `branch_id`],
+        [`inv_purchase_vouchers`,`branch_id`],
+        [`printers`,             `branch_id`],
+        [`products`,             `branch_id`],
+      ];
+      for (const [table, col] of dropColumns) {
+        try {
+          await queryDb(db, `ALTER TABLE \`${table}\` DROP COLUMN IF EXISTS \`${col}\``);
+        } catch (e) {
+          if (!e.message?.includes("doesn't exist") && !e.message?.includes("check that column/key exists")) throw e;
+        }
+      }
+
+      // Drop FK from sales.branch_id → stores before dropping stores table
+      // (MariaDB may have named it automatically; ignore if not present)
+      try {
+        const fks = await queryDb(db, `
+          SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sales'
+          AND COLUMN_NAME = 'branch_id' AND REFERENCED_TABLE_NAME = 'stores'
+        `);
+        for (const { CONSTRAINT_NAME } of fks) {
+          await queryDb(db, `ALTER TABLE sales DROP FOREIGN KEY \`${CONSTRAINT_NAME}\``);
+        }
+      } catch (_e) { /* ignore */ }
+
+      try {
+        const fks = await queryDb(db, `
+          SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'
+          AND COLUMN_NAME = 'branch_id' AND REFERENCED_TABLE_NAME = 'stores'
+        `);
+        for (const { CONSTRAINT_NAME } of fks) {
+          await queryDb(db, `ALTER TABLE staff DROP FOREIGN KEY \`${CONSTRAINT_NAME}\``);
+        }
+      } catch (_e) { /* ignore */ }
+
+      // Also drop FK from stock_adjustments and purchase_orders → stores
+      try {
+        for (const tbl of ['stock_adjustments', 'purchase_orders']) {
+          const fks = await queryDb(db, `
+            SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+            AND REFERENCED_TABLE_NAME = 'stores'
+          `, [tbl]);
+          for (const { CONSTRAINT_NAME } of fks) {
+            await queryDb(db, `ALTER TABLE \`${tbl}\` DROP FOREIGN KEY \`${CONSTRAINT_NAME}\``);
+          }
+        }
+      } catch (_e) { /* ignore */ }
+
+      // Now safe to drop stores
+      try { await queryDb(db, `DROP TABLE IF EXISTS stores`); } catch (_e) { /* ignore */ }
+
+      // Fix categories unique key: drop old composite key, add simple name key
+      try {
+        await queryDb(db, `ALTER TABLE categories DROP INDEX unique_category_per_branch`);
+      } catch (_e) { /* ignore if already removed */ }
+      try {
+        await queryDb(db, `ALTER TABLE categories ADD UNIQUE KEY unique_category_name (category_name)`);
+      } catch (_e) { /* ignore if already exists */ }
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {

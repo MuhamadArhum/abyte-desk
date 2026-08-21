@@ -12,18 +12,33 @@
       font-family: 'Segoe UI', sans-serif;
       background: #0f172a;
       color: #e2e8f0;
-      padding: 28px 32px;
+      padding: 24px 28px 28px;
+      overflow-y: auto;
     }
 
-    h1 { font-size: 18px; color: #f1f5f9; margin-bottom: 4px; }
-    .subtitle { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+    h1 { font-size: 18px; color: #f1f5f9; margin-bottom: 3px; }
+    .subtitle { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+
+    .mariadb-banner {
+      background: #1c1a0d;
+      border: 1px solid #854d0e;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .mariadb-banner .icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+    .mariadb-banner .text { font-size: 12px; color: #fbbf24; line-height: 1.6; }
+    .mariadb-banner .text strong { color: #fcd34d; }
 
     .section-title {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .5px;
       color: #64748b;
-      margin: 18px 0 10px;
+      margin: 16px 0 10px;
       padding-bottom: 6px;
       border-bottom: 1px solid #1e293b;
     }
@@ -52,7 +67,27 @@
     .row { display: flex; gap: 12px; }
     .row > div { flex: 1; }
 
-    .btn-save {
+    .btn-row { display: flex; gap: 8px; margin-top: 6px; }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-test  { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+    .btn-test:hover:not(:disabled) { background: #1e40af; color: #fff; }
+    .btn-init  { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+    .btn-init:hover:not(:disabled) { background: #166534; color: #fff; }
+    .btn-save  { background: #3b82f6; color: #fff; }
+    .btn-save:hover:not(:disabled) { opacity: .9; }
+
+    .btn-save-full {
       width: 100%;
       padding: 11px;
       background: #3b82f6;
@@ -62,21 +97,23 @@
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 6px;
+      margin-top: 14px;
       transition: opacity .15s;
     }
-    .btn-save:hover { opacity: .9; }
-    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-save-full:hover:not(:disabled) { opacity: .9; }
+    .btn-save-full:disabled { opacity: .4; cursor: not-allowed; }
 
     .msg {
-      margin-top: 12px;
+      margin-top: 10px;
       padding: 10px 14px;
       border-radius: 7px;
-      font-size: 13px;
+      font-size: 12px;
       display: none;
+      line-height: 1.5;
     }
     .msg.success { background: #14532d; color: #4ade80; display: block; }
     .msg.error   { background: #450a0a; color: #f87171; display: block; }
+    .msg.info    { background: #1e3a5f; color: #93c5fd; display: block; }
 
     .hint { font-size: 11px; color: #475569; margin-top: -10px; margin-bottom: 14px; }
     .jwt-row { display: flex; gap: 8px; align-items: flex-start; }
@@ -92,17 +129,39 @@
       white-space: nowrap;
       transition: background .15s;
       height: 38px;
-      margin-top: 0;
     }
     .btn-gen:hover { background: #334155; }
+
+    .step-badge {
+      display: inline-block;
+      background: #3b82f6;
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 18px;
+      margin-right: 6px;
+    }
   </style>
 </head>
 <body>
 
 <h1>Server Configuration</h1>
-<p class="subtitle">Configure MariaDB connection and security settings.</p>
+<p class="subtitle">Configure database connection, initialize schema, and set security options.</p>
 
-<div class="section-title">Database Connection</div>
+<div class="mariadb-banner">
+  <div class="icon">⚠</div>
+  <div class="text">
+    <strong>MariaDB must be installed first.</strong><br>
+    Download from <strong>mariadb.org/download</strong> — install as a Windows Service on port 3306.
+    Then return here to configure and initialize the database.
+  </div>
+</div>
+
+<div class="section-title"><span class="step-badge">1</span>Database Connection</div>
 
 <div class="row">
   <div>
@@ -111,7 +170,7 @@
   </div>
   <div>
     <label>Port</label>
-    <input id="db-port" type="text" value="3306" placeholder="3306" style="margin-bottom:14px" />
+    <input id="db-port" type="text" value="3306" placeholder="3306" />
   </div>
 </div>
 
@@ -119,20 +178,19 @@
 <input id="db-user" type="text" value="root" placeholder="root" />
 
 <label>Database Password</label>
-<input id="db-pass" type="password" placeholder="Enter MariaDB password" />
+<input id="db-pass" type="password" placeholder="Enter MariaDB root password" />
 
-<div class="row">
-  <div>
-    <label>ERP Database Name</label>
-    <input id="db-name" type="text" value="abyte_pos" placeholder="abyte_pos" />
-  </div>
-  <div>
-    <label>Master DB Name</label>
-    <input id="db-master" type="text" value="abyte_master" placeholder="abyte_master" />
-  </div>
+<label>ERP Database Name</label>
+<input id="db-name" type="text" value="abyte_pos" placeholder="abyte_pos" />
+
+<div class="btn-row">
+  <button class="btn btn-test" id="btn-test">Test Connection</button>
+  <button class="btn btn-init" id="btn-init">Initialize Database</button>
 </div>
 
-<div class="section-title">Security</div>
+<div class="msg" id="msg-db"></div>
+
+<div class="section-title"><span class="step-badge">2</span>Security</div>
 
 <label>JWT Secret Key</label>
 <div class="jwt-row">
@@ -141,9 +199,9 @@
 </div>
 <p class="hint" style="margin-top:6px;margin-bottom:18px">Leave empty to auto-generate a secure key on save.</p>
 
-<button class="btn-save" id="btn-save">Save & Restart Server</button>
+<button class="btn-save-full" id="btn-save">Save &amp; Start Server</button>
 
-<div class="msg" id="msg"></div>
+<div class="msg" id="msg-save"></div>
 
 <script src="setup.js"></script>
 </body>

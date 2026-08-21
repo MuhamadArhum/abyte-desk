@@ -287,14 +287,14 @@ ipcMain.handle('open-browser',  (_, url) => shell.openExternal(url));
 ipcMain.handle('get-config', () => {
   const env = loadEnv();
   return {
-    DB_HOST:         env.DB_HOST     || 'localhost',
-    DB_USER:         env.DB_USER     || 'root',
-    DB_PASSWORD:     env.DB_PASSWORD || '',
-    DB_NAME:         env.DB_NAME     || 'abyte_pos',
-    MASTER_DB_NAME:  env.MASTER_DB_NAME || 'abyte_master',
-    PORT:            env.PORT        || '5000',
-    JWT_SECRET:      env.JWT_SECRET  || '',
-    setupComplete:   isSetupComplete(),
+    DB_HOST:       env.DB_HOST     || 'localhost',
+    DB_PORT:       env.DB_PORT     || '3306',
+    DB_USER:       env.DB_USER     || 'root',
+    DB_PASSWORD:   env.DB_PASSWORD || '',
+    DB_NAME:       env.DB_NAME     || 'abyte_pos',
+    PORT:          env.PORT        || '5000',
+    JWT_SECRET:    env.JWT_SECRET  || '',
+    setupComplete: isSetupComplete(),
   };
 });
 
@@ -303,11 +303,11 @@ ipcMain.handle('save-config', (_, config) => {
   const jwtSecret = config.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 
   saveEnv({
-    DB_HOST:         config.DB_HOST        || 'localhost',
-    DB_USER:         config.DB_USER        || 'root',
-    DB_PASSWORD:     config.DB_PASSWORD    || '',
-    DB_NAME:         config.DB_NAME        || 'abyte_pos',
-    MASTER_DB_NAME:  config.MASTER_DB_NAME || 'abyte_master',
+    DB_HOST:         config.DB_HOST     || 'localhost',
+    DB_PORT:         config.DB_PORT     || '3306',
+    DB_USER:         config.DB_USER     || 'root',
+    DB_PASSWORD:     config.DB_PASSWORD || '',
+    DB_NAME:         config.DB_NAME     || 'abyte_pos',
     JWT_SECRET:      jwtSecret,
     PORT:            String(PORT),
     NODE_ENV:        'production',
@@ -316,6 +316,71 @@ ipcMain.handle('save-config', (_, config) => {
 
   addLog('Configuration saved.', 'success');
   return { ok: true };
+});
+
+// ── DB Initialization ─────────────────────────────────────────
+// Creates the database and applies schema.sql using the mariadb CLI.
+// Called from setup wizard after user enters credentials.
+ipcMain.handle('init-db', async (_, config) => {
+  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = config;
+
+  const schemaPath = IS_DEV
+    ? path.join(__dirname, '../database/schema.sql')
+    : path.join(process.resourcesPath, 'schema.sql');
+
+  if (!fs.existsSync(schemaPath)) {
+    return { ok: false, error: `schema.sql not found at: ${schemaPath}` };
+  }
+
+  const args = [
+    `-h${DB_HOST}`,
+    `-P${DB_PORT || '3306'}`,
+    `-u${DB_USER}`,
+    ...(DB_PASSWORD ? [`-p${DB_PASSWORD}`] : []),
+  ];
+
+  function runMariaDB(exe, extraArgs, stdin) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(exe, [...args, ...extraArgs], { shell: false });
+      let stderr = '';
+      if (stdin) {
+        const fileStream = require('fs').createReadStream(stdin);
+        fileStream.pipe(proc.stdin);
+      }
+      proc.stderr.on('data', (d) => { stderr += d.toString(); });
+      proc.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(stderr.slice(0, 300) || `exited with code ${code}`));
+      });
+      proc.on('error', reject);
+    });
+  }
+
+  async function tryClients(extraArgs, stdin) {
+    for (const exe of ['mariadb', 'mysql']) {
+      try { await runMariaDB(exe, extraArgs, stdin); return; }
+      catch (e) {
+        if (e.code === 'ENOENT') continue; // not found, try next
+        throw e;
+      }
+    }
+    throw new Error('MariaDB client not found in PATH. Install MariaDB and ensure it is in your system PATH.');
+  }
+
+  try {
+    // Step 1: create database
+    await tryClients(['-e', `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`]);
+    addLog(`[DB Init] Database '${DB_NAME}' created/verified.`, 'success');
+
+    // Step 2: apply schema
+    await tryClients([DB_NAME], schemaPath);
+    addLog(`[DB Init] Schema applied to '${DB_NAME}'.`, 'success');
+
+    return { ok: true };
+  } catch (err) {
+    addLog(`[DB Init] Failed: ${err.message}`, 'error');
+    return { ok: false, error: err.message };
+  }
 });
 
 ipcMain.handle('get-autostart', () => {
