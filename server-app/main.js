@@ -329,9 +329,9 @@ ipcMain.handle('save-config', (_, config) => {
 // Uses mariadb npm package — no CLI required.
 
 function createDbConnection(config, database) {
-  const mariadb = require('mariadb');
-  return mariadb.createConnection({
-    host:               config.DB_HOST     || 'localhost',
+  const mysql = require('mysql2/promise');
+  return mysql.createConnection({
+    host:               config.DB_HOST     || '127.0.0.1',
     port:               parseInt(config.DB_PORT || '3306'),
     user:               config.DB_USER     || 'root',
     password:           config.DB_PASSWORD || '',

@@ -22,8 +22,6 @@ const handleValidation = (req, res, next) => {
 
 // ── Auth ────────────────────────────────────────────────────
 const validateLogin = [
-  body('company_code').trim().notEmpty().withMessage('Company code is required')
-    .isLength({ max: 50 }).withMessage('Company code too long'),
   body('email').trim().notEmpty().withMessage('Email is required')
     .isEmail().withMessage('Invalid email format')
     .isLength({ max: 255 }),

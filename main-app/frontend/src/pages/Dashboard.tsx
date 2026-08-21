@@ -96,7 +96,7 @@ const fadeItem = {
 
 const Dashboard = () => {
   const { currencySymbol: currency } = useSettings();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalSales: 0, orderCount: 0, lowStockCount: 0, customerCount: 0,
     todayRevenue: 0, weekRevenue: 0, monthRevenue: 0, revenueGrowth: 0, ordersGrowth: 0, pendingDeliveries: 0

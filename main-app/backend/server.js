@@ -115,6 +115,7 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. same-origin, mobile apps, curl)
     if (!origin) return callback(null, true);
+    if (allowedOrigins.includes('*')) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: Origin '${origin}' not allowed`));
   },
@@ -176,10 +177,10 @@ const helmetConfig = {
     directives: {
       defaultSrc:     ["'self'"],
       scriptSrc:      ["'self'"],
-      styleSrc:       ["'self'", "'unsafe-inline'"],   // Tailwind CSS requires inline styles
+      styleSrc:       ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       imgSrc:         ["'self'", "data:", "blob:"],    // data: for base64 logos, blob: for previews
       connectSrc:     ["'self'"],                      // API calls — same origin only
-      fontSrc:        ["'self'", "data:"],             // Bundled fonts via Vite
+      fontSrc:        ["'self'", "data:", "https://fonts.gstatic.com"],
       objectSrc:      ["'none'"],
       frameSrc:       ["'none'"],
       frameAncestors: ["'none'"],                      // Clickjacking protection
