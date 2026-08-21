@@ -1,0 +1,82 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Installers (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Backend deps (bundled inside server installer) ──────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: main-app/backend
+        run: npm ci --omit=dev
+
+      # ── Build Server App ─────────────────────────────────────────
+      - name: Install server-app dependencies
+        working-directory: server-app
+        run: npm ci
+
+      - name: Build Server installer
+        working-directory: server-app
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Build Client App ─────────────────────────────────────────
+      - name: Install client-app dependencies
+        working-directory: client-app
+        run: npm ci
+
+      - name: Build Client installer
+        working-directory: client-app
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Upload to GitHub Release ─────────────────────────────────
+      - name: Find built exe files
+        id: find_files
+        shell: bash
+        run: |
+          SERVER_EXE=$(find server-app/dist -name "*.exe" ! -name "*portable*" | head -1)
+          CLIENT_EXE=$(find client-app/dist -name "*.exe" ! -name "*portable*" | head -1)
+          echo "server_exe=$SERVER_EXE" >> $GITHUB_OUTPUT
+          echo "client_exe=$CLIENT_EXE" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AByte ERP ${{ github.ref_name }}
+          body: |
+            ## AByte ERP ${{ github.ref_name }}
+
+            ### Downloads
+            | File | Description |
+            |------|-------------|
+            | `AByte-ERP-Server-Setup.exe` | Server app — install on the main PC |
+            | `AByte-ERP-Client-Setup.exe` | Client app — install on staff PCs |
+
+            ### Installation Order
+            1. Install **Server** on the main/server PC and configure MariaDB
+            2. Install **Client** on each staff PC and enter the server IP
+          files: |
+            ${{ steps.find_files.outputs.server_exe }}
+            ${{ steps.find_files.outputs.client_exe }}
+          draft: false
+          prerelease: false
