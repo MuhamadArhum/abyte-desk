@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('erp', {
   openBrowser:   (url)    => ipcRenderer.invoke('open-browser', url),
   getConfig:     ()       => ipcRenderer.invoke('get-config'),
   saveConfig:    (cfg)    => ipcRenderer.invoke('save-config', cfg),
+  testConnection: (cfg)   => ipcRenderer.invoke('test-connection', cfg),
   initDb:        (cfg)    => ipcRenderer.invoke('init-db', cfg),
   getAutostart:  ()       => ipcRenderer.invoke('get-autostart'),
   setAutostart:  (enable) => ipcRenderer.invoke('set-autostart', enable),

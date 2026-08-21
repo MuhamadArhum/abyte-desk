@@ -326,10 +326,35 @@ ipcMain.handle('save-config', (_, config) => {
 });
 
 // ── DB Initialization ─────────────────────────────────────────
-// Creates the database and applies schema.sql using the mariadb CLI.
-// Called from setup wizard after user enters credentials.
+// Uses mariadb npm package — no CLI required.
+
+function createDbConnection(config, database) {
+  const mariadb = require('mariadb');
+  return mariadb.createConnection({
+    host:               config.DB_HOST     || 'localhost',
+    port:               parseInt(config.DB_PORT || '3306'),
+    user:               config.DB_USER     || 'root',
+    password:           config.DB_PASSWORD || '',
+    database:           database || undefined,
+    connectTimeout:     10000,
+    multipleStatements: true,
+  });
+}
+
+ipcMain.handle('test-connection', async (_, config) => {
+  let conn;
+  try {
+    conn = await createDbConnection(config);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  } finally {
+    if (conn) await conn.end().catch(() => {});
+  }
+});
+
 ipcMain.handle('init-db', async (_, config) => {
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = config;
+  const { DB_NAME } = config;
 
   const schemaPath = IS_DEV
     ? path.join(__dirname, '../database/schema.sql')
@@ -339,64 +364,25 @@ ipcMain.handle('init-db', async (_, config) => {
     return { ok: false, error: `schema.sql not found at: ${schemaPath}` };
   }
 
-  const args = [
-    `-h${DB_HOST}`,
-    `-P${DB_PORT || '3306'}`,
-    `-u${DB_USER}`,
-    ...(DB_PASSWORD ? [`-p${DB_PASSWORD}`] : []),
-  ];
-
-  function runMariaDB(exe, extraArgs, stdin) {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(exe, [...args, ...extraArgs], { shell: false });
-      let stderr = '';
-      if (stdin) {
-        const fileStream = require('fs').createReadStream(stdin);
-        fileStream.pipe(proc.stdin);
-      }
-      proc.stderr.on('data', (d) => { stderr += d.toString(); });
-      proc.on('close', (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(stderr.slice(0, 300) || `exited with code ${code}`));
-      });
-      proc.on('error', reject);
-    });
-  }
-
-  async function tryClients(extraArgs, stdin) {
-    // Search PATH + common Windows installation directories
-    const candidates = [
-      'mariadb', 'mysql',
-      ...['12.2','12.1','12.0','11.6','11.5','11.4','11.3','11.2','11.1','11.0','10.11','10.6','10.5','10.4'].flatMap(v => [
-        `C:\\Program Files\\MariaDB ${v}\\bin\\mariadb.exe`,
-        `C:\\Program Files\\MariaDB ${v}\\bin\\mysql.exe`,
-      ]),
-      'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe',
-      'C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysql.exe',
-    ];
-    for (const exe of candidates) {
-      try { await runMariaDB(exe, extraArgs, stdin); return; }
-      catch (e) {
-        if (e.code === 'ENOENT') continue;
-        throw e;
-      }
-    }
-    throw new Error('MariaDB client not found. Please add MariaDB bin folder to Windows PATH and try again.');
-  }
-
+  let conn;
   try {
-    // Step 1: create database
-    await tryClients(['-e', `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`]);
+    conn = await createDbConnection(config);
+
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\`;`);
     addLog(`[DB Init] Database '${DB_NAME}' created/verified.`, 'success');
 
-    // Step 2: apply schema
-    await tryClients([DB_NAME], schemaPath);
+    await conn.query(`USE \`${DB_NAME}\`;`);
+
+    const schema = fs.readFileSync(schemaPath, 'utf-8');
+    await conn.query(schema);
     addLog(`[DB Init] Schema applied to '${DB_NAME}'.`, 'success');
 
     return { ok: true };
   } catch (err) {
     addLog(`[DB Init] Failed: ${err.message}`, 'error');
     return { ok: false, error: err.message };
+  } finally {
+    if (conn) await conn.end().catch(() => {});
   }
 });
 

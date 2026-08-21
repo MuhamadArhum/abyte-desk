@@ -54,20 +54,16 @@ btnTest.addEventListener('click', async () => {
   btnTest.textContent = 'Testing…';
   showDbMsg('Connecting to MariaDB…', 'info');
 
-  // We test by trying to initialize a trivial query via init-db path.
-  // Simpler: just attempt saving and let the server report connection errors on start.
-  // Better approach: send a "ping" via the main process.
-  const result = await window.erp.initDb({ ...cfg, DB_NAME: 'mysql' }).catch(e => ({ ok: false, error: e.message }));
+  const result = await window.erp.testConnection(cfg).catch(e => ({ ok: false, error: e.message }));
 
-  if (result.ok || (result.error && result.error.toLowerCase().includes('access'))) {
-    // Even "access denied to mysql" means MariaDB is reachable
-    showDbMsg('MariaDB is reachable! You can now click Initialize Database.', 'success');
-  } else if (result.error && result.error.toLowerCase().includes('not found in path')) {
-    showDbMsg('MariaDB client not found in PATH. Make sure MariaDB is installed and its bin folder is in the system PATH.', 'error');
+  if (result.ok) {
+    showDbMsg('Connected to MariaDB successfully! You can now click Initialize Database.', 'success');
   } else if (result.error && (result.error.includes('ECONNREFUSED') || result.error.includes('connect'))) {
     showDbMsg('Cannot connect to MariaDB. Make sure the MariaDB service is running.', 'error');
+  } else if (result.error && result.error.includes('Access denied')) {
+    showDbMsg('Wrong username or password. Please check your credentials.', 'error');
   } else {
-    showDbMsg(`Connected! (${result.error || 'OK'})`, 'success');
+    showDbMsg(`Connection failed: ${result.error}`, 'error');
   }
 
   btnTest.disabled = false;
