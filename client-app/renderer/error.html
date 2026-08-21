@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>AByte ERP — Connection Error</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 52px;
+      margin-bottom: 20px;
+      opacity: .6;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 16px;
+    }
+    .logo span { color: #3b82f6; }
+
+    h2 {
+      font-size: 22px;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+    }
+
+    .sub {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 28px;
+      max-width: 420px;
+      line-height: 1.6;
+    }
+
+    .url-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 28px;
+    }
+    .url-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef444488;
+      flex-shrink: 0;
+    }
+    .url-text {
+      font-family: monospace;
+      font-size: 14px;
+      color: #f87171;
+    }
+
+    .actions { display: flex; gap: 12px; }
+
+    .btn {
+      padding: 11px 26px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-retry    { background: #3b82f6; color: #fff; }
+    .btn-settings { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .btn-settings:hover { background: #334155; }
+
+    .tip {
+      margin-top: 28px;
+      font-size: 12px;
+      color: #334155;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="icon">⚠</div>
+<div class="logo">A<span>Byte</span> ERP</div>
+<h2>Cannot Connect to Server</h2>
+<p class="sub">The ERP server is unreachable. Make sure the server PC is on and the AByte ERP Server app is running.</p>
+
+<div class="url-box">
+  <div class="url-dot"></div>
+  <div class="url-text" id="url-text">—</div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-retry"    id="btn-retry">Retry</button>
+  <button class="btn btn-settings" id="btn-settings">Change Server</button>
+</div>
+
+<p class="tip">Tip: The server IP is shown on the dashboard of the AByte ERP Server app running on the server PC.</p>
+
+<script src="error.js"></script>
+</body>
+</html>

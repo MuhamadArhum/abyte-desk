@@ -35,18 +35,18 @@ Runs on the **server PC**. Manages the Node.js backend process.
 
 ---
 
-## Phase 3 — Client Electron App 🔲 TODO
+## Phase 3 — Client Electron App ✅ DONE
 
 Runs on **each client PC**. Shows the ERP frontend in an Electron window.
 
-- [ ] Create `client-app/` directory with Electron setup
-- [ ] First-launch wizard — ask for server IP address
-- [ ] Save server IP to local `config.json`
-- [ ] Load `http://<server-ip>:5000` in BrowserWindow
-- [ ] Connection status indicator — show error if server unreachable
-- [ ] Retry / reconnect button when connection is lost
-- [ ] Settings screen — change server IP address
-- [ ] `package.json` with electron-builder config for Windows installer
+- [x] Create `client-app/` directory with Electron setup
+- [x] First-launch wizard — ask for server IP address
+- [x] Save server IP to local `config.json`
+- [x] Load `http://<server-ip>:5000` in BrowserWindow
+- [x] Connection status indicator — show error if server unreachable
+- [x] Retry / reconnect button when connection is lost
+- [x] Settings screen — change server IP address
+- [x] `package.json` with electron-builder config for Windows installer
 
 ---
 
