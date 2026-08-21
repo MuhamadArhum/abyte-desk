@@ -315,6 +315,13 @@ ipcMain.handle('save-config', (_, config) => {
   });
 
   addLog('Configuration saved.', 'success');
+
+  // Auto-start server after config is saved
+  if (setupWindow && !setupWindow.isDestroyed()) {
+    setupWindow.close();
+  }
+  setTimeout(() => startServer(), 500);
+
   return { ok: true };
 });
 
@@ -357,14 +364,24 @@ ipcMain.handle('init-db', async (_, config) => {
   }
 
   async function tryClients(extraArgs, stdin) {
-    for (const exe of ['mariadb', 'mysql']) {
+    // Search PATH + common Windows installation directories
+    const candidates = [
+      'mariadb', 'mysql',
+      ...['12.2','12.1','12.0','11.6','11.5','11.4','11.3','11.2','11.1','11.0','10.11','10.6','10.5','10.4'].flatMap(v => [
+        `C:\\Program Files\\MariaDB ${v}\\bin\\mariadb.exe`,
+        `C:\\Program Files\\MariaDB ${v}\\bin\\mysql.exe`,
+      ]),
+      'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe',
+      'C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysql.exe',
+    ];
+    for (const exe of candidates) {
       try { await runMariaDB(exe, extraArgs, stdin); return; }
       catch (e) {
-        if (e.code === 'ENOENT') continue; // not found, try next
+        if (e.code === 'ENOENT') continue;
         throw e;
       }
     }
-    throw new Error('MariaDB client not found in PATH. Install MariaDB and ensure it is in your system PATH.');
+    throw new Error('MariaDB client not found. Please add MariaDB bin folder to Windows PATH and try again.');
   }
 
   try {
@@ -394,33 +411,34 @@ ipcMain.handle('set-autostart', (_, enable) => {
 
 // ── App Lifecycle ─────────────────────────────────────────────
 
-app.whenReady().then(() => {
-  createTray();
-  createMainWindow();
-
-  if (!isSetupComplete()) {
-    addLog('First run detected — please complete setup.', 'warn');
-    openSetupWindow();
-  } else {
-    startServer();
-  }
-});
-
-app.on('window-all-closed', (e) => {
-  // Keep app running in tray even when all windows are closed
-  e.preventDefault();
-});
-
-app.on('before-quit', () => {
-  app.isQuitting = true;
-  stopServer();
-});
-
-// Single instance lock — prevent multiple server instances
+// Single instance lock — must be checked before whenReady to prevent
+// a second instance from spawning windows/server before quitting.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
     if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+  });
+
+  app.whenReady().then(() => {
+    createTray();
+    createMainWindow();
+
+    if (!isSetupComplete()) {
+      addLog('First run detected — please complete setup.', 'warn');
+      openSetupWindow();
+    } else {
+      startServer();
+    }
+  });
+
+  app.on('window-all-closed', (e) => {
+    // Keep app running in tray even when all windows are closed
+    e.preventDefault();
+  });
+
+  app.on('before-quit', () => {
+    app.isQuitting = true;
+    stopServer();
   });
 }
