@@ -19,18 +19,17 @@ exports.createBackup = async (req, res) => {
     await logAction(req.user.user_id, req.user.name, 'BACKUP_CREATED', 'backup', null,
       { filename: result.filename }, req.ip);
 
-    // Upload to this tenant's Google Drive in background
+    // Upload to Google Drive in background (single-tenant)
     const gdriveService = require('../services/googleDriveService');
-    const tenantDb = req.user.tenant_db;
-    gdriveService.getTenantDriveSettings(tenantDb).then(async (driveSettings) => {
+    gdriveService.getTenantDriveSettings(null).then(async (driveSettings) => {
       if (!driveSettings) return;
       try {
         const fileId = await gdriveService.uploadBackupWithSettings(result.filepath, result.filename, driveSettings);
         logger.info('[GDrive] Manual backup uploaded', { fileId, filename: result.filename });
-        await gdriveService.recordTenantUploadStatus(tenantDb, result.filename, 'success');
+        await gdriveService.recordTenantUploadStatus(null, result.filename, 'success');
       } catch (driveErr) {
         logger.error('[GDrive] Manual backup upload failed', { error: driveErr.message });
-        await gdriveService.recordTenantUploadStatus(tenantDb, result.filename, `failed: ${driveErr.message.slice(0,80)}`);
+        await gdriveService.recordTenantUploadStatus(null, result.filename, `failed: ${driveErr.message.slice(0,80)}`);
       }
     }).catch(err => logger.error('[GDrive] Drive settings fetch failed', { error: err.message }));
 

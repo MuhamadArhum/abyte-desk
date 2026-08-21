@@ -1,13 +1,11 @@
 const logger = require('../config/logger');
-const { query, getConnection, tenantStorage } = require('../config/database');
+const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
-// Track per-tenant so every tenant DB gets migrated, not just the first one
-const ensuredTenants = new Set();
+let storeColumnsEnsured = false;
 async function ensureStoreColumns() {
-  const db = tenantStorage.getStore() || 'default';
-  if (ensuredTenants.has(db)) return;
-  ensuredTenants.add(db);
+  if (storeColumnsEnsured) return;
+  storeColumnsEnsured = true;
   try {
     // Create stores table if it doesn't exist (older tenants may not have it)
     await query(`

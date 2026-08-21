@@ -1,66 +1,38 @@
 // =============================================================
-// authController.js - Multi-Tenant Authentication
+// authController.js - Single-Tenant Authentication
+//
+// Phase 4: company_code removed. Single DB, no master DB lookup.
 // =============================================================
 
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
-const { queryDb, tenantStorage } = require('../config/database');
-const { logAction }              = require('../services/auditService');
-const { blacklistToken }         = require('../services/tokenBlacklist');
-const logger                     = require('../config/logger');
-const emailService               = require('../services/emailService');
-
-const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+const { query }     = require('../config/database');
+const { logAction } = require('../services/auditService');
+const { blacklistToken } = require('../services/tokenBlacklist');
+const logger            = require('../config/logger');
+const emailService      = require('../services/emailService');
 
 // --- Login ---
 // POST /api/auth/login
-// Body: { company_code, email, password }
+// Body: { email, password }
 exports.login = async (req, res) => {
   try {
-    const { company_code, email, password } = req.body;
-    if (!company_code || !email || !password) {
-      return res.status(400).json({ message: 'Company code, email and password are required' });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Look up tenant in master DB
-    const tenants = await queryDb(
-      MASTER_DB,
-      'SELECT tenant_id, db_name, is_active FROM tenants WHERE tenant_code = ?',
-      [company_code.trim().toLowerCase()]
+    const rows = await query(
+      'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE email = ?',
+      [email]
     );
-
-    if (tenants.length === 0) {
-      return res.status(401).json({ message: 'Invalid company code' });
-    }
-
-    const tenant = tenants[0];
-    if (!tenant.is_active) {
-      return res.status(403).json({ message: 'Account suspended. Please contact support.' });
-    }
-
-    // Get modules enabled for this tenant
-    const configs = await queryDb(
-      MASTER_DB,
-      'SELECT modules_enabled FROM tenant_configs WHERE tenant_id = ?',
-      [tenant.tenant_id]
-    );
-    const modulesEnabled = configs.length > 0
-      ? (typeof configs[0].modules_enabled === 'string'
-          ? JSON.parse(configs[0].modules_enabled || '[]')
-          : configs[0].modules_enabled || [])
-      : [];
-
-    const tenantDb = tenant.db_name;
-
-    // Find user in tenant DB
-    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE email = ?', [email]);
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const user    = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const user     = rows[0];
+    const isMatch  = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -69,15 +41,11 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: 'Your account has been deactivated. Contact admin.' });
     }
 
-    // Generate JWT — includes tenant_db so middleware can route correctly
     const token = jwt.sign(
       {
-        user_id:    user.user_id,
-        username:   user.username,
-        role_name:  user.role_name,
-        tenant_db:  tenantDb,
-        tenant_id:  tenant.tenant_id,
-        modules:    modulesEnabled,
+        user_id:   user.user_id,
+        username:  user.username,
+        role_name: user.role_name,
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
@@ -86,39 +54,29 @@ exports.login = async (req, res) => {
     // Fetch role permissions (null = Admin full access)
     let permissions = null;
     if (user.role_name !== 'Admin') {
-      const permRows = await queryDb(
-        tenantDb,
+      const permRows = await query(
         'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
         [user.role_name]
       );
-      const keys = permRows.map(r => r.module_key);
-      // Also include parent keys so sidebar parent menus are visible
-      // e.g. 'sales.pos' → also add 'sales'
+      const keys    = permRows.map(r => r.module_key);
       const parents = keys.map(k => k.split('.')[0]);
-      permissions = [...new Set([...keys, ...parents])];
+      permissions   = [...new Set([...keys, ...parents])];
     }
 
-    // Audit log
-    try {
-      tenantStorage.run(tenantDb, async () => {
-        await logAction(
-          user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id,
-          { email, company_code }, req.ip
-        );
-      });
-    } catch { /* audit failure must not block login */ }
+    // Audit log (fire-and-forget)
+    logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip).catch(() => {});
 
     res.json({
       token,
       user: {
-        user_id:     user.user_id,
-        username:    user.username,
-        name:        user.name,
-        email:       user.email,
-        role_name:   user.role_name,
+        user_id:   user.user_id,
+        username:  user.username,
+        name:      user.name,
+        email:     user.email,
+        role_name: user.role_name,
       },
       permissions,
-      modules: modulesEnabled,
+      modules: [], // all modules enabled; empty array → hasModule() returns true
     });
   } catch (err) {
     logger.error('Login error', { error: err.message });
@@ -132,26 +90,25 @@ exports.verify = async (req, res) => {
   try {
     let permissions = null;
     if (req.user.role_name !== 'Admin') {
-      const permRows = await queryDb(
-        req.tenantDb,
+      const permRows = await query(
         'SELECT module_key FROM role_permissions WHERE role_name = ? AND is_allowed = 1',
         [req.user.role_name]
       );
-      const keys = permRows.map(r => r.module_key);
+      const keys    = permRows.map(r => r.module_key);
       const parents = keys.map(k => k.split('.')[0]);
-      permissions = [...new Set([...keys, ...parents])];
+      permissions   = [...new Set([...keys, ...parents])];
     }
 
     res.json({
       user: {
-        user_id:     req.user.user_id,
-        username:    req.user.username,
-        name:        req.user.name,
-        email:       req.user.email,
-        role_name:   req.user.role_name,
+        user_id:   req.user.user_id,
+        username:  req.user.username,
+        name:      req.user.name,
+        email:     req.user.email,
+        role_name: req.user.role_name,
       },
       permissions,
-      modules: req.modules || [],
+      modules: [],
     });
   } catch (err) {
     logger.error('Verify error', { error: err.message });
@@ -161,14 +118,15 @@ exports.verify = async (req, res) => {
 
 // --- Update Own Profile ---
 // PUT /api/auth/profile
-// Body: { name?, email?, current_password?, new_password? }
 exports.updateProfile = async (req, res) => {
   try {
-    const userId   = req.user.user_id;
-    const tenantDb = req.tenantDb;
+    const userId = req.user.user_id;
     const { name, email, current_password, new_password } = req.body;
 
-    const rows = await queryDb(tenantDb, 'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE user_id = ?', [userId]);
+    const rows = await query(
+      'SELECT user_id, username, name, email, role_name, is_active, password_hash FROM users WHERE user_id = ?',
+      [userId]
+    );
     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
     const user = rows[0];
 
@@ -181,8 +139,7 @@ exports.updateProfile = async (req, res) => {
     }
 
     if (email && email.trim()) {
-      const conflict = await queryDb(
-        tenantDb,
+      const conflict = await query(
         'SELECT user_id FROM users WHERE email = ? AND user_id != ?',
         [email.trim(), userId]
       );
@@ -196,8 +153,7 @@ exports.updateProfile = async (req, res) => {
       const isMatch = await bcrypt.compare(current_password, user.password_hash);
       if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
       if (new_password.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
-      const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash(new_password, salt);
+      const hash = await bcrypt.hash(new_password, 10);
       updates.push('password_hash = ?');
       params.push(hash);
     }
@@ -205,19 +161,14 @@ exports.updateProfile = async (req, res) => {
     if (updates.length === 0) return res.status(400).json({ message: 'No changes provided' });
 
     params.push(userId);
-    await queryDb(tenantDb, `UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`, params);
+    await query(`UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`, params);
 
-    const [updated] = await queryDb(
-      tenantDb,
+    const [updated] = await query(
       'SELECT user_id, username, name, email, role_name FROM users WHERE user_id = ?',
       [userId]
     );
 
-    try {
-      tenantStorage.run(tenantDb, async () => {
-        await logAction(userId, user.username, 'PROFILE_UPDATED', 'user', userId, { name, email }, req.ip);
-      });
-    } catch { /* audit failure must not block update */ }
+    logAction(userId, user.username, 'PROFILE_UPDATED', 'user', userId, { name, email }, req.ip).catch(() => {});
 
     res.json({ message: 'Profile updated successfully', user: updated });
   } catch (err) {
@@ -228,48 +179,37 @@ exports.updateProfile = async (req, res) => {
 
 // --- Forgot Password ---
 // POST /api/auth/forgot-password
-// Body: { company_code, email }
+// Body: { email }
 exports.forgotPassword = async (req, res) => {
   try {
-    const { company_code, email } = req.body;
-    if (!company_code || !email) {
-      return res.status(400).json({ message: 'Company code and email are required' });
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
     }
 
-    const tenants = await queryDb(
-      MASTER_DB,
-      'SELECT tenant_id, db_name, is_active FROM tenants WHERE tenant_code = ?',
-      [company_code.trim().toLowerCase()]
+    const rows = await query(
+      'SELECT user_id, name FROM users WHERE email = ? AND is_active = 1',
+      [email.trim().toLowerCase()]
     );
 
-    if (tenants.length > 0 && tenants[0].is_active) {
-      const tenantDb = tenants[0].db_name;
-      const rows = await queryDb(
-        tenantDb,
-        'SELECT user_id, name FROM users WHERE email = ? AND is_active = 1',
-        [email.trim().toLowerCase()]
+    if (rows.length > 0) {
+      const user      = rows[0];
+      const rawToken  = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expires   = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await query(
+        'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE user_id = ?',
+        [tokenHash, expires, user.user_id]
       );
 
-      if (rows.length > 0) {
-        const user = rows[0];
-        const rawToken  = crypto.randomBytes(32).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-        const expires   = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const resetLink   = `${frontendUrl}/reset-password?token=${rawToken}`;
 
-        await queryDb(
-          tenantDb,
-          'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE user_id = ?',
-          [tokenHash, expires, user.user_id]
-        );
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const resetLink = `${frontendUrl}/reset-password?token=${rawToken}&company=${encodeURIComponent(company_code.trim().toLowerCase())}`;
-
-        await emailService.sendPasswordReset({ to: email.trim(), name: user.name, resetLink });
-      }
+      await emailService.sendPasswordReset({ to: email.trim(), name: user.name, resetLink });
     }
 
-    // Always return success — never reveal if company/email exists
+    // Always return success — never reveal if email exists
     res.json({ message: 'If that email is registered, a reset link has been sent.' });
   } catch (err) {
     logger.error('forgotPassword error', { error: err.message });
@@ -279,31 +219,19 @@ exports.forgotPassword = async (req, res) => {
 
 // --- Reset Password ---
 // POST /api/auth/reset-password
-// Body: { token, company_code, password }
+// Body: { token, password }
 exports.resetPassword = async (req, res) => {
   try {
-    const { token, company_code, password } = req.body;
-    if (!token || !company_code || !password) {
-      return res.status(400).json({ message: 'Token, company code, and password are required' });
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token and password are required' });
     }
     if (password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
-    const tenants = await queryDb(
-      MASTER_DB,
-      'SELECT tenant_id, db_name, is_active FROM tenants WHERE tenant_code = ?',
-      [company_code.trim().toLowerCase()]
-    );
-
-    if (tenants.length === 0 || !tenants[0].is_active) {
-      return res.status(400).json({ message: 'Invalid or expired reset link.' });
-    }
-
-    const tenantDb = tenants[0].db_name;
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const rows = await queryDb(
-      tenantDb,
+    const rows = await query(
       'SELECT user_id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()',
       [tokenHash]
     );
@@ -313,8 +241,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    await queryDb(
-      tenantDb,
+    await query(
       'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE user_id = ?',
       [hash, rows[0].user_id]
     );
@@ -335,14 +262,7 @@ exports.logout = async (req, res) => {
       const token = authHeader.split(' ')[1];
       blacklistToken(token);
 
-      try {
-        tenantStorage.run(req.tenantDb, async () => {
-          await logAction(
-            req.user.user_id, req.user.username, 'USER_LOGOUT', 'user', req.user.user_id,
-            {}, req.ip
-          );
-        });
-      } catch { /* audit failure must not block logout */ }
+      logAction(req.user.user_id, req.user.username, 'USER_LOGOUT', 'user', req.user.user_id, {}, req.ip).catch(() => {});
     }
     res.json({ message: 'Logged out successfully' });
   } catch (err) {

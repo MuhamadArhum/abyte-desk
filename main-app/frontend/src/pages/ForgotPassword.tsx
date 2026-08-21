@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, Loader2, CheckCircle, Zap, Shield, Building2 } from 'lucide-react';
+import { Mail, ArrowLeft, Loader2, CheckCircle, Zap, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../utils/api';
 
 export default function ForgotPassword() {
-  const [companyCode, setCompanyCode] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -16,7 +15,7 @@ export default function ForgotPassword() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { company_code: companyCode.trim().toLowerCase(), email });
+      await api.post('/auth/forgot-password', { email });
       setSent(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
@@ -150,20 +149,6 @@ export default function ForgotPassword() {
                   )}
 
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Company Code</label>
-                      <div className="relative group">
-                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={17} />
-                        <input
-                          type="text"
-                          value={companyCode}
-                          onChange={e => setCompanyCode(e.target.value)}
-                          placeholder="Your company code"
-                          required
-                          className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition text-gray-800 placeholder-gray-400 text-sm"
-                        />
-                      </div>
-                    </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                       <div className="relative group">

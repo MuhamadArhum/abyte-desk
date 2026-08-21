@@ -173,7 +173,7 @@ const parsePagination = (page, limit) => {
 exports.createSale = async (req, res) => {
   let conn;  // Database connection for the transaction
   try {
-    await ensureSalesSchema(req.tenantDb);
+    await ensureSalesSchema('');
     const {
       items,
       discount,
@@ -268,7 +268,7 @@ exports.createSale = async (req, res) => {
     // Step 3: Always generate invoice_no; also generate token_no for pending orders
     let token_no = null;
     // Acquire a named lock so concurrent sales don't generate the same invoice number
-    const lockKey = `invoice_gen_${req.tenantDb || 'default'}`;
+    const lockKey = `invoice_gen_${'default'}`;
     await conn.query('SELECT GET_LOCK(?, 10) as locked', [lockKey]);
     let invoice_no;
     try {
@@ -421,7 +421,7 @@ exports.createSale = async (req, res) => {
 // --- Get Pending Sales ---
 exports.getPending = async (req, res) => {
   try {
-    await ensureSalesSchema(req.tenantDb);
+    await ensureSalesSchema('');
     const { page, limit, order_type, user_id, waiter } = req.query;
 
     // Map frontend 'on_spot' filter to include both 'on_spot' and NULL order_type rows
@@ -773,7 +773,7 @@ exports.syncTax = async (req, res) => {
 // --- Get Today's Sales ---
 exports.getToday = async (req, res) => {
   try {
-    await ensureSalesSchema(req.tenantDb);
+    await ensureSalesSchema('');
     const today = new Date().toISOString().split('T')[0];
     const sales = await query(`
       SELECT s.*, u.name as cashier_name
@@ -793,7 +793,7 @@ exports.getToday = async (req, res) => {
 // --- Get All Sales ---
 exports.getAll = async (req, res) => {
   try {
-    await ensureSalesSchema(req.tenantDb);
+    await ensureSalesSchema('');
     const {
       page, limit, search, status, date_from, date_to,
       order_type, shift_start, shift_end,

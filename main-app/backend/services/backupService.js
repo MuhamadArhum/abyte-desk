@@ -5,8 +5,6 @@ const fsp = fs.promises;
 const { query, queryDb } = require('../config/database');
 const logger = require('../config/logger');
 
-const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
-
 const BACKUP_DIR = path.join(__dirname, '..', 'backups');
 
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -48,17 +46,8 @@ function runCommand(executable, args, options = {}) {
   });
 }
 
-async function getAllDatabaseNames() {
-  try {
-    const tenants = await queryDb(MASTER_DB, 'SELECT db_name FROM tenants WHERE is_active = 1');
-    const tenantDbs = tenants.map(t => t.db_name).filter(Boolean);
-    // Master DB first, then all tenant DBs (deduplicated)
-    const all = [MASTER_DB, ...tenantDbs];
-    return [...new Set(all)];
-  } catch (err) {
-    logger.warn('[Backup] Could not fetch tenant DB list, falling back to single DB', { error: err.message });
-    return [process.env.DB_NAME || 'abyte_pos'];
-  }
+function getAllDatabaseNames() {
+  return [process.env.DB_NAME || 'abyte_pos'];
 }
 
 async function createBackup(userId, type = 'manual') {

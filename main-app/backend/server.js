@@ -1,12 +1,8 @@
 ﻿// =============================================================
 // server.js - Main Entry Point for AByte ERP Backend
 //
-// Multi-tenant SaaS flow:
-//   1. Frontend sends X-Tenant-Subdomain header (set from window.location.hostname)
-//   2. authController reads subdomain → looks up tenant in abyte_master
-//   3. JWT includes { tenant_db, tenant_id, plan }
-//   4. authenticate middleware routes all queries to correct tenant DB
-//   5. requireModule middleware guards plan-based features
+// Phase 4: Single-tenant LAN deployment.
+// One DB, no master DB, no module gating.
 // =============================================================
 
 const express      = require('express');
@@ -104,9 +100,6 @@ const loyaltyRoutes         = require('./routes/loyaltyRoutes');
 const couponRoutes          = require('./routes/couponRoutes');
 const whatsappRoutes        = require('./routes/whatsappRoutes');
 const fbrRoutes             = require('./routes/fbrRoutes');
-
-// --- Module Guard (plan-based access) ---
-const { requireModule } = require('./middleware/moduleGuard');
 
 const app = express();
 
@@ -316,17 +309,16 @@ app.use('/api/coupons',             couponRoutes);
 app.use('/api/whatsapp',            whatsappRoutes);
 app.use('/api/fbr',                 fbrRoutes);
 
-// Health check — probes DB, reports memory/heap/uptime and active pool count.
+// Health check — probes DB, reports memory/heap/uptime.
 // Returns 200 when healthy, 503 when DB is unreachable.
 app.get('/api/health', async (_req, res) => {
-  const { queryDb: qdb, pools } = require('./config/database');
-  const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
+  const { query: q } = require('./config/database');
 
   let dbOk = false;
   let dbLatencyMs = null;
   try {
     const t0 = Date.now();
-    await qdb(MASTER_DB, 'SELECT 1');
+    await q('SELECT 1');
     dbLatencyMs = Date.now() - t0;
     dbOk = true;
   } catch (_e) { /* dbOk stays false */ }
@@ -339,7 +331,6 @@ app.get('/api/health', async (_req, res) => {
     ts:            new Date().toISOString(),
     uptime_s:      Math.floor(process.uptime()),
     db:            dbOk ? `ok (${dbLatencyMs}ms)` : 'unreachable',
-    active_pools:  pools ? pools.size : 0,
     memory: {
       rss_mb:       toMB(mem.rss),
       heap_used_mb: toMB(mem.heapUsed),
@@ -383,40 +374,16 @@ app.use((err, req, res, next) => {
 // ── Scheduled Backup (dynamic — time set by Admin in Settings) ──
 const { rescheduleBackup } = require('./services/backupScheduler');
 
-// ── Startup Migration: run numbered migrations on all tenant DBs ──
-const { queryDb } = require('./config/database');
+// ── Startup Migration: run numbered migrations on the single DB ──
 const { runMigrationsForDb } = require('./services/migrationService');
-const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
 
 async function runStartupMigrations() {
+  const dbName = process.env.DB_NAME || 'abyte_pos';
   try {
-    const tenants = await queryDb(MASTER_DB, 'SELECT db_name FROM tenants WHERE is_active = 1');
-    for (const t of tenants) {
-      await runMigrationsForDb(t.db_name);
-    }
-    logger.info('[Migration] All tenant migrations complete');
+    await runMigrationsForDb(dbName);
+    logger.info('[Migration] DB migrations complete', { db: dbName });
   } catch (e) {
     logger.warn('[Migration] Startup migration skipped', { error: e.message });
-  }
-
-  // Ensure support_tickets table exists in master DB
-  try {
-    await queryDb(MASTER_DB, `CREATE TABLE IF NOT EXISTS support_tickets (
-      ticket_id INT AUTO_INCREMENT PRIMARY KEY,
-      tenant_id INT NOT NULL,
-      subject VARCHAR(255) NOT NULL,
-      message TEXT NOT NULL,
-      status ENUM('open','in_progress','resolved','closed') DEFAULT 'open',
-      priority ENUM('low','medium','high','urgent') DEFAULT 'medium',
-      admin_notes TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      resolved_at TIMESTAMP NULL,
-      FOREIGN KEY (tenant_id) REFERENCES tenants(tenant_id) ON DELETE CASCADE
-    )`);
-    logger.info('[Migration] support_tickets table ensured in master DB');
-  } catch (e) {
-    logger.warn('[Migration] support_tickets table check skipped', { error: e.message });
   }
 }
 

@@ -97,33 +97,8 @@ const hasModuleAccess = (modules, key) => {
   return false;
 };
 
-const requireModule = (moduleName) => {
-  return (req, res, next) => {
-    if (!req.tenantId) return next();
-
-    if (!req.modules || req.modules.length === 0) {
-      const parent = moduleName.split('.')[0];
-      const mod = MODULES[parent];
-      return res.status(403).json({
-        message: `This feature requires the "${mod?.name || moduleName}" module.`,
-        module: moduleName,
-        price: mod?.price || null,
-        upgrade_required: true,
-      });
-    }
-
-    if (hasModuleAccess(req.modules, moduleName)) return next();
-
-    const parent = moduleName.split('.')[0];
-    const mod = MODULES[parent];
-    return res.status(403).json({
-      message: `This feature requires the "${mod?.name || moduleName}" module.`,
-      module: moduleName,
-      price: mod?.price || null,
-      upgrade_required: true,
-    });
-  };
-};
+// Phase 4: Single-tenant — all modules enabled, no gating.
+const requireModule = (_moduleName) => (_req, _res, next) => next();
 
 // Counts unique parent modules only (bundle pricing)
 const calculatePrice = (selectedModules = []) => {

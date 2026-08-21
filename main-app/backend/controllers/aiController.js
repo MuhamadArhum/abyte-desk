@@ -466,7 +466,7 @@ exports.chat = async (req, res) => {
       return res.status(503).json({ error: 'AI feature not configured. Contact administrator.' });
     }
 
-    const tenantDb = req.tenantDb || process.env.DB_NAME || 'abyte_pos';
+    const tenantDb = process.env.DB_NAME || 'abyte_pos';
     const systemContext = await getSystemContext(tenantDb);
 
     const messages = [

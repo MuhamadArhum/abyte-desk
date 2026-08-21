@@ -1,5 +1,4 @@
 ﻿const { query, queryDb } = require('../config/database');
-const { masterQuery }    = require('../config/masterDatabase');
 const logger = require('../config/logger');
 const { logAction } = require('../services/auditService');
 const cache = require('../services/cacheService');
@@ -22,7 +21,7 @@ const logoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename:    (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || '.png';
-    cb(null, `logo_${req.tenantDb || 'default'}${ext}`);
+    cb(null, `logo_${'default'}${ext}`);
   },
 });
 const logoUpload = multer({
@@ -39,7 +38,7 @@ const logoUpload = multer({
 // --- Get Store Settings ---
 exports.getSettings = async (req, res) => {
   try {
-    const cacheKey = `settings:${req.tenantDb}`;
+    const cacheKey = `settings:${''}`;
     const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
@@ -232,7 +231,7 @@ exports.updateSettings = async (req, res) => {
     }
 
     await logAction(req.user.user_id, req.user.name, 'SETTINGS_UPDATED', 'settings', 1, { store_name }, req.ip);
-    cache.invalidateSettings(req.tenantDb).catch(() => {});
+    cache.invalidateSettings('').catch(() => {});
     res.json({ message: 'Settings updated successfully' });
   } catch (err) {
     logger.error(err);
@@ -921,23 +920,13 @@ exports.updatePrintJobStatus = async (req, res) => {
   }
 };
 
-// --- Get Agent Config (tenant_code + agent_token) ---
+// --- Get Agent Config (agent_token) ---
 exports.getAgentConfig = async (req, res) => {
   try {
     const rows = await query('SELECT agent_token FROM store_settings WHERE setting_id = 1');
     const agentToken = rows[0]?.agent_token || null;
-
-    // Get tenant_code from master DB using tenant_id in JWT
-    let tenantCode = '';
-    try {
-      const tenantId = req.tenantId;
-      if (tenantId) {
-        const tenants = await masterQuery('SELECT tenant_code FROM tenants WHERE tenant_id = ?', [tenantId]);
-        tenantCode = tenants[0]?.tenant_code || '';
-      }
-    } catch {}
-
-    res.json({ tenant_code: tenantCode, agent_token: agentToken });
+    // Phase 4: no tenant_code in single-tenant deployment
+    res.json({ tenant_code: '', agent_token: agentToken });
   } catch (err) {
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -964,7 +953,7 @@ exports.uploadLogo = async (req, res) => {
 
     const storage = require('../services/storageService');
     const ext      = path.extname(req.file.originalname).toLowerCase() || '.png';
-    const key      = `logos/logo_${req.tenantDb || 'default'}${ext}`;
+    const key      = `logos/logo_${'default'}${ext}`;
 
     let logoPath;
     if (storage.PROVIDER === 'local') {
@@ -978,7 +967,7 @@ exports.uploadLogo = async (req, res) => {
     }
 
     await query('UPDATE store_settings SET receipt_logo = ? WHERE setting_id = 1', [logoPath]);
-    cache.invalidateSettings(req.tenantDb).catch(() => {});
+    cache.invalidateSettings('').catch(() => {});
 
     res.json({ success: true, logo_url: logoPath });
   } catch (err) {

@@ -2,7 +2,7 @@
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Lock, Mail, Building2, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap } from 'lucide-react';
+import { Lock, Mail, Loader2, Eye, EyeOff, ShoppingCart, BarChart3, Users, Package, Shield, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const features = [
@@ -13,7 +13,6 @@ const features = [
 ];
 
 const Login = () => {
-  const [companyCode, setCompanyCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +39,7 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { company_code: companyCode.trim().toLowerCase(), email, password });
+      const response = await api.post('/auth/login', { email, password });
       const { token, user, permissions, modules } = response.data;
       login(token, user, permissions ?? null, modules ?? []);
       navigate('/');
@@ -208,7 +207,7 @@ const Login = () => {
               <span className="text-emerald-700 text-xs font-semibold">Secure Login</span>
             </div>
             <h2 className="text-2xl font-black text-gray-900">Welcome back</h2>
-            <p className="text-gray-400 mt-1 text-sm">Sign in with your company code & credentials</p>
+            <p className="text-gray-400 mt-1 text-sm">Sign in with your credentials</p>
           </div>
 
           {/* Error message */}
@@ -235,25 +234,6 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Company Code */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Company Code</label>
-              <div className="relative group">
-                <Building2
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors duration-200"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  value={companyCode}
-                  onChange={e => setCompanyCode(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition-all duration-200 text-gray-800 placeholder-gray-400 text-sm"
-                  placeholder="Enter Your Company Code"
-                  required
-                />
-              </div>
-            </div>
 
             {/* Email */}
             <div>

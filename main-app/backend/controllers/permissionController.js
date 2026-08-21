@@ -108,7 +108,7 @@ exports.updatePermissions = async (req, res) => {
       logger.warn('Audit log failed for PERMISSIONS_UPDATED', { error: auditErr.message, role });
     }
 
-    cache.invalidatePermissions(req.tenantDb, role).catch(() => {});
+    cache.invalidatePermissions('', role).catch(() => {});
     res.json({ message: `Permissions updated for ${role}` });
   } catch (err) {
     await conn.rollback();

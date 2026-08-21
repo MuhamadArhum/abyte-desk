@@ -14,7 +14,6 @@ export default function ResetPassword() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const token = params.get('token') || '';
-  const companyCode = params.get('company') || '';
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -35,7 +34,7 @@ export default function ResetPassword() {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/reset-password', { token, company_code: companyCode, password });
+      await api.post('/auth/reset-password', { token, password });
       setDone(true);
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err

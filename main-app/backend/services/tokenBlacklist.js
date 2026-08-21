@@ -5,11 +5,11 @@
 // Falls back to in-memory if DB is unavailable.
 // =============================================================
 
-const { queryDb } = require('../config/database');
-const logger      = require('../config/logger');
+const { query } = require('../config/database');
+const logger    = require('../config/logger');
 
-const MASTER_DB = process.env.MASTER_DB_NAME || 'abyte_master';
-const q = (sql, params) => queryDb(MASTER_DB, sql, params);
+// Phase 4: single-tenant — token_blacklist is in the single DB.
+const q = (sql, params) => query(sql, params);
 
 // In-memory fallback (used if DB table not ready yet)
 const memoryFallback = new Set();

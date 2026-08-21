@@ -11,60 +11,48 @@
 //   Agent prints, then PATCH /api/agent/print-queue/:id → done|failed
 // =============================================================
 
-const crypto         = require('crypto');
-const { queryDb, getPool } = require('../config/database');
-const { masterQuery } = require('../config/masterDatabase');
-const logger         = require('../config/logger');
+// Phase 4: single-tenant — no master DB, no X-Tenant-Code lookup.
+// Auth uses only X-Agent-Token validated against store_settings.agent_token.
+
+const crypto = require('crypto');
+const { query, getConnection } = require('../config/database');
+const logger  = require('../config/logger');
 
 async function resolveAndAuth(req, res) {
-  const tenantCode = req.headers['x-tenant-code'];
   const agentToken = req.headers['x-agent-token'];
 
-  if (!tenantCode || !agentToken) {
-    res.status(401).json({ message: 'X-Tenant-Code and X-Agent-Token headers required' });
-    return null;
+  if (!agentToken) {
+    res.status(401).json({ message: 'X-Agent-Token header required' });
+    return false;
   }
 
-  // Look up tenant DB name from master
-  const tenants = await masterQuery(
-    'SELECT db_name FROM tenants WHERE tenant_code = ? AND is_active = 1',
-    [tenantCode]
-  );
-  if (!tenants || tenants.length === 0) {
-    res.status(401).json({ message: 'Tenant not found or inactive' });
-    return null;
-  }
-
-  const tenantDb = tenants[0].db_name;
-
-  // Validate agent_token
-  const settings = await queryDb(tenantDb, 'SELECT agent_token FROM store_settings WHERE setting_id = 1');
-  const stored = settings && settings[0] ? settings[0].agent_token : null;
+  const settings = await query('SELECT agent_token FROM store_settings WHERE setting_id = 1');
+  const stored   = settings && settings[0] ? settings[0].agent_token : null;
 
   if (!stored) {
-    res.status(401).json({ message: 'Invalid agent token' });
-    return null;
+    res.status(401).json({ message: 'Agent token not configured' });
+    return false;
   }
+
   const storedBuf = Buffer.from(stored, 'utf8');
   const tokenBuf  = Buffer.from(agentToken, 'utf8');
   if (storedBuf.length !== tokenBuf.length ||
       !crypto.timingSafeEqual(storedBuf, tokenBuf)) {
     res.status(401).json({ message: 'Invalid agent token' });
-    return null;
+    return false;
   }
 
-  return tenantDb;
+  return true;
 }
 
 // GET /api/agent/print-queue/pending
 exports.getPendingJobs = async (req, res) => {
   try {
-    const tenantDb = await resolveAndAuth(req, res);
-    if (!tenantDb) return;
+    const ok = await resolveAndAuth(req, res);
+    if (!ok) return;
 
-    // Fetch and lock pending jobs atomically to prevent duplicate delivery
-    const conn = await getPool(tenantDb).getConnection();
-    let jobs = [];
+    const conn = await getConnection();
+    let jobs   = [];
     try {
       await conn.beginTransaction();
       jobs = await conn.query(
@@ -85,7 +73,6 @@ exports.getPendingJobs = async (req, res) => {
       conn.release();
     }
 
-    // Parse payload JSON
     const parsed = jobs.map(j => ({
       id:         j.id,
       type:       j.type,
@@ -103,8 +90,8 @@ exports.getPendingJobs = async (req, res) => {
 // PATCH /api/agent/print-queue/:id
 exports.updateJobStatus = async (req, res) => {
   try {
-    const tenantDb = await resolveAndAuth(req, res);
-    if (!tenantDb) return;
+    const ok = await resolveAndAuth(req, res);
+    if (!ok) return;
 
     const { id } = req.params;
     const { status, error_message } = req.body;
@@ -113,8 +100,7 @@ exports.updateJobStatus = async (req, res) => {
       return res.status(400).json({ message: 'status must be done or failed' });
     }
 
-    await queryDb(
-      tenantDb,
+    await query(
       `UPDATE print_queue SET status = ?, error_message = ?, processed_at = NOW() WHERE id = ?`,
       [status, error_message || null, id]
     );

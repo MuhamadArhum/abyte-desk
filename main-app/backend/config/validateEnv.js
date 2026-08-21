@@ -4,7 +4,6 @@ const REQUIRED = [
   'DB_USER',
   'DB_PASSWORD',
   'DB_NAME',
-  'MASTER_DB_NAME',
   'JWT_SECRET',
 ];
 

@@ -50,22 +50,22 @@ Runs on **each client PC**. Shows the ERP frontend in an Electron window.
 
 ---
 
-## Phase 4 — Multi-Tenant to Single-Tenant Simplification 🔲 TODO
+## Phase 4 — Multi-Tenant to Single-Tenant Simplification ✅ DONE
 
 Remove the `abyte_master` dependency. One DB, one company.
 
-- [ ] Remove `company_code` field from login screen
-- [ ] Remove master DB lookup from `authController.login`
-- [ ] Remove `queryDb(MASTER_DB, ...)` calls from auth flow
-- [ ] Remove `tenant_id`, `tenant_db`, `modules` from JWT payload
-- [ ] Remove `requireModule()` middleware from all routes
-- [ ] Remove `tenantRoutes` and `tenantController`
-- [ ] Replace `queryDb(tenantDb, ...)` with direct `query()` everywhere
-- [ ] Remove `AsyncLocalStorage` tenant routing from `database.js`
-- [ ] Update `server.js` startup — connect to single DB directly
-- [ ] Remove `moduleGuard.js` middleware file
-- [ ] Remove module/plan gating from frontend (`hasModule`, `hasPermission` simplify)
-- [ ] Drop `abyte_master` DB requirement from `.env`
+- [x] Remove `company_code` field from login screen
+- [x] Remove master DB lookup from `authController.login`
+- [x] Remove `queryDb(MASTER_DB, ...)` calls from auth flow
+- [x] Remove `tenant_id`, `tenant_db`, `modules` from JWT payload
+- [x] Remove `requireModule()` middleware from all routes (no-op)
+- [x] Remove `tenantRoutes` super-admin CRUD, keep config endpoints
+- [x] Replace `queryDb(tenantDb, ...)` with direct `query()` everywhere
+- [x] Remove `AsyncLocalStorage` tenant routing from `database.js`
+- [x] Update `server.js` startup — connect to single DB directly
+- [x] Make `requireModule` a no-op in `moduleGuard.js`
+- [x] Remove module/plan gating from frontend (`hasModule` always returns true)
+- [x] Drop `MASTER_DB_NAME` requirement from `.env` / `validateEnv.js`
 
 ---
 
