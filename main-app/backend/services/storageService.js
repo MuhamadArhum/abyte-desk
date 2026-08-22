@@ -87,7 +87,7 @@ async function remove(key) {
 
 // ── Local fallback ────────────────────────────────────────────
 async function _localUpload(key, buffer) {
-  const uploadsDir = path.join(__dirname, '../uploads');
+  const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '../uploads');
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
   const filename = path.basename(key);
   await fsp.writeFile(path.join(uploadsDir, filename), buffer);

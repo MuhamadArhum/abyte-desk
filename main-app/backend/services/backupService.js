@@ -5,11 +5,17 @@ const fsp = fs.promises;
 const { query, queryDb } = require('../config/database');
 const logger = require('../config/logger');
 
-const BACKUP_DIR = path.join(__dirname, '..', 'backups');
-
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+const os = require('os');
+function resolveBackupDir() {
+  if (process.env.BACKUPS_DIR) return process.env.BACKUPS_DIR;
+  const defaultDir = path.join(__dirname, '..', 'backups');
+  try { fs.mkdirSync(defaultDir, { recursive: true }); return defaultDir; } catch {
+    const fallback = path.join(os.homedir(), 'AppData', 'Roaming', 'AByte ERP Server', 'backups');
+    fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
 }
+const BACKUP_DIR = resolveBackupDir();
 
 function getTimestamp() {
   const now = new Date();

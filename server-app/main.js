@@ -111,10 +111,11 @@ function startServer() {
 
   const logDir     = path.join(USER_DATA, 'logs');
   const uploadsDir = path.join(USER_DATA, 'uploads');
+  const backupsDir = path.join(USER_DATA, 'backups');
 
   serverProcess = spawn(nodeExe, [SERVER_JS], {
     cwd:   BACKEND_DIR,
-    env:   { ...process.env, ...envVars, PORT: String(PORT), LOG_DIR: logDir, UPLOADS_DIR: uploadsDir },
+    env:   { ...process.env, ...envVars, PORT: String(PORT), LOG_DIR: logDir, UPLOADS_DIR: uploadsDir, BACKUPS_DIR: backupsDir },
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: false,
   });
