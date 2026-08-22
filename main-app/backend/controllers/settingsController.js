@@ -14,8 +14,16 @@ const { spawn } = require('child_process');
 const os = require('os');
 const multer = require('multer');
 
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+function resolveUploadsDir() {
+  if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
+  const defaultDir = path.join(__dirname, '../uploads');
+  try { fs.mkdirSync(defaultDir, { recursive: true }); return defaultDir; } catch {
+    const fallback = path.join(os.homedir(), 'AppData', 'Roaming', 'AByte ERP Server', 'uploads');
+    fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+}
+const uploadsDir = resolveUploadsDir();
 
 const logoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),

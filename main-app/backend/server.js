@@ -344,10 +344,18 @@ app.get('/api/health', async (_req, res) => {
 });
 
 // ── Serve Uploaded Files (logos, etc.) ───────────────────────
-// UPLOADS_DIR env var is set by server-app Electron to AppData path,
-// avoiding EPERM when installed under C:\Program Files\.
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
-if (!require('fs').existsSync(uploadsDir)) require('fs').mkdirSync(uploadsDir, { recursive: true });
+const _fs = require('fs');
+const _os = require('os');
+function resolveUploadsDir() {
+  if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
+  const defaultDir = path.join(__dirname, 'uploads');
+  try { _fs.mkdirSync(defaultDir, { recursive: true }); return defaultDir; } catch {
+    const fallback = path.join(_os.homedir(), 'AppData', 'Roaming', 'AByte ERP Server', 'uploads');
+    _fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+}
+const uploadsDir = resolveUploadsDir();
 app.use('/uploads', express.static(uploadsDir));
 
 // ── Serve React Frontend ──────────────────────────────────────
