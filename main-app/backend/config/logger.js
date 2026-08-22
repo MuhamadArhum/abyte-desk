@@ -7,8 +7,23 @@
 
 const { createLogger, format, transports } = require('winston');
 const path = require('path');
+const fs   = require('fs');
+const os   = require('os');
 
 const { combine, timestamp, printf, colorize, errors, json } = format;
+
+// Resolve a writable log directory. Priority:
+// 1. LOG_DIR env var (set by server-app Electron process)
+// 2. ../logs relative to this file (works in dev)
+// 3. AppData fallback (when installed under C:\Program Files\)
+function resolveLogDir() {
+  if (process.env.LOG_DIR) return process.env.LOG_DIR;
+  const devDir = path.join(__dirname, '../logs');
+  try { fs.mkdirSync(devDir, { recursive: true }); return devDir; } catch {
+    return path.join(os.homedir(), 'AppData', 'Roaming', 'AByte ERP Server', 'logs');
+  }
+}
+const logDir = resolveLogDir();
 
 // Pull request ID from requestId middleware context (zero-dependency circular-import safe)
 const getRequestId = () => {
@@ -37,10 +52,6 @@ const fileJsonFormat = combine(
   format((info) => { info.service = 'abyte-api'; return info; })(),
   json()
 );
-
-// In production (packaged Electron), C:\Program Files\ is read-only.
-// server-app passes LOG_DIR pointing to AppData so logs stay writable.
-const logDir = process.env.LOG_DIR || path.join(__dirname, '../logs');
 
 const logger = createLogger({
   level: process.env.LOG_LEVEL || 'info',
