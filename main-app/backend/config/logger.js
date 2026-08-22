@@ -38,6 +38,10 @@ const fileJsonFormat = combine(
   json()
 );
 
+// In production (packaged Electron), C:\Program Files\ is read-only.
+// server-app passes LOG_DIR pointing to AppData so logs stay writable.
+const logDir = process.env.LOG_DIR || path.join(__dirname, '../logs');
+
 const logger = createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: combine(
@@ -58,7 +62,7 @@ const logger = createLogger({
 
     // JSON structured error log — grep-able, Loki-importable
     new transports.File({
-      filename: path.join(__dirname, '../logs/error.log'),
+      filename: path.join(logDir, 'error.log'),
       level: 'error',
       format: fileJsonFormat,
       maxsize: 5 * 1024 * 1024,
@@ -67,7 +71,7 @@ const logger = createLogger({
 
     // JSON structured combined log
     new transports.File({
-      filename: path.join(__dirname, '../logs/combined.log'),
+      filename: path.join(logDir, 'combined.log'),
       format: fileJsonFormat,
       maxsize: 10 * 1024 * 1024,
       maxFiles: 5,
