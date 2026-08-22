@@ -71,6 +71,10 @@
         ]
       },
       {
+        "from": "../main-app/frontend/dist",
+        "to": "frontend/dist"
+      },
+      {
         "from": "../database/schema.sql",
         "to": "schema.sql"
       }
