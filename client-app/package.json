@@ -3,6 +3,7 @@
   "version": "1.0.1",
   "description": "AByte ERP Client - LAN Desktop Client",
   "main": "main.js",
+  "repository": "https://github.com/MuhamadArhum/abyte-desk",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
