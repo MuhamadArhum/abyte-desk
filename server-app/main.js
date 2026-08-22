@@ -109,11 +109,12 @@ function startServer() {
   // Find node executable
   const nodeExe = process.platform === 'win32' ? 'node.exe' : 'node';
 
-  const logDir = path.join(USER_DATA, 'logs');
+  const logDir     = path.join(USER_DATA, 'logs');
+  const uploadsDir = path.join(USER_DATA, 'uploads');
 
   serverProcess = spawn(nodeExe, [SERVER_JS], {
     cwd:   BACKEND_DIR,
-    env:   { ...process.env, ...envVars, PORT: String(PORT), LOG_DIR: logDir },
+    env:   { ...process.env, ...envVars, PORT: String(PORT), LOG_DIR: logDir, UPLOADS_DIR: uploadsDir },
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: false,
   });

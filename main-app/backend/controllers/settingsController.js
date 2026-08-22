@@ -14,7 +14,7 @@ const { spawn } = require('child_process');
 const os = require('os');
 const multer = require('multer');
 
-const uploadsDir = path.join(__dirname, '../uploads');
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 const logoStorage = multer.diskStorage({

@@ -344,7 +344,9 @@ app.get('/api/health', async (_req, res) => {
 });
 
 // ── Serve Uploaded Files (logos, etc.) ───────────────────────
-const uploadsDir = path.join(__dirname, 'uploads');
+// UPLOADS_DIR env var is set by server-app Electron to AppData path,
+// avoiding EPERM when installed under C:\Program Files\.
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 if (!require('fs').existsSync(uploadsDir)) require('fs').mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
