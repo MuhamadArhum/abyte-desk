@@ -27,6 +27,15 @@ jobs:
         working-directory: main-app/backend
         run: npm ci --omit=dev
 
+      # ── Build Frontend (bundled inside server installer) ─────────
+      - name: Install frontend dependencies
+        working-directory: main-app/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: main-app/frontend
+        run: npm run build
+
       # ── Build Server App ─────────────────────────────────────────
       - name: Install server-app dependencies
         working-directory: server-app
