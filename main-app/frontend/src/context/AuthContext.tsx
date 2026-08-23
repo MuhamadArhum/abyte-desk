@@ -72,8 +72,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedToken) {
       setToken(storedToken);
       const apiBase = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
       fetch(`${apiBase}/auth/verify`, {
         headers: { Authorization: `Bearer ${storedToken}` },
+        signal: controller.signal,
       })
         .then(r => {
           if (r.ok) return r.json();
@@ -91,9 +94,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         })
         .catch(() => {
-          // Network or server error — keep token, user stays logged in
+          // Network, timeout, or server error — keep token, user stays logged in
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+        });
     } else {
       setIsLoading(false);
     }

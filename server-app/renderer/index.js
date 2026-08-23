@@ -62,9 +62,8 @@ function renderIPs(ips, port) {
 
 window.copyIP = function(ip, port) {
   const url = `http://${ip}:${port}`;
+  const row = event.currentTarget;
   navigator.clipboard.writeText(url).then(() => {
-    const prev = ipList.innerHTML;
-    const row = event.currentTarget;
     if (row) {
       const copySpan = row.querySelector('.ip-copy');
       if (copySpan) { copySpan.textContent = 'Copied!'; setTimeout(() => { copySpan.textContent = 'Click to copy'; }, 1500); }

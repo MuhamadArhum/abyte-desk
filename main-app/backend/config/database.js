@@ -79,4 +79,9 @@ async function closeAllPools() {
   await pool.end().catch(() => {});
 }
 
-module.exports = { query, queryDb, getConnection, closeAllPools };
+// Returns the current DB name — single-tenant always uses DB_NAME
+function getCurrentDb() {
+  return DB_NAME;
+}
+
+module.exports = { query, queryDb, getConnection, closeAllPools, getCurrentDb };

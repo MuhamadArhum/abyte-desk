@@ -84,8 +84,8 @@ const MIGRATIONS = [
       ];
       for (const sql of stmts) {
         try { await queryDb(db, sql); } catch (e) {
-          // Column already exists — non-fatal
-          if (!e.message.includes('Duplicate column')) throw e;
+          // Non-fatal: column already exists, or table doesn't exist (was dropped in later migration)
+          if (!e.message.includes('Duplicate column') && !e.message.includes("doesn't exist")) throw e;
         }
       }
     },
@@ -617,6 +617,13 @@ const MIGRATIONS = [
       try {
         await queryDb(db, `ALTER TABLE categories ADD UNIQUE KEY unique_category_name (category_name)`);
       } catch (_e) { /* ignore if already exists */ }
+    },
+  },
+  {
+    version: 23,
+    name: 'add_actual_delivery_column',
+    async run(db) {
+      await queryDb(db, `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS actual_delivery DATETIME NULL`);
     },
   },
 ];

@@ -133,7 +133,7 @@ const EmailSettings = lazy(() => import('./pages/system/EmailSettings'));
 
 // ── Logo Loader ───────────────────────────────────────────────
 const LogoLoader = ({ fullScreen = false }: { fullScreen?: boolean }) => (
-  <div className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? 'min-h-screen bg-white' : 'min-h-[60vh]'}`}>
+  <div className={`flex flex-col items-center justify-center gap-4 ${fullScreen ? 'min-h-screen bg-gray-50' : 'min-h-[60vh]'}`}>
     <div className="relative">
       <img
         src="/logo.png"

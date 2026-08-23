@@ -77,6 +77,7 @@ function createMainWindow() {
     height: 768,
     title:  'AByte ERP',
     autoHideMenuBar: true,
+    backgroundColor: '#f9fafb',
     webPreferences: {
       preload:          path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -154,6 +155,7 @@ function openSetupWindow() {
     title:    'AByte ERP Client — Setup',
     resizable: false,
     autoHideMenuBar: true,
+    backgroundColor: '#0f172a',
     webPreferences: {
       preload:          path.join(__dirname, 'preload.js'),
       contextIsolation: true,
