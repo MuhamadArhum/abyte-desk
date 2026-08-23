@@ -1,5 +1,80 @@
 // ── Setup Renderer ────────────────────────────────────────────
 
+// ── MariaDB Detection & Install ───────────────────────────────
+
+const mariaDbStatusRow   = document.getElementById('mariadb-status-row');
+const mariaDbDot         = document.getElementById('mariadb-dot');
+const mariaDbStatusText  = document.getElementById('mariadb-status-text');
+const btnInstallMariaDB  = document.getElementById('btn-install-mariadb');
+const mariaDbProgressWrap = document.getElementById('mariadb-progress-wrap');
+const mariaDbProgressFill = document.getElementById('mariadb-progress-fill');
+const mariaDbProgressLabel = document.getElementById('mariadb-progress-label');
+const msgMariaDb         = document.getElementById('msg-mariadb');
+const dbForm             = document.getElementById('db-form');
+
+function setMariaDbStatus(state, text) {
+  mariaDbStatusRow.className = `mariadb-status-row ${state}`;
+  mariaDbDot.className       = `dot dot-${state}`;
+  mariaDbStatusText.textContent = text;
+}
+
+function showMariaDbMsg(text, type) {
+  msgMariaDb.textContent = text;
+  msgMariaDb.className   = `msg ${type}`;
+}
+
+function revealDbForm() {
+  dbForm.style.display = 'block';
+}
+
+async function detectMariaDB() {
+  setMariaDbStatus('checking', 'Checking for MariaDB...');
+  btnInstallMariaDB.style.display = 'none';
+
+  const result = await window.erp.checkMariaDB().catch(() => ({ installed: false }));
+
+  if (result.installed) {
+    setMariaDbStatus('installed', `MariaDB / MySQL detected (${result.service}). Ready to configure.`);
+    revealDbForm();
+  } else {
+    setMariaDbStatus('missing', 'MariaDB not found. Please install it to continue.');
+    btnInstallMariaDB.style.display = 'block';
+  }
+}
+
+btnInstallMariaDB.addEventListener('click', async () => {
+  btnInstallMariaDB.disabled = true;
+  mariaDbProgressWrap.style.display = 'block';
+  showMariaDbMsg('', '');
+
+  // Listen for progress updates
+  window.erp.onMariaDbProgress(({ pct, msg }) => {
+    mariaDbProgressFill.style.width = `${pct}%`;
+    mariaDbProgressLabel.textContent = msg;
+  });
+
+  const result = await window.erp.installMariaDB();
+
+  if (result.ok) {
+    mariaDbProgressFill.style.width = '100%';
+    mariaDbProgressLabel.textContent = 'Installation complete!';
+    showMariaDbMsg('MariaDB installed successfully. You can now configure the database below.', 'success');
+    setMariaDbStatus('installed', 'MariaDB installed and ready.');
+    btnInstallMariaDB.style.display = 'none';
+    revealDbForm();
+  } else {
+    mariaDbProgressWrap.style.display = 'none';
+    showMariaDbMsg(`Installation failed: ${result.error}\n\nPlease install MariaDB manually from mariadb.org`, 'error');
+    btnInstallMariaDB.disabled = false;
+    setMariaDbStatus('missing', 'Installation failed. Please install MariaDB manually.');
+  }
+});
+
+// Auto-detect on page load
+detectMariaDB();
+
+// ── DB Config ─────────────────────────────────────────────────
+
 const dbHost   = document.getElementById('db-host');
 const dbPort   = document.getElementById('db-port');
 const dbUser   = document.getElementById('db-user');

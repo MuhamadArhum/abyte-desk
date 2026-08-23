@@ -145,23 +145,105 @@
       line-height: 18px;
       margin-right: 6px;
     }
+
+    /* ── MariaDB Step ── */
+    #mariadb-step { margin-bottom: 4px; }
+
+    .mariadb-status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+    .mariadb-status-row .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .mariadb-status-row.checking  { border-color: #e2e8f0; }
+    .mariadb-status-row.installed { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .mariadb-status-row.missing   { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .dot-checking  { background: #94a3b8; animation: pulse 1s infinite; }
+    .dot-installed { background: #22c55e; }
+    .dot-missing   { background: #ef4444; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .btn-install-mariadb {
+      width: 100%;
+      padding: 10px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+      margin-bottom: 10px;
+    }
+    .btn-install-mariadb:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-install-mariadb:hover:not(:disabled) { opacity: .88; }
+
+    .progress-wrap {
+      display: none;
+      margin-bottom: 10px;
+    }
+    .progress-bar-track {
+      width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: #7c3aed;
+      border-radius: 3px;
+      transition: width .3s ease;
+      width: 0%;
+    }
+    .progress-label { font-size: 11px; color: #64748b; }
+
+    #db-form { display: none; }
   </style>
 </head>
 <body>
 
 <h1>Server Configuration</h1>
-<p class="subtitle">Configure database connection, initialize schema, and set security options.</p>
+<p class="subtitle">First-time setup: install MariaDB, then configure your database.</p>
 
-<div class="mariadb-banner">
-  <div class="icon">⚠</div>
-  <div class="text">
-    <strong>MariaDB must be installed first.</strong><br>
-    Download from <strong>mariadb.org/download</strong> — install as a Windows Service on port 3306.
-    Then return here to configure and initialize the database.
+<!-- Step 0: MariaDB -->
+<div id="mariadb-step">
+  <div class="section-title"><span class="step-badge">1</span>Database Engine (MariaDB)</div>
+
+  <div class="mariadb-status-row checking" id="mariadb-status-row">
+    <div class="dot dot-checking" id="mariadb-dot"></div>
+    <span id="mariadb-status-text">Checking for MariaDB...</span>
   </div>
+
+  <button class="btn-install-mariadb" id="btn-install-mariadb" style="display:none">
+    Download &amp; Install MariaDB 10.11 LTS
+  </button>
+
+  <div class="progress-wrap" id="mariadb-progress-wrap">
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="mariadb-progress-fill"></div>
+    </div>
+    <div class="progress-label" id="mariadb-progress-label">Downloading...</div>
+  </div>
+
+  <div class="msg" id="msg-mariadb"></div>
 </div>
 
-<div class="section-title"><span class="step-badge">1</span>Database Connection</div>
+<!-- Step 1: DB Config (hidden until MariaDB is confirmed) -->
+<div id="db-form">
+<div class="section-title"><span class="step-badge">2</span>Database Connection</div>
 
 <div class="row">
   <div>
@@ -202,6 +284,7 @@
 <button class="btn-save-full" id="btn-save">Save &amp; Start Server</button>
 
 <div class="msg" id="msg-save"></div>
+</div><!-- /db-form -->
 
 <script src="setup.js"></script>
 </body>

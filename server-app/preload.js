@@ -13,10 +13,16 @@ contextBridge.exposeInMainWorld('erp', {
   getAutostart:  ()       => ipcRenderer.invoke('get-autostart'),
   setAutostart:  (enable) => ipcRenderer.invoke('set-autostart', enable),
 
+  checkMariaDB:   ()      => ipcRenderer.invoke('check-mariadb'),
+  installMariaDB: ()      => ipcRenderer.invoke('install-mariadb'),
+
   onStatus: (cb) => {
     ipcRenderer.on('status', (_, data) => cb(data));
   },
   onLog: (cb) => {
     ipcRenderer.on('log',    (_, entry) => cb(entry));
+  },
+  onMariaDbProgress: (cb) => {
+    ipcRenderer.on('mariadb-progress', (_, data) => cb(data));
   },
 });

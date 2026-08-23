@@ -1,6 +1,6 @@
 {
   "name": "abyte-erp-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AByte ERP Server - Local LAN Server Manager",
   "main": "main.js",
   "repository": "https://github.com/MuhamadArhum/abyte-desk",

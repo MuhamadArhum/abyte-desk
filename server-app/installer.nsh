@@ -1,8 +1,23 @@
 ; installer.nsh — AByte ERP Server custom NSIS script
-; Shown on the installer's finish page to remind users about MariaDB.
 
 !macro customInstall
-  ; Nothing extra at install time — DB setup is done inside the app wizard.
+  ; Check if MariaDB or MySQL service exists
+  nsExec::ExecToStack 'sc query MariaDB'
+  Pop $0
+  ${If} $0 != 0
+    nsExec::ExecToStack 'sc query MySQL'
+    Pop $0
+  ${EndIf}
+  ${If} $0 != 0
+    nsExec::ExecToStack 'sc query MySQL80'
+    Pop $0
+  ${EndIf}
+
+  ; If no DB service found, inform the user — the app wizard will handle install
+  ${If} $0 != 0
+    MessageBox MB_ICONINFORMATION|MB_OK \
+      "MariaDB (database engine) was not detected on this PC.$\n$\nAfter the installer finishes, AByte ERP Server will open a setup wizard that can automatically download and install MariaDB 10.11 LTS for you with one click.$\n$\nInternet connection is required for that step."
+  ${EndIf}
 !macroend
 
 !macro customUnInstall

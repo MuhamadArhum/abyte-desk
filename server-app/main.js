@@ -132,8 +132,9 @@ function startServer() {
 
   serverProcess.stderr.on('data', (data) => {
     const lines = data.toString().split('\n').filter(l => l.trim());
-    lines.forEach(l => addLog(l, 'error'));
-    if (serverStatus === 'starting') setStatus('error');
+    // Log stderr as warnings — many libraries write non-fatal warnings to stderr.
+    // Only the process exit handler should determine actual error state.
+    lines.forEach(l => addLog(l, 'warn'));
   });
 
   serverProcess.on('exit', (code) => {
@@ -158,13 +159,14 @@ function stopServer() {
   if (!serverProcess) return;
   addLog('Stopping server...', 'info');
   serverProcess.kill('SIGTERM');
-  setTimeout(() => {
+  const killTimer = setTimeout(() => {
     if (serverProcess) {
       serverProcess.kill('SIGKILL');
       serverProcess = null;
+      setStatus('stopped');
     }
-    setStatus('stopped');
   }, 5000);
+  serverProcess.once('exit', () => clearTimeout(killTimer));
 }
 
 // ── Setup Window ──────────────────────────────────────────────
@@ -182,6 +184,7 @@ function openSetupWindow() {
     title:  'AByte ERP Server — Setup',
     resizable: false,
     autoHideMenuBar: true,
+    backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -200,6 +203,7 @@ function createMainWindow() {
     height: 560,
     title:  'AByte ERP Server',
     autoHideMenuBar: true,
+    backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -397,6 +401,116 @@ ipcMain.handle('get-autostart', () => {
 ipcMain.handle('set-autostart', (_, enable) => {
   app.setLoginItemSettings({ openAtLogin: enable });
   return { ok: true };
+});
+
+// ── MariaDB Detection & Installation ──────────────────────────
+
+function checkMariaDBInstalled() {
+  const { execFileSync } = require('child_process');
+  const services = ['MariaDB', 'MySQL', 'MySQL80', 'MySQL57', 'MySQL56'];
+  for (const svc of services) {
+    try {
+      execFileSync('sc', ['query', svc], {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 5000,
+      });
+      return { installed: true, service: svc };
+    } catch { /* try next */ }
+  }
+  // Fallback: check registry
+  try {
+    const result = execFileSync(
+      'reg', ['query', 'HKLM\\SOFTWARE\\MariaDB Corporation', '/s'],
+      { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }
+    );
+    if (result && result.trim()) return { installed: true, service: 'registry' };
+  } catch { /* not found */ }
+  return { installed: false, service: null };
+}
+
+ipcMain.handle('check-mariadb', () => checkMariaDBInstalled());
+
+ipcMain.handle('install-mariadb', async (event) => {
+  const https  = require('https');
+  const tmpDir = require('os').tmpdir();
+  const msiPath = path.join(tmpDir, 'mariadb-installer.msi');
+
+  const MARIADB_MSI_URL =
+    'https://downloads.mariadb.com/MariaDB/mariadb-10.11.10/winx64-packages/mariadb-10.11.10-winx64.msi';
+
+  const sendProgress = (pct, msg) => {
+    try { event.sender.send('mariadb-progress', { pct, msg }); } catch { /* window closed */ }
+    addLog(`[MariaDB] ${msg}`, 'info');
+  };
+
+  function httpsGet(url) {
+    return new Promise((resolve, reject) => {
+      https.get(url, { timeout: 30000 }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          httpsGet(res.headers.location).then(resolve).catch(reject);
+        } else {
+          resolve(res);
+        }
+      }).on('error', reject).on('timeout', () => reject(new Error('Request timed out')));
+    });
+  }
+
+  try {
+    sendProgress(5, 'Connecting to download server...');
+    const res = await httpsGet(MARIADB_MSI_URL);
+    const total = parseInt(res.headers['content-length'] || '0', 10);
+    let downloaded = 0;
+
+    await new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(msiPath);
+      res.on('data', (chunk) => {
+        downloaded += chunk.length;
+        file.write(chunk);
+        if (total > 0) {
+          const pct = Math.min(5 + Math.round((downloaded / total) * 60), 65);
+          const mb  = Math.round(downloaded / 1024 / 1024);
+          const tot = Math.round(total / 1024 / 1024);
+          sendProgress(pct, `Downloading MariaDB... ${mb} MB / ${tot} MB`);
+        }
+      });
+      res.on('end', () => { file.end(); resolve(); });
+      res.on('error', (e) => { file.destroy(); reject(e); });
+    });
+
+    sendProgress(67, 'Starting MariaDB installation (this may take a few minutes)...');
+
+    await new Promise((resolve, reject) => {
+      const proc = spawn('msiexec', [
+        '/i', msiPath,
+        '/quiet', '/norestart',
+        'SERVICENAME=MariaDB',
+        'PORT=3306',
+        'ALLOWREMOTEROOTACCESS=YES',
+        'BUFFERPOOLSIZE=64',
+      ], { windowsHide: true, detached: false });
+
+      proc.on('exit', (code) => {
+        // 0 = success, 3010 = success + reboot suggested
+        if (code === 0 || code === 3010) resolve();
+        else reject(new Error(`Installer exited with code ${code}`));
+      });
+      proc.on('error', reject);
+    });
+
+    sendProgress(90, 'Waiting for MariaDB service to start...');
+    // Give the service time to register and start
+    await new Promise(r => setTimeout(r, 4000));
+
+    fs.unlink(msiPath, () => {});
+
+    sendProgress(100, 'MariaDB installed successfully!');
+    return { ok: true };
+  } catch (err) {
+    addLog(`[MariaDB] Install failed: ${err.message}`, 'error');
+    try { fs.unlink(msiPath, () => {}); } catch { /* ignore */ }
+    return { ok: false, error: err.message };
+  }
 });
 
 // ── App Lifecycle ─────────────────────────────────────────────

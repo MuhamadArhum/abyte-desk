@@ -186,13 +186,11 @@ const helmetConfig = {
       frameAncestors: ["'none'"],                      // Clickjacking protection
       baseUri:        ["'self'"],
       formAction:     ["'self'"],
-      ...(process.env.NODE_ENV === 'production' && { upgradeInsecureRequests: [] }),
+      // upgradeInsecureRequests intentionally omitted — this is a local LAN HTTP server
     },
   },
-  // HSTS: only in production — dev runs on HTTP
-  hsts: process.env.NODE_ENV === 'production'
-    ? { maxAge: 31536000, includeSubDomains: true, preload: true }
-    : false,
+  // HSTS disabled — this server runs on HTTP over LAN, not public HTTPS
+  hsts: false,
   // Keep other Helmet defaults: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.
 };
 
