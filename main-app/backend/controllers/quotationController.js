@@ -10,11 +10,11 @@ const parsePagination = (page, limit) => {
 
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
-// GET /api/quotations?page=&limit=&status=&customer_id=&search=
+// GET /api/quotations?page=&limit=&status=&customer_id=&search=&date_from=&date_to=
 const getAll = async (req, res) => {
   try {
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
-    const { status, customer_id, search } = req.query;
+    const { status, customer_id, search, date_from, date_to } = req.query;
 
     let where = 'WHERE 1=1';
     const params = [];
@@ -30,6 +30,14 @@ const getAll = async (req, res) => {
     if (search) {
       where += ' AND (q.quotation_number LIKE ? OR c.customer_name LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
+    }
+    if (date_from) {
+      where += ' AND DATE(q.created_at) >= ?';
+      params.push(date_from);
+    }
+    if (date_to) {
+      where += ' AND DATE(q.created_at) <= ?';
+      params.push(date_to);
     }
 
     const countResult = await query(

@@ -42,6 +42,8 @@ const Quotations = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
@@ -78,12 +80,14 @@ const Quotations = () => {
       const params: Record<string, string | number> = { page, limit };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       const res = await api.get('/quotations', { params });
       setQuotations(res.data.data);
       setTotalItems(res.data.pagination.total);
       setTotalPages(res.data.pagination.totalPages);
     } catch (err) { console.error(err); } finally { setLoading(false); }
-  }, [page, limit, search, statusFilter]);
+  }, [page, limit, search, statusFilter, dateFrom, dateTo]);
 
   const fetchStats = async () => {
     try { const res = await api.get('/quotations/stats'); setStats(res.data); } catch (err) { console.error(err); }
@@ -250,6 +254,9 @@ const Quotations = () => {
             <option value="draft">Draft</option><option value="sent">Sent</option><option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option><option value="converted">Converted</option>
           </select>
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm" title="Start Date" />
+          <span className="text-gray-400 text-sm">to</span>
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm" title="End Date" />
         </div>
 
         {loading ? (

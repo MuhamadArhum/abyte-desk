@@ -35,6 +35,8 @@ const CreditSales = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [tab, setTab] = useState<'all' | 'overdue'>('all');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -62,6 +64,8 @@ const CreditSales = () => {
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       if (tab === 'overdue') params.overdue = 1;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       const res = await api.get('/credit-sales', { params });
       setSales(res.data.data || []);
       if (res.data.pagination) {
@@ -69,7 +73,7 @@ const CreditSales = () => {
         setTotalPages(res.data.pagination.totalPages);
       }
     } catch (err) { console.error(err); } finally { setLoading(false); }
-  }, [page, limit, search, statusFilter, tab]);
+  }, [page, limit, search, statusFilter, tab, dateFrom, dateTo]);
 
   const fetchStats = async () => {
     try { const res = await api.get('/credit-sales/stats'); setStats(res.data); } catch (err) { console.error(err); }
@@ -204,6 +208,9 @@ const CreditSales = () => {
             <option value="">All Status</option>
             <option value="pending">Pending</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="overdue">Overdue</option>
           </select>
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm" title="Start Date" />
+          <span className="text-gray-400 text-sm">to</span>
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-200 rounded-lg text-sm" title="End Date" />
         </div>
 
         {loading ? (

@@ -26,6 +26,8 @@ const PurchaseOrders = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => { fetchOrders(); }, [pagination.page, statusFilter]);
 
@@ -35,6 +37,8 @@ const PurchaseOrders = () => {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (statusFilter !== 'all') params.status = statusFilter;
       if (searchTerm) params.search = searchTerm;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
       const res = await api.get('/purchase-orders', { params });
       setOrders(res.data.data || []);
       if (res.data.pagination) setPagination(res.data.pagination);
@@ -152,6 +156,23 @@ const PurchaseOrders = () => {
               <option value="received">Received</option>
               <option value="cancelled">Cancelled</option>
             </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 text-sm"
+              title="Start Date"
+            />
+            <span className="text-gray-400 text-sm">to</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 text-sm"
+              title="End Date"
+            />
           </div>
           <button onClick={handleSearch}
             className="bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 transition text-sm">

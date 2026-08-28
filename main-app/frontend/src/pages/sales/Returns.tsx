@@ -64,6 +64,8 @@ const Returns = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [returnsDateFrom, setReturnsDateFrom] = useState('');
+  const [returnsDateTo, setReturnsDateTo] = useState('');
 
   const searchSale = async () => {
     if (!saleId.trim()) return;
@@ -184,12 +186,10 @@ const Returns = () => {
 
   const loadRecentReturns = useCallback(async () => {
     try {
-      const res = await api.get('/returns', {
-        params: {
-          page: currentPage,
-          limit: itemsPerPage
-        }
-      });
+      const params: Record<string, string | number> = { page: currentPage, limit: itemsPerPage };
+      if (returnsDateFrom) params.date_start = returnsDateFrom;
+      if (returnsDateTo) params.date_end = returnsDateTo;
+      const res = await api.get('/returns', { params });
       if (res.data.pagination) {
         setRecentReturns(res.data.data);
         setTotalItems(res.data.pagination.total);
@@ -201,7 +201,7 @@ const Returns = () => {
     } catch (error) {
       console.error('Failed to fetch returns', error);
     }
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, returnsDateFrom, returnsDateTo]);
 
   useEffect(() => {
     if (showRecent) {
@@ -451,9 +451,14 @@ const Returns = () => {
       )}
 
       {/* Recent Returns */}
-      {showRecent && recentReturns.length > 0 && (
+      {showRecent && (
         <div className="mt-8">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">Recent Returns</h3>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <h3 className="text-sm font-semibold text-gray-800">Recent Returns</h3>
+            <input type="date" value={returnsDateFrom} onChange={(e) => { setReturnsDateFrom(e.target.value); setCurrentPage(1); }} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" title="Start Date" />
+            <span className="text-gray-400 text-sm">to</span>
+            <input type="date" value={returnsDateTo} onChange={(e) => { setReturnsDateTo(e.target.value); setCurrentPage(1); }} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" title="End Date" />
+          </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full text-left text-sm min-w-[600px]">
@@ -468,7 +473,7 @@ const Returns = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {recentReturns.map((r: any) => (
+                {recentReturns.length > 0 ? recentReturns.map((r: any) => (
                   <tr key={r.return_id} className="hover:bg-gray-50">
                     <td className="p-4 font-medium">#{r.return_id}</td>
                     <td className="p-4">#{r.sale_id}</td>
@@ -477,7 +482,9 @@ const Returns = () => {
                     <td className="p-4 font-medium text-red-600">{currency}{parseFloat(r.refund_amount || 0).toFixed(0)}</td>
                     <td className="p-4 text-gray-600">{r.processed_by}</td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan={6} className="p-8 text-center text-gray-400">No returns found</td></tr>
+                )}
               </tbody>
             </table>
             </div>

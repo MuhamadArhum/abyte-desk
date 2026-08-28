@@ -18,7 +18,7 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const { status, customer_id, overdue, search } = req.query;
+    const { status, customer_id, overdue, search, date_from, date_to } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = `SELECT cs.*, c.customer_name as customer_name, c.phone_number as customer_phone,
@@ -61,6 +61,20 @@ exports.getAll = async (req, res) => {
       countSql += ' AND (CAST(cs.sale_id AS CHAR) LIKE ? OR c.customer_name LIKE ?)';
       params.push(pattern, pattern);
       countParams.push(pattern, pattern);
+    }
+
+    if (date_from) {
+      sql += ' AND DATE(cs.created_at) >= ?';
+      countSql += ' AND DATE(cs.created_at) >= ?';
+      params.push(date_from);
+      countParams.push(date_from);
+    }
+
+    if (date_to) {
+      sql += ' AND DATE(cs.created_at) <= ?';
+      countSql += ' AND DATE(cs.created_at) <= ?';
+      params.push(date_to);
+      countParams.push(date_to);
     }
 
     sql += ' ORDER BY cs.created_at DESC LIMIT ? OFFSET ?';

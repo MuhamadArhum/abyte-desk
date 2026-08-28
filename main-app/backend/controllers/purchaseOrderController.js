@@ -21,7 +21,7 @@ const parsePagination = (page, limit) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const { status, supplier_id, search } = req.query;
+    const { status, supplier_id, search, date_from, date_to } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = 'SELECT po.*, s.supplier_name FROM purchase_orders po JOIN suppliers s ON po.supplier_id = s.supplier_id WHERE 1=1';
@@ -47,6 +47,20 @@ exports.getAll = async (req, res) => {
       countSql += ' AND po.supplier_id = ?';
       params.push(supplier_id);
       countParams.push(supplier_id);
+    }
+
+    if (date_from) {
+      sql += ' AND DATE(po.order_date) >= ?';
+      countSql += ' AND DATE(po.order_date) >= ?';
+      params.push(date_from);
+      countParams.push(date_from);
+    }
+
+    if (date_to) {
+      sql += ' AND DATE(po.order_date) <= ?';
+      countSql += ' AND DATE(po.order_date) <= ?';
+      params.push(date_to);
+      countParams.push(date_to);
     }
 
     sql += ' ORDER BY po.created_at DESC LIMIT ? OFFSET ?';
