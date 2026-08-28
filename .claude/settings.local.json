@@ -189,7 +189,22 @@
       "Read(//d/d/AByte-POS/admin-panel/backend/controllers/**)",
       "Read(//d/d/AByte-POS/admin-panel/frontend/src/api/**)",
       "Read(//d/d/AByte-POS/admin-panel/frontend/src/hooks/**)",
-      "Read(//d/d/AByte-POS/admin-panel/frontend/src/pages/**)"
+      "Read(//d/d/AByte-POS/admin-panel/frontend/src/pages/**)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npm run build)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(gh release *)",
+      "Read(//c/Users/muham/AppData/Local/electron-builder/Cache/**)",
+      "Bash(D:/abyte-desk/server-app/node_modules/app-builder-bin/win/x64/app-builder.exe download-artifact *)",
+      "Bash(npm uninstall *)",
+      "Read(//c/Users/muham/AppData/**)",
+      "Read(//c/Users/muham/AppData/Roaming/**)",
+      "Bash(DB_HOST=localhost DB_PORT=3306 DB_USER=root DB_PASSWORD=12345 DB_NAME=abytedesk-arhum node scripts/seed-admin.js)",
+      "Bash(DB_HOST=localhost DB_PORT=3306 DB_USER=root DB_PASSWORD=12345 DB_NAME=abytedesk-arhum node -e \"const m=require\\('mariadb'\\); m.createConnection\\({host:'localhost',port:3306,user:'root',password:'12345',database:'abytedesk-arhum'}\\).then\\(c=>c.query\\('DESCRIBE users'\\).then\\(r=>{console.log\\(r.map\\(x=>x.Field+' '+x.Default\\)\\);c.end\\(\\)}\\)\\)\")",
+      "Bash(DB_HOST=localhost DB_PORT=3306 DB_USER=root DB_PASSWORD=12345 DB_NAME=abytedesk-arhum node -e \"const m=require\\('mariadb'\\); m.createConnection\\({host:'localhost',port:3306,user:'root',password:'12345',database:'abytedesk-arhum'}\\).then\\(c=>c.query\\('SELECT * FROM roles'\\).then\\(r=>{console.log\\(r\\);c.end\\(\\)}\\)\\)\")",
+      "Bash(taskkill /PID 28544 /F)",
+      "Bash(taskkill *)",
+      "PowerShell(Get-WmiObject *)"
     ]
   }
 }
