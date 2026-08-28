@@ -26,5 +26,8 @@ client-app/dist/
 # Build byproducts
 main-app/backend/$lib/
 
+# Seed / dev-only scripts
+main-app/backend/seed.js
+
 # Claude Code local settings
 .claude/settings.local.json
