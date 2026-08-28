@@ -37,7 +37,7 @@ exports.getAccountGroups = async (req, res) => {
 
 exports.getAccounts = async (req, res) => {
   try {
-    const { type, search, tree } = req.query;
+    const { type, search, tree, level } = req.query;
 
     // Tree mode: return all accounts flat, sorted for tree building
     if (tree === '1' || tree === 'true') {
@@ -50,6 +50,7 @@ exports.getAccounts = async (req, res) => {
                  WHERE 1=1`;
       const params = [];
       if (type) { sql += ' AND a.account_type = ?'; params.push(type); }
+      if (level) { sql += ' AND a.level = ?'; params.push(parseInt(level)); }
       if (search) {
         sql += ' AND (a.account_code LIKE ? OR a.account_name LIKE ?)';
         params.push(`%${search}%`, `%${search}%`);
@@ -307,10 +308,14 @@ exports.createJournalEntry = async (req, res) => {
     const accountIds = lines.filter(l => l.account_id).map(l => l.account_id);
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
-      const accs = await conn.query(`SELECT account_id, account_name, is_active FROM accounts WHERE account_id IN (${placeholders})`, accountIds);
+      const accs = await conn.query(`SELECT account_id, account_name, is_active, level FROM accounts WHERE account_id IN (${placeholders})`, accountIds);
       const inactive = accs.filter(a => !a.is_active);
       if (inactive.length > 0) {
         return res.status(400).json({ message: `Inactive accounts cannot be used: ${inactive.map(a => a.account_name).join(', ')}` });
+      }
+      const nonLevel4 = accs.filter(a => a.level !== 4);
+      if (nonLevel4.length > 0) {
+        return res.status(400).json({ message: `Transactions can only be posted to Level 4 accounts: ${nonLevel4.map(a => `${a.account_name} (Level ${a.level})`).join(', ')}` });
       }
     }
 
@@ -1064,9 +1069,15 @@ exports.createPaymentVoucher = async (req, res) => {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active, level FROM accounts WHERE account_id = ?', [account_id]);
     if (!acc)           return res.status(400).json({ message: 'Account not found' });
     if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
+    if (acc.level !== 4) return res.status(400).json({ message: `Only Level 4 accounts can be used for transactions. "${acc.account_name}" is Level ${acc.level}` });
+
+    if (main_account_id) {
+      const [mainAcc2] = await conn.query('SELECT account_name, is_active, level FROM accounts WHERE account_id = ?', [main_account_id]);
+      if (mainAcc2 && mainAcc2.level !== 4) return res.status(400).json({ message: `Only Level 4 accounts can be used for transactions. "${mainAcc2.account_name}" is Level ${mainAcc2.level}` });
+    }
 
     await conn.beginTransaction();
 
@@ -1323,9 +1334,15 @@ exports.createReceiptVoucher = async (req, res) => {
       return res.status(400).json({ message: 'Required fields missing' });
     }
 
-    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active FROM accounts WHERE account_id = ?', [account_id]);
+    const [acc] = await conn.query('SELECT account_id, account_name, account_type, is_active, level FROM accounts WHERE account_id = ?', [account_id]);
     if (!acc)           return res.status(400).json({ message: 'Account not found' });
     if (!acc.is_active) return res.status(400).json({ message: `Account "${acc.account_name}" is inactive` });
+    if (acc.level !== 4) return res.status(400).json({ message: `Only Level 4 accounts can be used for transactions. "${acc.account_name}" is Level ${acc.level}` });
+
+    if (main_account_id) {
+      const [mainAcc2] = await conn.query('SELECT account_name, is_active, level FROM accounts WHERE account_id = ?', [main_account_id]);
+      if (mainAcc2 && mainAcc2.level !== 4) return res.status(400).json({ message: `Only Level 4 accounts can be used for transactions. "${mainAcc2.account_name}" is Level ${mainAcc2.level}` });
+    }
 
     await conn.beginTransaction();
 
