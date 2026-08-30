@@ -37,6 +37,8 @@ const Suppliers = () => {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [filterActive, setFilterActive] = useState<'all' | '1' | '0'>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true);
@@ -46,9 +48,9 @@ const Suppliers = () => {
         limit: itemsPerPage,
         search: searchTerm
       };
-      if (filterActive !== 'all') {
-        params.is_active = filterActive;
-      }
+      if (filterActive !== 'all') params.is_active = filterActive;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
 
       const res = await api.get('/suppliers', { params });
       setSuppliers(res.data.data);
@@ -59,7 +61,7 @@ const Suppliers = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, filterActive]);
+  }, [currentPage, itemsPerPage, searchTerm, filterActive, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -171,6 +173,32 @@ const Suppliers = () => {
             <option value="1">Active Only</option>
             <option value="0">Inactive Only</option>
           </select>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 whitespace-nowrap">From:</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 whitespace-nowrap">To:</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); setCurrentPage(1); }}
+              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         {/* Table */}

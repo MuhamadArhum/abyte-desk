@@ -16,7 +16,7 @@ const parsePagination = (page, limit) => {
 // Get all suppliers with pagination and search
 exports.getAll = async (req, res) => {
   try {
-    const { search = '', is_active } = req.query;
+    const { search = '', is_active, date_from, date_to } = req.query;
     const { page, limit, offset } = parsePagination(req.query.page, req.query.limit);
 
     let sql = 'SELECT * FROM suppliers WHERE 1=1';
@@ -37,6 +37,20 @@ exports.getAll = async (req, res) => {
       countSql += ' AND is_active = ?';
       params.push(is_active);
       countParams.push(is_active);
+    }
+
+    if (date_from) {
+      sql += ' AND DATE(created_at) >= ?';
+      countSql += ' AND DATE(created_at) >= ?';
+      params.push(date_from);
+      countParams.push(date_from);
+    }
+
+    if (date_to) {
+      sql += ' AND DATE(created_at) <= ?';
+      countSql += ' AND DATE(created_at) <= ?';
+      params.push(date_to);
+      countParams.push(date_to);
     }
 
     sql += ' ORDER BY supplier_name ASC LIMIT ? OFFSET ?';
