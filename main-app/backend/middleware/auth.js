@@ -27,7 +27,7 @@ const authenticate = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
 
     const rows = await query(
-      'SELECT user_id, username, name, email, role_id, role_name, is_active FROM users WHERE user_id = ?',
+      'SELECT user_id, username, name, email, role_id, role_name, is_active, branch_id FROM users WHERE user_id = ?',
       [decoded.user_id]
     );
 

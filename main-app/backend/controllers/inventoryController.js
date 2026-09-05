@@ -6,7 +6,7 @@
 // =============================================================
 
 const logger = require('../config/logger');
-const { query } = require('../config/database');
+const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
 // GET /api/inventory
@@ -151,28 +151,42 @@ exports.getLowStock = async (req, res) => {
 
 // PUT /api/inventory/:id  (Admin/Manager only)
 exports.updateStock = async (req, res) => {
+  const { id } = req.params;
+  const { available_stock } = req.body;
+
+  // FV-008: Reject non-numeric or negative input before any DB work
+  if (available_stock === undefined || isNaN(Number(available_stock)) || Number(available_stock) < 0) {
+    return res.status(400).json({ message: 'Valid stock quantity is required' });
+  }
+
+  const stockValue = Number(available_stock);
+  const conn = await getConnection();
   try {
-    const { id } = req.params;
-    const { available_stock } = req.body;
+    await conn.beginTransaction();
 
-    if (available_stock === undefined || available_stock < 0) {
-      return res.status(400).json({ message: 'Valid stock quantity is required' });
-    }
-
-    const oldRows = await query('SELECT available_stock FROM inventory WHERE product_id = ?', [id]);
+    // BUG-005: Lock the inventory row to prevent concurrent overwrites
+    const oldRows = await conn.query(
+      'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
+      [id]
+    );
     const oldValue = oldRows.length > 0 ? oldRows[0].available_stock : null;
 
-    await query('UPDATE inventory SET available_stock = ? WHERE product_id = ?', [available_stock, id]);
-    await query('UPDATE products SET stock_quantity = ? WHERE product_id = ?', [available_stock, id]);
+    await conn.query('UPDATE inventory SET available_stock = ? WHERE product_id = ?', [stockValue, id]);
+    await conn.query('UPDATE products SET stock_quantity = ? WHERE product_id = ?', [stockValue, id]);
+
+    await conn.commit();
 
     await logAction(
       req.user.user_id, req.user.name, 'STOCK_UPDATED', 'inventory', parseInt(id),
-      { old_stock: oldValue, new_stock: available_stock }, req.ip
+      { old_stock: oldValue, new_stock: stockValue }, req.ip
     );
 
     res.json({ message: 'Stock updated' });
   } catch (err) {
+    await conn.rollback();
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };

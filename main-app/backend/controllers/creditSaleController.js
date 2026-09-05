@@ -152,6 +152,12 @@ exports.create = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
+    // FV-004: Prevent duplicate credit_sale records for the same sale
+    const [existing] = await query('SELECT credit_sale_id FROM credit_sales WHERE sale_id = ?', [sale_id]);
+    if (existing) {
+      return res.status(409).json({ message: 'A credit sale record already exists for this sale' });
+    }
+
     const paidAmt = parseFloat(paid_amount) || 0;
     const totalAmt = parseFloat(total_amount);
     // BUG-024: Reject overpayment which would create negative balance_due

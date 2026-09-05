@@ -19,7 +19,12 @@ const { query, getConnection } = require('../config/database');
 const logger  = require('../config/logger');
 
 async function resolveAndAuth(req, res) {
-  const agentToken = req.headers['x-agent-token'];
+  const agentToken = req.headers['x-agent-token'] || '';
+
+  if (agentToken.length > 512) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return false;
+  }
 
   if (!agentToken) {
     res.status(401).json({ message: 'X-Agent-Token header required' });

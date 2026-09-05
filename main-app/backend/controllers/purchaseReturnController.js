@@ -89,7 +89,11 @@ exports.create = async (req, res) => {
 
     for (const item of items) {
       const qty = Number(item.quantity_returned);
-      // BUG-003: Lock inventory row and check stock before deducting
+      if (qty <= 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Return quantity must be greater than 0 for product ${item.product_id}` });
+      }
+      // Lock inventory row and check stock before deducting
       const [inv] = await conn.query(
         'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
         [item.product_id]
@@ -108,6 +112,49 @@ exports.create = async (req, res) => {
       // Deduct from inventory (returning to supplier)
       await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [qty, item.product_id]);
       await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [qty, item.product_id]);
+    }
+
+    // Update supplier balance (reduce outstanding payable)
+    if (supplier_id) {
+      await conn.query('UPDATE suppliers SET balance = balance - ? WHERE supplier_id = ?', [total, supplier_id]);
+    }
+
+    // Create reverse journal entry if PV has account links
+    if (pv_id) {
+      const [pv] = await conn.query(
+        'SELECT payable_account_id, purchase_account_id FROM inv_purchase_vouchers WHERE pv_id = ?',
+        [pv_id]
+      );
+      if (pv && pv.payable_account_id) {
+        const [lastJE] = await conn.query("SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1");
+        let nextNum = 1;
+        if (lastJE?.entry_number) { const m = lastJE.entry_number.match(/\d+$/); if (m) nextNum = parseInt(m[0]) + 1; }
+        const entryNumber = `JV${String(nextNum).padStart(6, '0')}`;
+
+        const jeResult = await conn.query(
+          `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, total_debit, total_credit, status, created_by, posted_at)
+           VALUES (?, ?, 'purchase_return', ?, ?, ?, ?, 'posted', ?, NOW())`,
+          [entryNumber, return_date, prId, `Purchase Return - ${pr_number}`, total, total, req.user.user_id]
+        );
+        const entryId = Number(jeResult.insertId);
+
+        // DR: Payable account (liability decreases — DR reduces a CR-normal account)
+        await conn.query(
+          'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, 0)',
+          [entryId, pv.payable_account_id, `Purchase Return - ${pr_number}`, total]
+        );
+        // CR: Purchase account (expense reversal — CR reduces a DR-normal account)
+        await conn.query(
+          'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, 0, ?)',
+          [entryId, pv.purchase_account_id, `Purchase Return - ${pr_number}`, total]
+        );
+
+        // Update account balances
+        // Payable (liability): DR reduces it
+        await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [total, pv.payable_account_id]);
+        // Purchase (expense): CR reduces it
+        await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [total, pv.purchase_account_id]);
+      }
     }
 
     await conn.commit();

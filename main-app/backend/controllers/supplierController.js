@@ -273,6 +273,7 @@ exports.delete = async (req, res) => {
 
 // Add payment for supplier
 exports.addPayment = async (req, res) => {
+  const conn = await getConnection();
   try {
     const { supplier_id } = req.params;
     const {
@@ -281,7 +282,9 @@ exports.addPayment = async (req, res) => {
       payment_method,
       reference_number,
       notes,
-      purchase_order_id
+      purchase_order_id,
+      payable_account_id,
+      cash_account_id
     } = req.body;
 
     if (!amount || amount <= 0) {
@@ -298,30 +301,75 @@ exports.addPayment = async (req, res) => {
       return res.status(404).json({ message: 'Supplier not found' });
     }
 
-    const result = await query(`
+    await conn.beginTransaction();
+
+    // Insert payment record
+    const result = await conn.query(`
       INSERT INTO supplier_payments (
         supplier_id, purchase_order_id, amount, payment_date, payment_method, reference_number, notes, created_by
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [supplier_id, purchase_order_id || null, amount, payment_date, payment_method || 'cash', reference_number || null, notes || null, req.user.user_id]);
 
-    // Audit log
+    const paymentId = Number(result.insertId);
+
+    // Update supplier balance (reduce outstanding payable)
+    await conn.query('UPDATE suppliers SET balance = balance - ? WHERE supplier_id = ?', [amount, supplier_id]);
+
+    // Create journal entry if account IDs are provided
+    if (payable_account_id && cash_account_id && Number(payable_account_id) > 0 && Number(cash_account_id) > 0) {
+      const [last] = await conn.query("SELECT entry_number FROM journal_entries ORDER BY entry_id DESC LIMIT 1");
+      let nextNum = 1;
+      if (last?.entry_number) { const m = last.entry_number.match(/\d+$/); if (m) nextNum = parseInt(m[0]) + 1; }
+      const entryNumber = `JV${String(nextNum).padStart(6, '0')}`;
+
+      const jeResult = await conn.query(
+        `INSERT INTO journal_entries (entry_number, entry_date, reference_type, reference_id, description, total_debit, total_credit, status, created_by, posted_at)
+         VALUES (?, ?, 'supplier_payment', ?, ?, ?, ?, 'posted', ?, NOW())`,
+        [entryNumber, payment_date, paymentId, `Supplier Payment - ${supplier.supplier_name}`, amount, amount, req.user.user_id]
+      );
+      const entryId = Number(jeResult.insertId);
+
+      // DR: Payable account (liability decreases)
+      await conn.query(
+        'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, ?, 0)',
+        [entryId, payable_account_id, `Supplier Payment - ${supplier.supplier_name}`, amount]
+      );
+      // CR: Cash/Bank account (asset decreases)
+      await conn.query(
+        'INSERT INTO journal_entry_lines (entry_id, account_id, description, debit, credit) VALUES (?, ?, ?, 0, ?)',
+        [entryId, cash_account_id, `Supplier Payment - ${supplier.supplier_name}`, amount]
+      );
+
+      // Update account balances
+      // Payable (liability, CR-normal): DR reduces it → balance decreases
+      await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [amount, payable_account_id]);
+      // Cash (asset, DR-normal): CR reduces it → balance decreases
+      await conn.query('UPDATE accounts SET current_balance = current_balance - ? WHERE account_id = ?', [amount, cash_account_id]);
+    }
+
+    await conn.commit();
+
+    // Audit log after commit
     await logAction(
       req.user.user_id,
       req.user.name,
       'SUPPLIER_PAYMENT_ADDED',
       'supplier_payment',
-      result.insertId,
+      paymentId,
       { supplier_name: supplier.supplier_name, amount, payment_date },
       req.ip
     );
 
     res.status(201).json({
       message: 'Payment recorded successfully',
-      payment_id: result.insertId
+      payment_id: paymentId
     });
   } catch (err) {
+    await conn.rollback();
     logger.error('Add payment error:', err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 

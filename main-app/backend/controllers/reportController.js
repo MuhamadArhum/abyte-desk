@@ -16,6 +16,9 @@ const { query } = require('../config/database');  // Database query helper
 // Used on the Reports page "Daily" tab.
 exports.dailyReport = async (req, res) => {
   try {
+    // BUG-019: Use PKT (UTC+5) offset so "today" matches Pakistan local date
+    const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+    const today = new Date(Date.now() + PKT_OFFSET_MS).toISOString().split('T')[0];
     // BUG-017: Exclude refunded/cancelled sales from revenue figures
     const summary = await query(
       `SELECT
@@ -23,7 +26,8 @@ exports.dailyReport = async (req, res) => {
          COALESCE(SUM(total_amount), 0) as total_sales,
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue
-       FROM sales WHERE status = 'completed' AND sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
+       FROM sales WHERE status = 'completed' AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)`,
+      [today, today]
     );
     res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
@@ -95,7 +99,7 @@ exports.productReport = async (req, res) => {
        FROM sale_details sd
        JOIN products p ON sd.product_id = p.product_id
        JOIN sales s ON sd.sale_id = s.sale_id
-       WHERE 1=1`;
+       WHERE s.status = 'completed'`;
     const params = [];
 
     // Optional date range filter
@@ -174,10 +178,13 @@ exports.inventoryReport = async (req, res) => {
 exports.dashboardSummary = async (req, res) => {
   try {
     const { chart_start } = req.query;
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    const weekStart = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-    const monthStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    // Get current date string in UTC+5 (Pakistan Standard Time)
+    const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+    const nowPKT = new Date(Date.now() + PKT_OFFSET_MS);
+    const todayPKT = nowPKT.toISOString().split('T')[0];
+    const yesterdayPKT = new Date(Date.now() + PKT_OFFSET_MS - 86400000).toISOString().split('T')[0];
+    const weekStartPKT = new Date(Date.now() + PKT_OFFSET_MS - 7 * 86400000).toISOString().split('T')[0];
+    const monthStartPKT = new Date(Date.now() + PKT_OFFSET_MS - 30 * 86400000).toISOString().split('T')[0];
 
     const [s] = await query(`
       SELECT
@@ -188,23 +195,23 @@ exports.dashboardSummary = async (req, res) => {
         COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as week_revenue,
         COALESCE(SUM(CASE WHEN sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY) THEN net_amount ELSE 0 END), 0) as month_revenue
       FROM sales
-      WHERE status IN ('completed', 'refunded') AND sale_date >= ?
+      WHERE status = 'completed' AND sale_date >= ?
     `, [
-      today, today,
-      today, today,
-      yesterday, yesterday,
-      yesterday, yesterday,
-      weekStart, today,
-      monthStart, today,
-      monthStart,
+      todayPKT, todayPKT,
+      todayPKT, todayPKT,
+      yesterdayPKT, yesterdayPKT,
+      yesterdayPKT, yesterdayPKT,
+      weekStartPKT, todayPKT,
+      monthStartPKT, todayPKT,
+      monthStartPKT,
     ]);
 
     const chartRows = chart_start ? await query(`
       SELECT DATE(sale_date) as date, COUNT(*) as orders, COALESCE(SUM(net_amount), 0) as revenue
       FROM sales
-      WHERE status IN ('completed', 'refunded') AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
+      WHERE status = 'completed' AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY DATE(sale_date) ORDER BY date
-    `, [chart_start, today]) : [];
+    `, [chart_start, todayPKT]) : [];
 
     res.json({
       today_revenue: Number(s.today_revenue),

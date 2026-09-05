@@ -96,7 +96,7 @@ exports.getAll = async (req, res) => {
     res.json({ data: rows, total: rows.length });
   } catch (err) {
     logger.error('getAll customers error', { message: err.message, code: err.code, sql: err.sql });
-    res.status(500).json({ message: 'Server error', detail: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -177,7 +177,7 @@ exports.getById = async (req, res) => {
               ca.address_text AS address
        FROM customers c
        LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
-       WHERE c.customer_id = ?`,
+       WHERE c.customer_id = ? AND c.deleted_at IS NULL`,
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Customer not found' });
@@ -247,6 +247,9 @@ exports.update = async (req, res) => {
 
     const addrVal = address && address.trim() ? address.trim() : null;
 
+    const [existing] = await query('SELECT customer_id FROM customers WHERE customer_id = ? AND deleted_at IS NULL', [id]);
+    if (!existing) return res.status(404).json({ message: 'Customer not found' });
+
     await query(
       'UPDATE customers SET customer_name = ?, phone_number = ?, email = ?, company = ?, tax_id = ?, address = ? WHERE customer_id = ?',
       [customer_name, phone, emailVal, companyVal, taxIdVal, addrVal, id]
@@ -302,7 +305,8 @@ exports.remove = async (req, res) => {
       return res.status(400).json({ message: 'Cannot delete customer with purchase history' });
     }
 
-    const [deletedCustomer] = await query('SELECT customer_name FROM customers WHERE customer_id = ?', [id]);
+    const [deletedCustomer] = await query('SELECT customer_name FROM customers WHERE customer_id = ? AND deleted_at IS NULL', [id]);
+    if (!deletedCustomer) return res.status(404).json({ message: 'Customer not found' });
     await query('DELETE FROM customers WHERE customer_id = ?', [id]);
 
     await logAction(

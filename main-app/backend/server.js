@@ -21,6 +21,7 @@ const logger = require('./config/logger');
 const { validateEnv } = require('./config/validateEnv');
 const { requestIdMiddleware } = require('./middleware/requestId');
 const { metricsMiddleware, metricsHandler } = require('./services/metricsService');
+const { authenticate } = require('./middleware/auth');
 validateEnv();
 
 // ── JWT Secret Safety Check ──────────────────────────────────
@@ -310,7 +311,7 @@ app.use('/api/fbr',                 fbrRoutes);
 
 // Health check — probes DB, reports memory/heap/uptime.
 // Returns 200 when healthy, 503 when DB is unreachable.
-app.get('/api/health', async (_req, res) => {
+app.get('/api/health', authenticate, async (_req, res) => {
   const { query: q } = require('./config/database');
 
   let dbOk = false;

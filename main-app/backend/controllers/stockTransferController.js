@@ -89,32 +89,42 @@ exports.getById = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  try {
-    const { from_store_id, to_store_id, product_id, quantity, notes } = req.body;
-    if (!from_store_id || !to_store_id || !product_id || !quantity) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
-    if (from_store_id === to_store_id) {
-      return res.status(400).json({ message: 'Source and destination stores must be different' });
-    }
-    if (quantity <= 0) {
-      return res.status(400).json({ message: 'Quantity must be greater than 0' });
-    }
+  const { from_store_id, to_store_id, product_id, quantity, notes } = req.body;
 
-    // Validate source has stock
-    const [sourceStock] = await query(
-      'SELECT available_stock FROM store_inventory WHERE store_id = ? AND product_id = ?',
+  // Validate inputs before acquiring a connection
+  if (!from_store_id || !to_store_id || !product_id || !quantity) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+  if (from_store_id === to_store_id) {
+    return res.status(400).json({ message: 'Source and destination stores must be different' });
+  }
+  if (quantity <= 0) {
+    return res.status(400).json({ message: 'Quantity must be greater than 0' });
+  }
+
+  // FV-006: Use a transaction with FOR UPDATE to prevent race condition where
+  // two concurrent requests both pass the stock check and over-commit stock.
+  const conn = await getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Lock the source store_inventory row so concurrent requests queue here
+    const [sourceStock] = await conn.query(
+      'SELECT available_stock FROM store_inventory WHERE store_id = ? AND product_id = ? FOR UPDATE',
       [from_store_id, product_id]
     );
     if (!sourceStock || sourceStock.available_stock < quantity) {
+      await conn.rollback();
       return res.status(400).json({ message: `Insufficient stock at source. Available: ${sourceStock?.available_stock || 0}` });
     }
 
-    const result = await query(
+    const result = await conn.query(
       `INSERT INTO stock_transfers (from_store_id, to_store_id, product_id, quantity, status, notes, created_by)
        VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
       [from_store_id, to_store_id, product_id, quantity, notes || null, req.user.user_id]
     );
+
+    await conn.commit();
 
     await logAction(req.user.user_id, req.user.name, 'TRANSFER_CREATED', 'stock_transfer', result.insertId, {
       from_store_id, to_store_id, product_id, quantity
@@ -122,8 +132,11 @@ exports.create = async (req, res) => {
 
     res.status(201).json({ message: 'Transfer created (pending approval)', transfer_id: result.insertId });
   } catch (error) {
+    await conn.rollback();
     logger.error('Create transfer error:', error);
     res.status(500).json({ message: 'Failed to create transfer' });
+  } finally {
+    conn.release();
   }
 };
 

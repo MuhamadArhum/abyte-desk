@@ -12,6 +12,7 @@
 const mariadb = require('mariadb');
 const fs      = require('fs');
 require('dotenv').config();
+const logger  = require('./logger');
 
 const DB_NAME = process.env.DB_NAME || 'abyte_pos';
 
@@ -23,11 +24,11 @@ if (isRemote) {
     try {
       sslConfig = { ssl: { ca: fs.readFileSync(process.env.DB_SSL_CA), rejectUnauthorized: true } };
     } catch (e) {
-      console.error('[DB SSL] CA cert file not found at:', process.env.DB_SSL_CA, '— SSL certificate verification DISABLED.');
-      sslConfig = { ssl: { rejectUnauthorized: false } };
+      logger.error('[DB] DB_SSL_CA file could not be read. Refusing to start with unverified SSL.', { error: e.message });
+      process.exit(1);
     }
   } else {
-    console.warn('[DB SSL] DB_SSL_CA is not set for a remote database — SSL certificate verification is DISABLED.');
+    logger.warn('[DB] DB_SSL_CA not set — connecting without certificate verification (acceptable for LAN)');
     sslConfig = { ssl: { rejectUnauthorized: false } };
   }
 }

@@ -13,7 +13,8 @@ jest.mock('../../../services/cacheService', () => ({
 }));
 
 const jwt = require('jsonwebtoken');
-const { queryDb, tenantStorage } = require('../../../config/database');
+// Phase 4: single-tenant — auth middleware uses query(), not queryDb()
+const { query } = require('../../../config/database');
 const { isBlacklisted } = require('../../../services/tokenBlacklist');
 const { authenticate, authorize, requirePermission } = require('../../../middleware/auth');
 
@@ -37,7 +38,6 @@ describe('authenticate middleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    tenantStorage.run = jest.fn((db, fn) => fn());
     process.env.JWT_SECRET = 'test-secret';
   });
 
@@ -85,35 +85,45 @@ describe('authenticate middleware', () => {
 
   it('rejects when user not found in DB', async () => {
     isBlacklisted.mockResolvedValue(false);
-    jwt.verify.mockReturnValue({ user_id: 99, tenant_db: 'test_db', modules: [] });
-    queryDb.mockResolvedValue([]);
+    jwt.verify.mockReturnValue({ user_id: 99 });
+    query.mockResolvedValue([]);
     const res = mockRes();
     await authenticate(mockReq(), res, next);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'User not found' }));
   });
 
-  it('calls next and sets req.user on valid token', async () => {
-    const fakeUser = { user_id: 1, role_name: 'Admin', branch_id: null };
+  it('rejects deactivated user', async () => {
     isBlacklisted.mockResolvedValue(false);
-    jwt.verify.mockReturnValue({ user_id: 1, tenant_db: 'test_db', modules: ['sales'] });
-    queryDb.mockResolvedValue([fakeUser]);
+    jwt.verify.mockReturnValue({ user_id: 5 });
+    query.mockResolvedValue([{ user_id: 5, role_name: 'Cashier', is_active: 0 }]);
+    const res = mockRes();
+    await authenticate(mockReq(), res, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('deactivated') }));
+  });
+
+  it('calls next and sets req.user on valid token', async () => {
+    const fakeUser = { user_id: 1, role_name: 'Admin', is_active: 1 };
+    isBlacklisted.mockResolvedValue(false);
+    jwt.verify.mockReturnValue({ user_id: 1 });
+    query.mockResolvedValue([fakeUser]);
     const res = mockRes();
     const req = mockReq();
     await authenticate(req, res, next);
     expect(req.user).toEqual(fakeUser);
-    expect(req.modules).toEqual(['sales']);
+    expect(req.modules).toEqual([]); // single-tenant: always empty = all enabled
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('sets req.modules from JWT', async () => {
-    const fakeUser = { user_id: 2, role_name: 'Cashier', branch_id: 1 };
+  it('sets req.modules to [] regardless of JWT payload (single-tenant)', async () => {
+    const fakeUser = { user_id: 2, role_name: 'Cashier', is_active: 1 };
     isBlacklisted.mockResolvedValue(false);
-    jwt.verify.mockReturnValue({ user_id: 2, tenant_db: 'test_db', modules: ['sales', 'inventory'] });
-    queryDb.mockResolvedValue([fakeUser]);
+    jwt.verify.mockReturnValue({ user_id: 2 });
+    query.mockResolvedValue([fakeUser]);
     const req = mockReq();
     await authenticate(req, mockRes(), next);
-    expect(req.modules).toEqual(['sales', 'inventory']);
+    expect(req.modules).toEqual([]);
   });
 });
 
@@ -140,50 +150,55 @@ describe('authorize middleware', () => {
 });
 
 // ─── requirePermission ───────────────────────────────────────────
+// Phase 4: single-tenant — requirePermission uses query() not queryDb()
 
 describe('requirePermission middleware', () => {
   const next = jest.fn();
   const cache = require('../../../services/cacheService');
   beforeEach(() => {
     jest.clearAllMocks();
-    // Re-apply cache.get implementation after clearAllMocks resets it
     cache.get.mockResolvedValue(null);
     cache.set.mockResolvedValue(undefined);
   });
 
-  it('always allows Admin role', async () => {
-    const req = { user: { role_name: 'Admin' }, method: 'POST', tenantDb: 'test' };
+  it('always allows Admin role without DB query', async () => {
+    const req = { user: { role_name: 'Admin' }, method: 'POST' };
     await requirePermission('sales.pos')(req, mockRes(), next);
     expect(next).toHaveBeenCalledTimes(1);
-    expect(queryDb).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
   });
 
   it('allows non-admin when permission exists for GET (2-part key)', async () => {
-    queryDb.mockResolvedValue([{ 1: 1 }]);
-    const req = { user: { role_name: 'Cashier' }, method: 'GET', tenantDb: 'test' };
+    query.mockResolvedValue([{ 1: 1 }]);
+    const req = { user: { role_name: 'Cashier' }, method: 'GET' };
     await requirePermission('sales.pos')(req, mockRes(), next);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('checks .create sub-key on POST with 2-part key', async () => {
-    queryDb.mockResolvedValue([{ 1: 1 }]);
-    const req = { user: { role_name: 'Cashier' }, method: 'POST', tenantDb: 'test' };
+    query.mockResolvedValue([{ 1: 1 }]);
+    const req = { user: { role_name: 'Cashier' }, method: 'POST' };
     await requirePermission('inventory.products')(req, mockRes(), next);
-    // Should query for 'inventory.products.create'
-    expect(queryDb).toHaveBeenCalledWith('test', expect.any(String), ['Cashier', 'inventory.products.create']);
+    expect(query).toHaveBeenCalledWith(
+      expect.any(String),
+      ['Cashier', 'inventory.products.create']
+    );
     expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('checks .delete sub-key on DELETE', async () => {
-    queryDb.mockResolvedValue([{ 1: 1 }]);
-    const req = { user: { role_name: 'Manager' }, method: 'DELETE', tenantDb: 'test' };
+    query.mockResolvedValue([{ 1: 1 }]);
+    const req = { user: { role_name: 'Manager' }, method: 'DELETE' };
     await requirePermission('inventory.products')(req, mockRes(), next);
-    expect(queryDb).toHaveBeenCalledWith('test', expect.any(String), ['Manager', 'inventory.products.delete']);
+    expect(query).toHaveBeenCalledWith(
+      expect.any(String),
+      ['Manager', 'inventory.products.delete']
+    );
   });
 
   it('blocks when permission not found', async () => {
-    queryDb.mockResolvedValue([]);
-    const req = { user: { role_name: 'Cashier' }, method: 'DELETE', tenantDb: 'test' };
+    query.mockResolvedValue([]);
+    const req = { user: { role_name: 'Cashier' }, method: 'DELETE' };
     const res = mockRes();
     await requirePermission('inventory.products')(req, res, next);
     expect(res.status).toHaveBeenCalledWith(403);
@@ -191,24 +206,38 @@ describe('requirePermission middleware', () => {
   });
 
   it('uses LIKE query for 1-part parent key', async () => {
-    queryDb.mockResolvedValue([{ 1: 1 }]);
-    const req = { user: { role_name: 'Cashier' }, method: 'GET', tenantDb: 'test' };
+    query.mockResolvedValue([{ 1: 1 }]);
+    const req = { user: { role_name: 'Cashier' }, method: 'GET' };
     await requirePermission('sales')(req, mockRes(), next);
-    expect(queryDb).toHaveBeenCalledWith('test', expect.stringContaining('LIKE'), expect.arrayContaining(['sales.%']));
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('LIKE'),
+      expect.arrayContaining(['sales.%'])
+    );
   });
 
   it('uses exact match for 3-part explicit key', async () => {
-    queryDb.mockResolvedValue([{ 1: 1 }]);
-    const req = { user: { role_name: 'Cashier' }, method: 'POST', tenantDb: 'test' };
+    query.mockResolvedValue([{ 1: 1 }]);
+    const req = { user: { role_name: 'Cashier' }, method: 'POST' };
     await requirePermission('sales.pos.create')(req, mockRes(), next);
-    expect(queryDb).toHaveBeenCalledWith('test', expect.any(String), ['Cashier', 'sales.pos.create']);
+    expect(query).toHaveBeenCalledWith(
+      expect.any(String),
+      ['Cashier', 'sales.pos.create']
+    );
   });
 
   it('returns 500 on DB error', async () => {
-    queryDb.mockRejectedValue(new Error('DB down'));
-    const req = { user: { role_name: 'Cashier' }, method: 'GET', tenantDb: 'test' };
+    query.mockRejectedValue(new Error('DB down'));
+    const req = { user: { role_name: 'Cashier' }, method: 'GET' };
     const res = mockRes();
     await requirePermission('sales.pos')(req, res, next);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('returns cached result without hitting DB', async () => {
+    cache.get.mockResolvedValue(true);
+    const req = { user: { role_name: 'Cashier' }, method: 'GET' };
+    await requirePermission('sales.pos')(req, mockRes(), next);
+    expect(query).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });

@@ -39,9 +39,11 @@ exports.getCurrentRegister = async (req, res) => {
       [register[0].register_id]
     );
 
+    // FV-013: Branch-scope expenses and add upper bound to prevent accumulating all-time expenses
+    const expBranchFilter = req.user.branch_id ? 'AND branch_id = ?' : '';
     const expensesResult = await query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ?',
-      [register[0].opened_at]
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ? AND expense_date <= NOW() ${expBranchFilter}`,
+      [register[0].opened_at, ...(req.user.branch_id ? [req.user.branch_id] : [])]
     );
     const shift_expenses = parseFloat(expensesResult[0].total);
 
@@ -144,10 +146,11 @@ exports.closeRegister = async (req, res) => {
 
     const reg = register[0];
 
-    // Get total expenses during this shift
+    // Get total expenses during this shift — FV-013: branch-scoped, upper-bound to prevent all-time accumulation
+    const expBranchFilter = req.user.branch_id ? 'AND branch_id = ?' : '';
     const expensesResult = await conn.query(
-      'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ?',
-      [reg.opened_at]
+      `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE expense_date >= ? AND expense_date <= NOW() ${expBranchFilter}`,
+      [reg.opened_at, ...(req.user.branch_id ? [req.user.branch_id] : [])]
     );
     const totalExpenses = round2(parseFloat(expensesResult[0].total));
 

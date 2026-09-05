@@ -407,15 +407,40 @@ exports.createSale = async (req, res) => {
       );
     }
 
-    // Update cash register inside the transaction (B-025)
+    // Update cash register inside the transaction (B-025 / BUG-023)
     if (status === 'completed' && !is_credit) {
       const pm = payment_method || 'cash';
       const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
       if (openRegister.length > 0) {
+        const rid = openRegister[0].register_id;
         if (pm === 'cash') {
-          await conn.query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+          await conn.query(
+            'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+            [total_amount, total_amount, rid]
+          );
         } else if (pm === 'card') {
-          await conn.query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [total_amount, openRegister[0].register_id]);
+          await conn.query(
+            'UPDATE cash_registers SET card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+            [total_amount, total_amount, rid]
+          );
+        } else if (pm === 'split') {
+          const splitCash = round2(parseFloat(req.body.split_cash) || 0);
+          const splitCard = round2(parseFloat(req.body.split_card) || 0);
+          await conn.query(
+            'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+            [splitCash, splitCard, total_amount, rid]
+          );
+        } else if (pm === 'mobile_wallet') {
+          await conn.query(
+            'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+            [total_amount, total_amount, rid]
+          );
+        } else {
+          // All other payment methods: update total_sales only
+          await conn.query(
+            'UPDATE cash_registers SET total_sales = total_sales + ? WHERE register_id = ?',
+            [total_amount, rid]
+          );
         }
       }
     }
@@ -591,9 +616,10 @@ exports.completeSale = async (req, res) => {
     const finalAdditionalPercent = additional_charges_percent !== undefined && additional_charges_percent !== null ? parseFloat(additional_charges_percent) : parseFloat(sale[0].additional_charges_percent);
     const finalDiscount = discount !== undefined && discount !== null ? parseFloat(discount) : parseFloat(sale[0].discount || 0);
     const bundleDiscount = parseFloat(sale[0].bundle_discount || 0);
-    const finalTaxAmount = round2(subTotal * finalTaxPercent / 100);
-    const finalAdditionalAmount = round2(subTotal * finalAdditionalPercent / 100);
-    const serverTotal = round2(Math.max(0, subTotal + finalTaxAmount + finalAdditionalAmount - finalDiscount - bundleDiscount));
+    const taxableBase = Math.max(0, subTotal - finalDiscount - bundleDiscount);
+    const finalTaxAmount = round2(taxableBase * finalTaxPercent / 100);
+    const finalAdditionalAmount = round2(taxableBase * finalAdditionalPercent / 100);
+    const serverTotal = round2(taxableBase + finalTaxAmount + finalAdditionalAmount);
     const finalPaymentMethod = payment_method || 'cash';
     const finalAmountPaid = amount_paid !== undefined && amount_paid !== null ? parseFloat(amount_paid) : serverTotal;
     const finalNote = note !== undefined && note !== null ? note : (sale[0].note || null);
@@ -632,13 +658,38 @@ exports.completeSale = async (req, res) => {
     const saleItems = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
     await batchUpdateStock(conn, saleItems, '-');
 
-    // Update cash register inside transaction (B-025)
+    // Update cash register inside transaction (B-025 / BUG-023)
     const openRegister = await conn.query("SELECT register_id FROM cash_registers WHERE status = 'open' LIMIT 1");
     if (openRegister.length > 0) {
+      const rid = openRegister[0].register_id;
       if (finalPaymentMethod === 'cash') {
-        await conn.query('UPDATE cash_registers SET cash_sales_total = cash_sales_total + ? WHERE register_id = ?', [serverTotal, openRegister[0].register_id]);
+        await conn.query(
+          'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+          [serverTotal, serverTotal, rid]
+        );
       } else if (finalPaymentMethod === 'card') {
-        await conn.query('UPDATE cash_registers SET card_sales_total = card_sales_total + ? WHERE register_id = ?', [serverTotal, openRegister[0].register_id]);
+        await conn.query(
+          'UPDATE cash_registers SET card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+          [serverTotal, serverTotal, rid]
+        );
+      } else if (finalPaymentMethod === 'split') {
+        const splitCash = round2(parseFloat(req.body.split_cash) || 0);
+        const splitCard = round2(parseFloat(req.body.split_card) || 0);
+        await conn.query(
+          'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+          [splitCash, splitCard, serverTotal, rid]
+        );
+      } else if (finalPaymentMethod === 'mobile_wallet') {
+        await conn.query(
+          'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
+          [serverTotal, serverTotal, rid]
+        );
+      } else {
+        // All other payment methods: update total_sales only
+        await conn.query(
+          'UPDATE cash_registers SET total_sales = total_sales + ? WHERE register_id = ?',
+          [serverTotal, rid]
+        );
       }
     }
 
@@ -714,13 +765,15 @@ exports.updateSaleItems = async (req, res) => {
       sdVals2
     );
 
-    // 4. Update sale header
+    // 4. Update sale header — always compute totals server-side; never trust client total_amount (FV-002)
     const newSubTotal  = round2(items.reduce((sum, item) => sum + round2(parseFloat(item.unit_price) * item.quantity), 0));
     const newTaxPct    = tax_percent                !== undefined ? parseFloat(tax_percent)                : parseFloat(sale[0].tax_percent                || 0);
     const newAddPct    = additional_charges_percent !== undefined ? parseFloat(additional_charges_percent) : parseFloat(sale[0].additional_charges_percent || 0);
-    const newTaxAmt    = round2(newSubTotal * newTaxPct / 100);
-    const newAddAmt    = round2(newSubTotal * newAddPct / 100);
-    const newTotal     = round2(parseFloat(total_amount) || (newSubTotal + newTaxAmt + newAddAmt));
+    const newDiscount  = round2(parseFloat(sale[0].discount) || 0);
+    const taxableBase  = Math.max(0, newSubTotal - newDiscount);
+    const newTaxAmt    = round2(taxableBase * newTaxPct / 100);
+    const newAddAmt    = round2(taxableBase * newAddPct / 100);
+    const newTotal     = round2(taxableBase + newTaxAmt + newAddAmt);
     const updates = ['total_amount = ?', 'sub_total = ?', 'net_amount = ?', 'tax_amount = ?', 'additional_charges_amount = ?', 'tax_percent = ?', 'additional_charges_percent = ?'];
     const values  = [newTotal, newSubTotal, newTotal, newTaxAmt, newAddAmt, newTaxPct, newAddPct];
     if (customer_id !== undefined) { updates.push('customer_id = ?'); values.push(customer_id); }
@@ -756,8 +809,12 @@ exports.deleteSale = async (req, res) => {
     conn = await getConnection();
     await conn.beginTransaction();
 
-    // Admins can delete any sale; non-admins are blocked above — no branch filter needed here
-    const sale = await conn.query('SELECT status FROM sales WHERE sale_id = ?', [id]);
+    // FV-003: Scope the sale lookup to the user's branch to prevent cross-branch deletion
+    const branchFilter = req.user.role_name !== 'Admin' && req.user.branch_id
+      ? 'AND branch_id = ?' : '';
+    const branchParam = req.user.role_name !== 'Admin' && req.user.branch_id
+      ? [req.user.branch_id] : [];
+    const sale = await conn.query(`SELECT status FROM sales WHERE sale_id = ? ${branchFilter}`, [id, ...branchParam]);
     if (sale.length === 0) {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });

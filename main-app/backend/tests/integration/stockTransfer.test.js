@@ -136,7 +136,8 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('returns 400 when source has no stock entry', async () => {
-    query.mockResolvedValueOnce([]); // no stock entry
+    const conn = makeConn();
+    conn.query.mockResolvedValueOnce([]); // stock check: no entry
     const res = await request(app)
       .post('/api/stock-transfers')
       .set(authHeader())
@@ -146,7 +147,8 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('returns 400 when source has insufficient stock', async () => {
-    query.mockResolvedValueOnce([{ available_stock: 3 }]);
+    const conn = makeConn();
+    conn.query.mockResolvedValueOnce([{ available_stock: 3 }]); // stock check: low
     const res = await request(app)
       .post('/api/stock-transfers')
       .set(authHeader())
@@ -156,9 +158,10 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('creates transfer with pending status when stock is sufficient', async () => {
-    query
-      .mockResolvedValueOnce([{ available_stock: 100 }])
-      .mockResolvedValueOnce({ insertId: 7 });
+    const conn = makeConn();
+    conn.query
+      .mockResolvedValueOnce([{ available_stock: 100 }]) // stock check: sufficient
+      .mockResolvedValueOnce({ insertId: 7 });            // INSERT
     const res = await request(app)
       .post('/api/stock-transfers')
       .set(authHeader())

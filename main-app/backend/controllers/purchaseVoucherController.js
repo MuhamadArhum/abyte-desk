@@ -3,16 +3,19 @@ const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
 const pad = (n) => String(n).padStart(6, '0');
+const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 // Column migrations handled by migrationService.js at server startup
 
-async function nextPVNumber() {
-  const [last] = await query('SELECT pv_number FROM inv_purchase_vouchers ORDER BY pv_id DESC LIMIT 1');
+async function nextPVNumber(conn) {
+  const [last] = await conn.query(
+    'SELECT pv_number FROM inv_purchase_vouchers ORDER BY pv_id DESC LIMIT 1 FOR UPDATE'
+  );
   if (last?.pv_number) {
     const m = last.pv_number.match(/\d+$/);
-    if (m) return `PV${pad(parseInt(m[0]) + 1)}`;
+    if (m) return `PV${String(parseInt(m[0]) + 1).padStart(6, '0')}`;
   }
-  return `PV${pad(1)}`;
+  return `PV${String(1).padStart(6, '0')}`;
 }
 
 // ── Helper: reverse stock for a PV's items ────────────────────
@@ -104,7 +107,7 @@ async function applyStockForItems(conn, pvId, items, voucher_date) {
       [pvId, item.product_id, newQty, newCost, totalPrice]
     );
 
-    const [inv] = await conn.query('SELECT available_stock, avg_cost FROM inventory WHERE product_id = ?', [item.product_id]);
+    const [inv] = await conn.query('SELECT available_stock, avg_cost FROM inventory WHERE product_id = ? FOR UPDATE', [item.product_id]);
     const curQty = Number((inv || {}).available_stock || 0);
     const curAvg = Number((inv || {}).avg_cost || 0);
     const newAvg = (curQty + newQty) > 0
@@ -217,25 +220,59 @@ exports.create = async (req, res) => {
     }
 
     await conn.beginTransaction();
-    const pv_number = await nextPVNumber();
+
+    // FV-029: per-item validation before any DB writes
+    for (const item of items) {
+      const qty = Number(item.quantity_received);
+      const price = Number(item.unit_price);
+      if (!item.product_id) {
+        await conn.rollback();
+        return res.status(400).json({ message: 'Each item must have a product_id' });
+      }
+      if (qty <= 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `quantity_received must be > 0 for product ${item.product_id}` });
+      }
+      if (price < 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `unit_price cannot be negative for product ${item.product_id}` });
+      }
+    }
 
     const shipping        = Number(shipping_cost)    || 0;
     const extra           = Number(extra_charges)    || 0;
     const other           = Number(other_charges)    || 0;
     const disc_pct        = Number(discount_percent) || 0;
     const tax_pct         = Number(tax_percent)      || 0;
-    const itemsTotal      = items.reduce((s, i) => s + Number(i.quantity_received) * Number(i.unit_price), 0);
-    const subtotal        = itemsTotal + shipping + extra + other;
-    const discount_amount = subtotal * disc_pct / 100;
-    const taxable         = subtotal - discount_amount;
-    const tax_amount      = taxable * tax_pct / 100;
-    const total           = taxable + tax_amount;
+    // FV-033: floating-point rounding for all monetary calculations
+    const itemsTotal      = round2(items.reduce((s, i) => s + Number(i.quantity_received) * Number(i.unit_price), 0));
+    const subtotal        = round2(itemsTotal + Number(shipping || 0) + Number(extra || 0) + Number(other || 0));
+    const discount_amount = round2(subtotal * disc_pct / 100);
+    const taxable         = round2(subtotal - discount_amount);
+    const tax_amount      = round2(taxable * tax_pct / 100);
+    const total           = round2(taxable + tax_amount);
 
-    const result = await conn.query(
-      'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, supplier_id, purchase_account_id, payable_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, supplier_id || null, purchase_account_id || null, payable_account_id || null]
-    );
-    const pvId = Number(result.insertId);
+    // FV-028: retry on UNIQUE constraint violation (max 3 attempts)
+    let pv_number;
+    let result;
+    let pvId;
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      pv_number = await nextPVNumber(conn);
+      try {
+        result = await conn.query(
+          'INSERT INTO inv_purchase_vouchers (pv_number, po_id, voucher_date, total_amount, shipping_cost, extra_charges, other_charges, discount_percent, discount_amount, tax_percent, tax_amount, notes, created_by, supplier_id, purchase_account_id, payable_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [pv_number, po_id || null, voucher_date, total, shipping, extra, other, disc_pct, discount_amount, tax_pct, tax_amount, notes || null, req.user.user_id, supplier_id || null, purchase_account_id || null, payable_account_id || null]
+        );
+        pvId = Number(result.insertId);
+        break; // success
+      } catch (insertErr) {
+        if (insertErr.code === 'ER_DUP_ENTRY' && attempt < MAX_RETRIES) {
+          continue; // retry with next number
+        }
+        throw insertErr; // unrecoverable or max retries exceeded
+      }
+    }
 
     await applyStockForItems(conn, pvId, items, voucher_date);
 

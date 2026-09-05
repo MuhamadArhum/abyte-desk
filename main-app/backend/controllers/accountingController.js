@@ -596,15 +596,38 @@ exports.getTrialBalance = async (req, res) => {
 
     const accounts = await query(`
       SELECT a.account_id, a.account_code, a.account_name, a.account_type, a.opening_balance,
-             COALESCE(SUM(CASE WHEN je.entry_date <= ? THEN jel.debit ELSE 0 END), 0) as total_debit,
-             COALESCE(SUM(CASE WHEN je.entry_date <= ? THEN jel.credit ELSE 0 END), 0) as total_credit
+             COALESCE(m.total_debit, 0) as total_debit,
+             COALESCE(m.total_credit, 0) as total_credit
       FROM accounts a
-      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
-      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+      LEFT JOIN (
+        SELECT account_id, SUM(debit_amount) as total_debit, SUM(credit_amount) as total_credit
+        FROM (
+          SELECT jel.account_id, jel.debit as debit_amount, jel.credit as credit_amount
+          FROM journal_entry_lines jel
+          JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+          WHERE je.entry_date <= ?
+
+          UNION ALL
+
+          SELECT account_id, amount as debit_amount, 0 as credit_amount
+          FROM payment_vouchers WHERE journal_entry_id IS NULL AND voucher_date <= ?
+          UNION ALL
+          SELECT main_account_id as account_id, 0 as debit_amount, amount as credit_amount
+          FROM payment_vouchers WHERE journal_entry_id IS NULL AND main_account_id IS NOT NULL AND voucher_date <= ?
+
+          UNION ALL
+
+          SELECT main_account_id as account_id, amount as debit_amount, 0 as credit_amount
+          FROM receipt_vouchers WHERE journal_entry_id IS NULL AND main_account_id IS NOT NULL AND voucher_date <= ?
+          UNION ALL
+          SELECT account_id, 0 as debit_amount, amount as credit_amount
+          FROM receipt_vouchers WHERE journal_entry_id IS NULL AND voucher_date <= ?
+        ) all_movements
+        GROUP BY account_id
+      ) m ON a.account_id = m.account_id
       WHERE a.is_active = 1
-      GROUP BY a.account_id
       ORDER BY a.account_code
-    `, [asOfDate, asOfDate]);
+    `, [asOfDate, asOfDate, asOfDate, asOfDate, asOfDate]);
 
     const trial = accounts.map(a => {
       const opening = Number(a.opening_balance || 0);
@@ -665,15 +688,41 @@ exports.getTrialBalance6Col = async (req, res) => {
 
     const accounts = await query(`
       SELECT a.account_id, a.parent_account_id, a.level, a.account_code, a.account_name, a.account_type, a.opening_balance,
-             COALESCE(SUM(CASE WHEN je.entry_date < ? THEN jel.debit  ELSE 0 END), 0) as ob_debit,
-             COALESCE(SUM(CASE WHEN je.entry_date < ? THEN jel.credit ELSE 0 END), 0) as ob_credit,
-             COALESCE(SUM(CASE WHEN je.entry_date BETWEEN ? AND ? THEN jel.debit  ELSE 0 END), 0) as period_debit,
-             COALESCE(SUM(CASE WHEN je.entry_date BETWEEN ? AND ? THEN jel.credit ELSE 0 END), 0) as period_credit
+             COALESCE(m.ob_debit, 0) as ob_debit,
+             COALESCE(m.ob_credit, 0) as ob_credit,
+             COALESCE(m.period_debit, 0) as period_debit,
+             COALESCE(m.period_credit, 0) as period_credit
       FROM accounts a
-      LEFT JOIN journal_entry_lines jel ON a.account_id = jel.account_id
-      LEFT JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+      LEFT JOIN (
+        SELECT account_id,
+               SUM(CASE WHEN txn_date < ? THEN debit_amount ELSE 0 END) as ob_debit,
+               SUM(CASE WHEN txn_date < ? THEN credit_amount ELSE 0 END) as ob_credit,
+               SUM(CASE WHEN txn_date BETWEEN ? AND ? THEN debit_amount ELSE 0 END) as period_debit,
+               SUM(CASE WHEN txn_date BETWEEN ? AND ? THEN credit_amount ELSE 0 END) as period_credit
+        FROM (
+          SELECT jel.account_id, je.entry_date as txn_date, jel.debit as debit_amount, jel.credit as credit_amount
+          FROM journal_entry_lines jel
+          JOIN journal_entries je ON jel.entry_id = je.entry_id AND je.status = 'posted'
+
+          UNION ALL
+
+          SELECT account_id, voucher_date as txn_date, amount as debit_amount, 0 as credit_amount
+          FROM payment_vouchers WHERE journal_entry_id IS NULL
+          UNION ALL
+          SELECT main_account_id as account_id, voucher_date as txn_date, 0 as debit_amount, amount as credit_amount
+          FROM payment_vouchers WHERE journal_entry_id IS NULL AND main_account_id IS NOT NULL
+
+          UNION ALL
+
+          SELECT main_account_id as account_id, voucher_date as txn_date, amount as debit_amount, 0 as credit_amount
+          FROM receipt_vouchers WHERE journal_entry_id IS NULL AND main_account_id IS NOT NULL
+          UNION ALL
+          SELECT account_id, voucher_date as txn_date, 0 as debit_amount, amount as credit_amount
+          FROM receipt_vouchers WHERE journal_entry_id IS NULL
+        ) all_movements
+        GROUP BY account_id
+      ) m ON a.account_id = m.account_id
       WHERE a.is_active = 1 ${accountIdFilter}
-      GROUP BY a.account_id
       ORDER BY a.account_code
     `, [from_date, from_date, from_date, to_date, from_date, to_date, ...filterParams]);
 
@@ -1483,7 +1532,7 @@ exports.deleteReceiptVoucherGroup = async (req, res) => {
         const [acc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.account_id]);
         if (acc) {
           const debitInc = ['asset', 'expense'].includes(acc.account_type);
-          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? -Number(voucher.amount) : Number(voucher.amount), voucher.account_id]);
+          await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [debitInc ? Number(voucher.amount) : -Number(voucher.amount), voucher.account_id]);
         }
         if (voucher.main_account_id) {
           const [mainAcc] = await conn.query('SELECT account_type FROM accounts WHERE account_id = ?', [voucher.main_account_id]);

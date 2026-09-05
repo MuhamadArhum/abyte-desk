@@ -1,6 +1,8 @@
 const { requireModule, calculatePrice, getModuleList, getPlanModules, isModuleAllowed, MODULES } = require('../../../middleware/moduleGuard');
 
 // ─── requireModule ───────────────────────────────────────────────
+// Phase 4: single-tenant — requireModule is always a passthrough.
+// All tests verify that next() is always called regardless of module name.
 
 describe('requireModule middleware', () => {
   let next, res;
@@ -10,7 +12,7 @@ describe('requireModule middleware', () => {
     res  = { status: jest.fn().mockReturnThis(), json: jest.fn() };
   });
 
-  it('passes through when req.modules is empty (single-client mode)', () => {
+  it('passes through when req.modules is empty (single-tenant mode)', () => {
     const req = { modules: [] };
     requireModule('sales')(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
@@ -23,38 +25,30 @@ describe('requireModule middleware', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('allows access when module is in req.modules', () => {
+  it('passes through when module is in req.modules', () => {
     const req = { modules: ['sales', 'inventory'] };
     requireModule('sales')(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('blocks access when module is NOT in req.modules', () => {
+  it('still passes through even when module is NOT in req.modules (single-tenant: all enabled)', () => {
     const req = { modules: ['sales', 'inventory'] };
     requireModule('hr')(req, res, next);
-    expect(next).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      upgrade_required: true,
-      module: 'hr',
-    }));
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('returns module price in 403 response', () => {
-    const req = { modules: ['sales'] };
-    requireModule('accounts')(req, res, next);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      price: MODULES.accounts.price,
-    }));
-  });
-
-  it('handles unknown module name gracefully', () => {
+  it('passes through for unknown module names', () => {
     const req = { modules: ['sales'] };
     requireModule('nonexistent_module')(req, res, next);
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      price: null,
-    }));
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('passes through for accounts module', () => {
+    const req = { modules: ['sales'] };
+    requireModule('accounts')(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
   });
 });
 

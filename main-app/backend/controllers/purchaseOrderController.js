@@ -167,19 +167,26 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
+  const conn = await getConnection();
   try {
     const { id } = req.params;
     const [po] = await query('SELECT * FROM purchase_orders WHERE po_id = ?', [id]);
     if (!po) return res.status(404).json({ message: 'PO not found' });
     if (po.status === 'received') return res.status(400).json({ message: 'Cannot delete a received PO' });
 
-    await query('DELETE FROM purchase_order_items WHERE po_id = ?', [id]);
-    await query('DELETE FROM purchase_orders WHERE po_id = ?', [id]);
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM purchase_order_items WHERE po_id = ?', [id]);
+    await conn.query('DELETE FROM purchase_orders WHERE po_id = ?', [id]);
+    await conn.commit();
+
     await logAction(req.user.user_id, req.user.name, 'PO_DELETED', 'purchase_order', id, { po_number: po.po_number }, req.ip);
     res.json({ message: 'PO deleted' });
   } catch (err) {
+    await conn.rollback();
     logger.error(err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    conn.release();
   }
 };
 
@@ -188,33 +195,53 @@ exports.receive = async (req, res) => {
   try {
     const { id } = req.params;
     const { items } = req.body;
+    if (!items || items.length === 0) return res.status(400).json({ message: 'items are required' });
 
     await conn.beginTransaction();
 
-    await conn.query('UPDATE purchase_orders SET status = ?, received_date = CURRENT_DATE WHERE po_id = ?', ['received', id]);
+    const receiveDate = new Date().toISOString().slice(0, 10);
 
-    // Batch update po_items, products, and inventory in 3 queries instead of 3×N
-    const poiCase  = items.map(() => 'WHEN ? THEN ?').join(' ');
-    const poiCaseP = items.flatMap(i => [i.po_item_id, i.quantity_received]);
-    const poiIds   = items.map(i => i.po_item_id);
+    // FV-032: per-item avg_cost update + stock_layers insert
+    for (const item of items) {
+      const qty  = Number(item.quantity_received);
+      const cost = Number(item.unit_price || item.unit_cost || 0);
+
+      // Update PO item received quantity
+      if (item.po_item_id) {
+        await conn.query(
+          'UPDATE purchase_order_items SET quantity_received = COALESCE(quantity_received, 0) + ? WHERE po_item_id = ?',
+          [qty, item.po_item_id]
+        );
+      }
+
+      // Lock inventory row and compute weighted average cost
+      const [inv] = await conn.query(
+        'SELECT available_stock, avg_cost FROM inventory WHERE product_id = ? FOR UPDATE',
+        [item.product_id]
+      );
+      const curQty = Number((inv || {}).available_stock || 0);
+      const curAvg = Number((inv || {}).avg_cost || 0);
+      const newAvg = (curQty + qty) > 0
+        ? (curQty * curAvg + qty * cost) / (curQty + qty)
+        : cost;
+
+      await conn.query(
+        'UPDATE inventory SET available_stock = available_stock + ?, avg_cost = ? WHERE product_id = ?',
+        [qty, newAvg, item.product_id]
+      );
+      await conn.query(
+        'UPDATE products SET stock_quantity = stock_quantity + ?, cost_price = ? WHERE product_id = ?',
+        [qty, newAvg, item.product_id]
+      );
+      await conn.query(
+        'INSERT INTO stock_layers (product_id, pv_id, source_type, ref_date, qty_original, qty_remaining, unit_cost) VALUES (?, NULL, ?, ?, ?, ?, ?)',
+        [item.product_id, 'purchase_order', receiveDate, qty, qty, cost]
+      );
+    }
+
     await conn.query(
-      `UPDATE purchase_order_items SET quantity_received = CASE po_item_id ${poiCase} END WHERE po_item_id IN (${poiIds.map(() => '?').join(',')})`,
-      [...poiCaseP, ...poiIds]
-    );
-    // Aggregate by product_id in case same product appears on multiple PO lines
-    const byProduct = new Map();
-    for (const item of items) byProduct.set(item.product_id, (byProduct.get(item.product_id) || 0) + item.quantity_received);
-    const prodEntries = [...byProduct.entries()];
-    const prodCase  = prodEntries.map(() => 'WHEN ? THEN ?').join(' ');
-    const prodCaseP = prodEntries.flatMap(([id, qty]) => [id, qty]);
-    const prodIds   = prodEntries.map(([id]) => id);
-    await conn.query(
-      `UPDATE products SET stock_quantity = stock_quantity + (CASE product_id ${prodCase} END) WHERE product_id IN (${prodIds.map(() => '?').join(',')})`,
-      [...prodCaseP, ...prodIds]
-    );
-    await conn.query(
-      `UPDATE inventory SET available_stock = available_stock + (CASE product_id ${prodCase} END) WHERE product_id IN (${prodIds.map(() => '?').join(',')})`,
-      [...prodCaseP, ...prodIds]
+      'UPDATE purchase_orders SET status = ?, received_date = NOW() WHERE po_id = ?',
+      ['received', id]
     );
 
     await conn.commit();

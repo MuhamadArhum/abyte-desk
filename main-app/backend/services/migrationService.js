@@ -626,6 +626,51 @@ const MIGRATIONS = [
       await queryDb(db, `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS actual_delivery DATETIME NULL`);
     },
   },
+  {
+    version: 24,
+    name: 'add_unique_constraints_voucher_numbers',
+    async run(db) {
+      // BUG-004: Add UNIQUE constraints to prevent duplicate CPV/CRV voucher numbers under concurrency
+      try {
+        await queryDb(db, `ALTER TABLE payment_vouchers ADD UNIQUE KEY unique_pv_voucher_number (voucher_number)`);
+      } catch (_e) { /* already exists */ }
+      try {
+        await queryDb(db, `ALTER TABLE receipt_vouchers ADD UNIQUE KEY unique_rv_voucher_number (voucher_number)`);
+      } catch (_e) { /* already exists */ }
+      // BUG-031: Add UNIQUE constraint on supplier_name to prevent duplicate supplier records
+      try {
+        await queryDb(db, `ALTER TABLE suppliers ADD UNIQUE KEY unique_supplier_name (supplier_name)`);
+      } catch (_e) { /* already exists or duplicates present — operator must resolve manually */ }
+    },
+  },
+  {
+    version: 25,
+    name: 'supplier_balance_branch_indexes',
+    async run(db) {
+      // FV-026: Supplier balance column
+      await queryDb(db, `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS balance DECIMAL(15,2) NOT NULL DEFAULT 0.00`);
+      // FV-030: branch_id on purchase vouchers and orders
+      await queryDb(db, `ALTER TABLE inv_purchase_vouchers ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+      await queryDb(db, `ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS branch_id INT NULL`);
+      // FV-023: Index on sales.customer_id
+      try {
+        await queryDb(db, `ALTER TABLE sales ADD INDEX idx_sales_customer (customer_id)`);
+      } catch (_e) { /* already exists */ }
+      // FV-007: Index on purchase_returns for pr_number (to support UNIQUE on pr_number)
+      try {
+        await queryDb(db, `ALTER TABLE purchase_returns ADD UNIQUE KEY unique_pr_number (pr_number)`);
+      } catch (_e) { /* already exists */ }
+      // FV-034: Fix inventory.available_stock to DECIMAL to support fractional quantities
+      await queryDb(db, `ALTER TABLE inventory MODIFY COLUMN available_stock DECIMAL(15,3) NOT NULL DEFAULT 0.000`);
+      await queryDb(db, `ALTER TABLE products MODIFY COLUMN stock_quantity DECIMAL(15,3) NOT NULL DEFAULT 0.000`);
+      // BUG-032: Drop redundant balance column from credit_sales (balance_due is the canonical column)
+      try {
+        await queryDb(db, `ALTER TABLE credit_sales DROP COLUMN balance`);
+      } catch (_e) { /* column may not exist */ }
+      // FV-021: Ensure amount_paid is NOT NULL with default 0
+      await queryDb(db, `ALTER TABLE sales MODIFY COLUMN amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0.00`);
+    },
+  },
 ];
 
 async function ensureMigrationsTable(db) {
