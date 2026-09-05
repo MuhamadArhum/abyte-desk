@@ -67,13 +67,21 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
   const handlePrint = () => {
     if (!barcode) return;
 
-    const labels = Array(printQty).fill(null).map(() => `
+    // Pre-render barcode SVG in current document (npm JsBarcode, no CDN needed)
+    const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(tempSvg);
+    JsBarcode(tempSvg, barcode, { format: 'CODE128', width: 1.5, height: 40, displayValue: true, fontSize: 10, margin: 2 });
+    const svgHtml = tempSvg.outerHTML;
+    document.body.removeChild(tempSvg);
+
+    const labelHtml = `
       <div class="label">
-        <div class="product-name">{currency}{product.product_name}</div>
-        <div class="product-price">$${parseFloat(product.price).toFixed(0)}</div>
-        <svg id="barcode-print-${Math.random()}"></svg>
+        <div class="product-name">${product.product_name}</div>
+        <div class="product-price">${currency}${parseFloat(product.price).toFixed(0)}</div>
+        ${svgHtml}
       </div>
-    `).join('');
+    `;
+    const labels = Array(printQty).fill(labelHtml).join('');
 
     const printWindow = window.open('', '', 'width=400,height=600');
     if (!printWindow) return;
@@ -98,25 +106,17 @@ const BarcodeModal: React.FC<BarcodeModalProps> = ({ isOpen, onClose, product, o
               max-width: 46mm; overflow: hidden;
               white-space: nowrap; text-overflow: ellipsis;
             }
-            .product-price {
-              font-size: 12px; font-weight: bold; margin-bottom: 1mm;
-            }
+            .product-price { font-size: 12px; font-weight: bold; margin-bottom: 1mm; }
             svg { max-width: 44mm; height: auto; }
             @media print {
               .label { page-break-after: always; }
               .label:last-child { page-break-after: avoid; }
             }
           </style>
-          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
         </head>
         <body>
           ${labels}
-          <script>
-            document.querySelectorAll('svg[id^="barcode-print"]').forEach(function(svg) {
-              JsBarcode(svg, "${barcode}", { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 10, margin: 2 });
-            });
-            setTimeout(function() { window.print(); }, 300);
-          </script>
+          <script>setTimeout(function() { window.print(); }, 100);<\/script>
         </body>
       </html>
     `);
