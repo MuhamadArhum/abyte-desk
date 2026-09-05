@@ -57,6 +57,7 @@ async function ensureSalesSchema(db) {
     `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_charges DECIMAL(10,2) DEFAULT 0`,
     `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS notes TEXT NULL`,
     `ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS delivery_number VARCHAR(30) NULL`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_delivery_number ON deliveries (delivery_number)`,
   ];
   for (const sql of stmts) {
     try { await query(sql); } catch (e) {

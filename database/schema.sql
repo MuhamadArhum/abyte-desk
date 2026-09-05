@@ -1,5 +1,5 @@
 -- ============================================================
--- Abyte ERP - Complete Database Schema
+-- AbyteDesk ERP - Complete Database Schema
 -- Last updated: 2026-04-21
 -- Usage: mysql -u root -p <db_name> < schema.sql
 -- Note: CREATE DATABASE and USE are handled by the app
@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS sections (
 -- Store Settings
 CREATE TABLE IF NOT EXISTS store_settings (
     setting_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_name VARCHAR(255) DEFAULT 'Abyte ERP Store',
+    store_name VARCHAR(255) DEFAULT 'AbyteDesk ERP Store',
     address TEXT,
     phone VARCHAR(50),
     email VARCHAR(100),
@@ -282,7 +282,7 @@ CREATE TABLE IF NOT EXISTS store_settings (
 );
 
 INSERT IGNORE INTO store_settings (setting_id, store_name, receipt_footer)
-VALUES (1, 'Abyte ERP Store', 'Thank you for shopping with us!');
+VALUES (1, 'AbyteDesk ERP Store', 'Thank you for shopping with us!');
 
 -- Printers
 CREATE TABLE IF NOT EXISTS printers (

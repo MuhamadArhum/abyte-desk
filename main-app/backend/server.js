@@ -467,7 +467,12 @@ const httpServer = app.listen(PORT, async () => {
     const { pruneOldBackups, verifyLastBackup } = require('./services/backupService');
     await pruneOldBackups().catch(e => logger.error('[Backup] Retention sweep failed', { error: e.message }));
     const check = await verifyLastBackup().catch(() => ({ ok: false, reason: 'verify threw' }));
-    if (!check.ok) logger.warn('[Backup] Last backup integrity check failed', check);
-    else logger.info('[Backup] Last backup integrity OK', { filename: check.filename, sizeBytes: check.sizeBytes });
+    if (!check.ok) {
+      logger.warn('[Backup] Last backup integrity check failed', check);
+      const { logAction } = require('./services/auditService');
+      await logAction(0, 'system', 'BACKUP_VERIFY_FAILED', 'backup', null, check, '127.0.0.1').catch(() => {});
+    } else {
+      logger.info('[Backup] Last backup integrity OK', { filename: check.filename, sizeBytes: check.sizeBytes });
+    }
   });
 });

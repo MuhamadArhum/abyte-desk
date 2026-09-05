@@ -63,8 +63,8 @@ exports.login = async (req, res) => {
       permissions   = [...new Set([...keys, ...parents])];
     }
 
-    // Audit log (fire-and-forget)
-    logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip).catch(() => {});
+    logAction(user.user_id, user.username, 'USER_LOGIN', 'user', user.user_id, { email }, req.ip)
+      .catch(err => logger.warn('[audit] USER_LOGIN log failed', { error: err.message }));
 
     res.json({
       token,
@@ -168,7 +168,8 @@ exports.updateProfile = async (req, res) => {
       [userId]
     );
 
-    logAction(userId, user.username, 'PROFILE_UPDATED', 'user', userId, { name, email }, req.ip).catch(() => {});
+    logAction(userId, user.username, 'PROFILE_UPDATED', 'user', userId, { name, email }, req.ip)
+      .catch(err => logger.warn('[audit] PROFILE_UPDATED log failed', { error: err.message }));
 
     res.json({ message: 'Profile updated successfully', user: updated });
   } catch (err) {
@@ -262,7 +263,8 @@ exports.logout = async (req, res) => {
       const token = authHeader.split(' ')[1];
       blacklistToken(token);
 
-      logAction(req.user.user_id, req.user.username, 'USER_LOGOUT', 'user', req.user.user_id, {}, req.ip).catch(() => {});
+      logAction(req.user.user_id, req.user.username, 'USER_LOGOUT', 'user', req.user.user_id, {}, req.ip)
+        .catch(err => logger.warn('[audit] USER_LOGOUT log failed', { error: err.message }));
     }
     res.json({ message: 'Logged out successfully' });
   } catch (err) {

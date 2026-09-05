@@ -49,8 +49,8 @@ export default function LoginScreen() {
   }, []);
 
   const handleLogin = async () => {
-    if (!companyCode.trim() || !email.trim() || !password.trim()) {
-      showToast('Please fill in all fields.', 'warning');
+    if (!email.trim() || !password.trim()) {
+      showToast('Please fill in email and password.', 'warning');
       return;
     }
     setLoading(true);
@@ -61,10 +61,18 @@ export default function LoginScreen() {
         password,
       });
       const { token: tok, user } = res.data;
+      if (!tok || !user) throw new Error('Invalid response from server');
       await setAuth(user, tok);
       router.replace('/(main)/(tabs)/home');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      let msg = 'Login failed. Please check your credentials.';
+      if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        msg = 'Connection timed out. Check your network.';
+      } else if (!err.response) {
+        msg = 'Cannot reach server. Check server URL in settings.';
+      }
       showToast(msg, 'error');
     } finally {
       setLoading(false);
@@ -92,7 +100,7 @@ export default function LoginScreen() {
           <View style={styles.logoWrap}>
             <Image source={logo} style={styles.logoImg} resizeMode="contain" />
           </View>
-          <Text style={styles.appName}>Abyte ERP Waiter</Text>
+          <Text style={styles.appName}>AbyteDesk ERP Waiter</Text>
           <Text style={styles.appTagline}>Restaurant Order Management</Text>
 
           {/* Pill badges */}
@@ -200,7 +208,7 @@ export default function LoginScreen() {
             <View style={styles.footerLine} />
             <View style={styles.footerCenter}>
               <Ionicons name="shield-checkmark" size={12} color={C.t3} />
-              <Text style={styles.footerText}>Abyte ERP  ·  v1.0</Text>
+              <Text style={styles.footerText}>AbyteDesk ERP  ·  v1.0</Text>
             </View>
             <View style={styles.footerLine} />
           </View>

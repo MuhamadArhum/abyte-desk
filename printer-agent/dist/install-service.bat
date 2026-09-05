@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Abyte ERP Printer Agent - Install
+title AbyteDesk ERP Printer Agent - Install
 
 echo.
 echo  ============================================
-echo   Abyte ERP Printer Agent v3.0 - Installer
+echo   AbyteDesk ERP Printer Agent v3.0 - Installer
 echo  ============================================
 echo.
 

@@ -1,6 +1,6 @@
 // =============================================================
-// Abyte ERP Printer Agent v3.0
-// Runs on cashier PC — bridges Abyte ERP web app to local printers
+// AbyteDesk ERP Printer Agent v3.0
+// Runs on cashier PC — bridges AbyteDesk ERP web app to local printers
 //
 // Supports multiple printers per PC:
 //   - Invoice printers  (receipts, invoices)
@@ -51,10 +51,17 @@ function loadConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
       const data = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
       if (!Array.isArray(data.printers)) data.printers = [];
+      if (typeof data.server_url !== 'string') data.server_url = '';
+      if (typeof data.agent_token !== 'string') data.agent_token = '';
+      if (typeof data.tenant_code !== 'string') data.tenant_code = '';
+      if (data.server_url && !/^https?:\/\/.+/.test(data.server_url)) {
+        process.stderr.write('[config] Warning: server_url is not a valid URL — clearing\n');
+        data.server_url = '';
+      }
       return data;
     }
   } catch (e) {
-    console.warn('[config] Read error:', e.message, '— using defaults');
+    process.stderr.write(`[config] Read error: ${e.message} — using defaults\n`);
   }
   return { ...DEFAULT_CONFIG };
 }
@@ -63,7 +70,7 @@ function saveConfig() {
   try {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
   } catch (e) {
-    console.error('[config] Save error:', e.message);
+    process.stderr.write(`[config] Save error: ${e.message}\n`);
   }
 }
 
@@ -270,6 +277,10 @@ function printNetwork(buf, ip, port) {
 }
 
 function printWindows(buf, printerName) {
+  // Allowlist: only alphanumeric, spaces, hyphens, underscores, dots
+  if (!/^[\w\s\-\.]+$/.test(printerName)) {
+    return Promise.reject(new Error(`Invalid printer name: "${printerName}"`));
+  }
   const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}_${Math.random().toString(36).slice(2)}.bin`);
   fs.writeFileSync(tmpFile, buf);
   return new Promise((resolve, reject) => {
@@ -284,11 +295,14 @@ function printWindows(buf, printerName) {
 }
 
 function printUSB(buf, comPort) {
-  // On Windows, write raw bytes to COM port via cmd
+  // Allowlist: only COM/LPT port names (e.g. COM1, COM12, LPT1)
+  if (!/^(COM|LPT)\d{1,3}$/i.test(comPort.trim())) {
+    return Promise.reject(new Error(`Invalid COM port: "${comPort}"`));
+  }
   return new Promise((resolve, reject) => {
     const tmpFile = path.join(os.tmpdir(), `abyte_${Date.now()}.bin`);
     fs.writeFileSync(tmpFile, buf);
-    const safePort = comPort.replace(/"/g, '');
+    const safePort = comPort.trim().toUpperCase();
     exec(`copy /B "${tmpFile}" "${safePort}"`, { shell: 'cmd.exe' }, (err) => {
       try { fs.unlinkSync(tmpFile); } catch {}
       if (err) reject(new Error(`USB print to ${comPort} failed: ${err.message}`));
@@ -318,7 +332,7 @@ function buildUI() {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Abyte ERP Printer Agent</title>
+<title>AbyteDesk ERP Printer Agent</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -474,7 +488,7 @@ function buildUI() {
 <div class="header">
   <div class="header-logo">A</div>
   <div>
-    <div class="header-title">Abyte ERP Printer Agent</div>
+    <div class="header-title">AbyteDesk ERP Printer Agent</div>
     <div class="header-sub">Local thermal printer bridge — port 3001</div>
   </div>
   <div class="header-right">
@@ -1032,11 +1046,13 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/jobs', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit) || 200, MAX_JOBS);
-  const type  = req.query.type;
-  const jobs  = type ? jobLog.filter(j => j.type === type) : jobLog;
+  const limit  = Math.min(parseInt(req.query.limit) || 200, MAX_JOBS);
+  const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+  const type   = req.query.type;
+  const jobs   = type ? jobLog.filter(j => j.type === type) : jobLog;
   res.json({
-    jobs: jobs.slice(0, limit),
+    jobs: jobs.slice(offset, offset + limit),
+    total: jobs.length,
     stats: {
       total:   jobLog.length,
       success: jobLog.filter(j => j.status === 'success').length,
@@ -1083,7 +1099,8 @@ app.post('/printers', (req, res) => {
   const printers = getPrinters();
   printers.push(printer);
   savePrinters(printers);
-  console.log(`[printers] Added: ${name} (${type}, ${connection})`);
+  process.stdout.write(`[printers] Added: ${name} (${type}, ${connection})
+`);
   res.status(201).json({ success: true, printer });
 });
 
@@ -1109,7 +1126,8 @@ app.put('/printers/:id', (req, res) => {
     open_drawer:  open_drawer  !== undefined ? Boolean(open_drawer): printers[idx].open_drawer,
   };
   savePrinters(printers);
-  console.log(`[printers] Updated: ${printers[idx].name}`);
+  process.stdout.write(`[printers] Updated: ${printers[idx].name}
+`);
   res.json({ success: true, printer: printers[idx] });
 });
 
@@ -1119,7 +1137,8 @@ app.delete('/printers/:id', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Printer not found' });
   const [removed] = printers.splice(idx, 1);
   savePrinters(printers);
-  console.log(`[printers] Deleted: ${removed.name}`);
+  process.stdout.write(`[printers] Deleted: ${removed.name}
+`);
   res.json({ success: true });
 });
 
@@ -1131,17 +1150,19 @@ app.post('/printers/:id/test', async (req, res) => {
   try {
     const buf = printer.type === 'kot'
       ? buildKOTESCPOS({ tokenNo: 'TEST-001', date: new Date().toLocaleString(), cashierName: 'System', categoryName: printer.is_master ? 'XPR / All Items' : 'Section Test', items: [{ name: 'Chicken Burger', quantity: 2 }, { name: 'French Fries', quantity: 1 }] }, printer)
-      : buildInvoiceESCPOS({ storeName: 'Abyte ERP', storeAddress: 'Test Print', saleId: 1, invoiceNo: 'TEST-001', date: new Date().toLocaleString(), cashierName: 'System', currencySymbol: 'Rs.', items: [{ name: 'Test Item', quantity: 1, price: 100 }], subtotal: 100, totalAmount: 100, amountPaid: 100, changeDue: 0, footer: '** Printer is working! **' }, printer);
+      : buildInvoiceESCPOS({ storeName: 'AbyteDesk ERP', storeAddress: 'Test Print', saleId: 1, invoiceNo: 'TEST-001', date: new Date().toLocaleString(), cashierName: 'System', currencySymbol: 'Rs.', items: [{ name: 'Test Item', quantity: 1, price: 100 }], subtotal: 100, totalAmount: 100, amountPaid: 100, changeDue: 0, footer: '** Printer is working! **' }, printer);
 
     await sendToPrinter(printer, buf);
     const ms = Date.now() - t0;
     addJob({ type: 'test', printer: printer.name, status: 'success', durationMs: ms });
-    console.log(`[test] OK: ${printer.name} (${ms}ms)`);
+    process.stdout.write(`[test] OK: ${printer.name} (${ms}ms)
+`);
     res.json({ success: true, message: `Test sent to "${printer.name}"` });
   } catch (e) {
     const ms = Date.now() - t0;
     addJob({ type: 'test', printer: printer.name, status: 'failed', error: e.message, durationMs: ms });
-    console.error(`[test] FAIL: ${printer.name}:`, e.message);
+    process.stderr.write(`[test] FAIL: ${printer.name}: ${e.message}
+`);
     res.status(500).json({ error: e.message });
   }
 });
@@ -1165,7 +1186,16 @@ app.post('/server-config', (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/print/invoice', async (req, res) => {
+// Validate that print requests come from the local polling loop or a trusted caller
+function requireLocalOrToken(req, res, next) {
+  const token = req.headers['x-agent-token'];
+  if (config.agent_token && token !== config.agent_token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+app.post('/print/invoice', requireLocalOrToken, async (req, res) => {
   const { receiptData, printerId } = req.body;
   if (!receiptData) return res.status(400).json({ error: 'receiptData is required' });
 
@@ -1185,17 +1215,19 @@ app.post('/print/invoice', async (req, res) => {
     await sendToPrinter(printer, buf);
     const ms = Date.now() - t0;
     addJob({ type: 'invoice', printer: printer.name, status: 'success', invoiceNo: receiptData.invoiceNo || null, tokenNo: receiptData.tokenNo || null, items: (receiptData.items||[]).length, durationMs: ms });
-    console.log(`[print/invoice] OK — ${printer.name} (${ms}ms)`);
+    process.stdout.write(`[print/invoice] OK — ${printer.name} (${ms}ms)
+`);
     res.json({ success: true, printer: printer.name });
   } catch (e) {
     const ms = Date.now() - t0;
     addJob({ type: 'invoice', printer: printer.name, status: 'failed', invoiceNo: receiptData.invoiceNo || null, items: (receiptData.items||[]).length, error: e.message, durationMs: ms });
-    console.error(`[print/invoice] FAIL — ${printer.name}:`, e.message);
+    process.stderr.write(`[print/invoice] FAIL — ${printer.name}: ${e.message}
+`);
     res.status(500).json({ error: e.message });
   }
 });
 
-app.post('/print/kot', async (req, res) => {
+app.post('/print/kot', requireLocalOrToken, async (req, res) => {
   const { kotData } = req.body;
   if (!kotData) return res.status(400).json({ error: 'kotData is required' });
 
@@ -1217,10 +1249,12 @@ app.post('/print/kot', async (req, res) => {
     try {
       await sendToPrinter(printer, buildKOTESCPOS({ ...kotData, items, categoryName: 'Complete Order' }, printer));
       results.push({ printer: printer.name, role: 'master', items: items.length, success: true, durationMs: Date.now()-pt });
-      console.log(`[kot] MASTER OK — ${printer.name}: ${items.length} items`);
+      process.stdout.write(`[kot] MASTER OK — ${printer.name}: ${items.length} items
+`);
     } catch (e) {
       results.push({ printer: printer.name, role: 'master', items: items.length, success: false, error: e.message, durationMs: Date.now()-pt });
-      console.error(`[kot] MASTER FAIL — ${printer.name}:`, e.message);
+      process.stderr.write(`[kot] MASTER FAIL — ${printer.name}: ${e.message}
+`);
     }
   }
 
@@ -1245,10 +1279,12 @@ app.post('/print/kot', async (req, res) => {
       try {
         await sendToPrinter(printer, buildKOTESCPOS({ ...kotData, items: si, categoryName: label }, printer));
         results.push({ printer: printer.name, role: 'section', items: si.length, success: true, durationMs: Date.now()-pt });
-        console.log(`[kot] SECTION OK — ${printer.name} [${label}]: ${si.length} items`);
+        process.stdout.write(`[kot] SECTION OK — ${printer.name} [${label}]: ${si.length} items
+`);
       } catch (e) {
         results.push({ printer: printer.name, role: 'section', items: si.length, success: false, error: e.message, durationMs: Date.now()-pt });
-        console.error(`[kot] SECTION FAIL — ${printer.name}:`, e.message);
+        process.stderr.write(`[kot] SECTION FAIL — ${printer.name}: ${e.message}
+`);
       }
     }
   }
@@ -1275,7 +1311,7 @@ app.post('/print/kot', async (req, res) => {
 });
 
 // ── Backend Polling ───────────────────────────────────────────
-// Polls the Abyte ERP backend print queue directly so jobs from the
+// Polls the AbyteDesk ERP backend print queue directly so jobs from the
 // mobile app are processed even when no browser tab is open.
 
 function backendRequest(url, options = {}, body = null) {
@@ -1329,22 +1365,28 @@ async function pollBackend() {
     for (const job of res.data.jobs) {
       let status = 'failed', errMsg = null;
       try {
-        const endpoint  = job.type === 'kot' ? '/print/kot' : '/print/invoice';
-        const body      = job.type === 'kot'
+        const endpoint    = job.type === 'kot' ? '/print/kot' : '/print/invoice';
+        const body        = job.type === 'kot'
           ? { kotData:     job.payload.kotData }
           : { receiptData: job.payload.receiptData };
-        const pr = await backendRequest(`http://localhost:${PORT}${endpoint}`, { method: 'POST' }, body);
+        const localHeaders = cfg.agent_token ? { 'x-agent-token': cfg.agent_token } : {};
+        const pr = await backendRequest(`http://127.0.0.1:${PORT}${endpoint}`, { method: 'POST', headers: localHeaders }, body);
         if (pr.status === 200 || pr.status === 207) status = 'done';
         else errMsg = (pr.data && pr.data.error) || `Agent error ${pr.status}`;
       } catch (e) { errMsg = e.message; }
 
       try {
-        await backendRequest(
+        const upd = await backendRequest(
           base + `/api/agent/print-queue/${job.id}`,
           { method: 'PATCH', headers },
           { status, error_message: errMsg }
         );
-      } catch {}
+        if (upd.status >= 400) {
+          process.stderr.write(`[poll] Job ${job.id} status update rejected: HTTP ${upd.status}\n`);
+        }
+      } catch (updateErr) {
+        process.stderr.write(`[poll] Job ${job.id} status update failed: ${updateErr.message}\n`);
+      }
     }
   } catch { /* network unavailable — skip silently */ }
   finally { _polling = false; }
@@ -1356,40 +1398,40 @@ function startPolling() {
   if (_pollTimer) return;
   if (!config.server_url || !config.tenant_code || !config.agent_token) return;
   _pollTimer = setInterval(pollBackend, 3000);
-  console.log(`[poll] Started — ${config.server_url}`);
+  process.stdout.write(`[poll] Started — ${config.server_url}\n`);
 }
 
 // ── Start ─────────────────────────────────────────────────────
 const server = app.listen(PORT, '0.0.0.0', () => {
   const printers = getPrinters();
-  console.log(`\n========================================`);
-  console.log(`  Abyte ERP Printer Agent v${VERSION}`);
-  console.log(`========================================`);
-  console.log(`  URL     : http://localhost:${PORT}`);
-  console.log(`  Config  : ${CONFIG_FILE}`);
-  console.log(`  Mode    : ${isPkg ? 'EXE' : 'Node.js'}`);
-  console.log(`  Printers: ${printers.length} configured`);
+  process.stdout.write(`\n========================================\n`);
+  process.stdout.write(`  AbyteDesk ERP Printer Agent v${VERSION}\n`);
+  process.stdout.write(`========================================\n`);
+  process.stdout.write(`  URL     : http://localhost:${PORT}\n`);
+  process.stdout.write(`  Config  : ${CONFIG_FILE}\n`);
+  process.stdout.write(`  Mode    : ${isPkg ? 'EXE' : 'Node.js'}\n`);
+  process.stdout.write(`  Printers: ${printers.length} configured\n`);
   printers.forEach(p => {
     const t = p.connection === 'network' ? `${p.ip}:${p.port||9100}` : p.connection === 'usb' ? p.com : p.printer_name || '?';
-    console.log(`    [${p.type.toUpperCase()}] ${p.name} → ${t}`);
+    process.stdout.write(`    [${p.type.toUpperCase()}] ${p.name} → ${t}\n`);
   });
-  console.log(`========================================\n`);
+  process.stdout.write(`========================================\n\n`);
   startPolling();
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`\n[ERROR] Port ${PORT} already in use!`);
-    console.error(`  Stop existing agent: taskkill /F /IM node.exe`);
-    console.error(`  Or: taskkill /F /IM ABytePrinterAgent.exe\n`);
+    process.stderr.write(`\n[ERROR] Port ${PORT} already in use!\n`);
+    process.stderr.write(`  Stop existing agent: taskkill /F /IM node.exe\n`);
+    process.stderr.write(`  Or: taskkill /F /IM ABytePrinterAgent.exe\n`);
   } else {
-    console.error('[ERROR]', err.message);
+    process.stderr.write(`[ERROR] ${err.message}\n`);
   }
   process.exit(1);
 });
 
 function shutdown() {
-  console.log('\n[agent] Shutting down…');
+  process.stdout.write('\n[agent] Shutting down…\n');
   if (_pollTimer) clearInterval(_pollTimer);
   server.close(() => process.exit(0));
 }

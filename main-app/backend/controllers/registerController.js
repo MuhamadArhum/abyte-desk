@@ -70,8 +70,8 @@ exports.openRegister = async (req, res) => {
       return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
     }
 
-    if (opening_balance === undefined || opening_balance < 0) {
-      return res.status(400).json({ message: 'Valid opening balance is required' });
+    if (opening_balance === undefined || opening_balance < 0 || opening_balance > 10000000) {
+      return res.status(400).json({ message: 'Valid opening balance is required (0 – 10,000,000)' });
     }
 
     const conn = await getConnection();
@@ -112,8 +112,8 @@ exports.closeRegister = async (req, res) => {
   try {
     const { closing_balance, close_note } = req.body;
 
-    if (closing_balance === undefined || closing_balance < 0) {
-      return res.status(400).json({ message: 'Valid closing balance is required' });
+    if (closing_balance === undefined || closing_balance < 0 || closing_balance > 10000000) {
+      return res.status(400).json({ message: 'Valid closing balance is required (0 – 10,000,000)' });
     }
 
     conn = await getConnection();

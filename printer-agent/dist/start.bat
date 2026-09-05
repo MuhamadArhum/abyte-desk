@@ -1,5 +1,5 @@
 @echo off
-title Abyte ERP Printer Agent v3.0
+title AbyteDesk ERP Printer Agent v3.0
 
 :: Kill existing on port 3001
 for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":3001 " ^| findstr "LISTENING"') do (
@@ -8,7 +8,7 @@ for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":3001 " ^| findstr "L
 timeout /t 1 /nobreak >nul
 
 echo.
-echo  Starting Abyte ERP Printer Agent...
+echo  Starting AbyteDesk ERP Printer Agent...
 echo  UI: http://localhost:3001
 echo  Press Ctrl+C to stop.
 echo.

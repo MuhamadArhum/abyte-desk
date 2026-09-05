@@ -9,6 +9,8 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -1861,7 +1863,7 @@ exports.getAccountStatement = async (req, res) => {
         description: t.description,
         debit: dr,
         credit: cr,
-        balance: Math.round(runningBalance * 100) / 100,
+        balance: round2(runningBalance),
         source: t.source,
       };
     });
@@ -1869,8 +1871,8 @@ exports.getAccountStatement = async (req, res) => {
     res.json({
       account,
       period: { from_date, to_date },
-      opening_balance: Math.round(openingBalance * 100) / 100,
-      closing_balance: Math.round(runningBalance * 100) / 100,
+      opening_balance: round2(openingBalance),
+      closing_balance: round2(runningBalance),
       data,
     });
   } catch (err) {

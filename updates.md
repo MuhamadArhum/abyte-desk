@@ -1,4 +1,72 @@
 # AByte ERP — Updates Log
+**Date:** 2026-08-30
+
+---
+
+## ✅ Completed Tasks
+
+### 1. Backend Testing
+**Status:** Complete
+- Backend port 5000 pe successfully start hua
+- Login API tested: `admin@abyte.com / admin123` — SUCCESS
+- All major APIs tested and working:
+  - Products: 25,000 records
+  - Sales: 205,004 records
+  - Customers: 205,002 records
+  - Suppliers: 11,000 records
+  - Accounting: 10,495 records
+  - Staff/HR: 1,316 records
+  - Purchase Orders: 45,000 records
+  - Quotations: 60,000 records
+  - Credit Sales: 50,063 records
+  - Returns: 20,000 records
+
+### 2. Suppliers Date Filter
+**Status:** Complete
+- Backend: `date_from` / `date_to` on `created_at` added to `supplierController.js`
+- Frontend: Date range inputs added to `Suppliers.tsx` with Clear button
+
+### 3. Waiter-App LAN Configuration
+**Status:** Complete
+- `.env` file created with `EXPO_PUBLIC_API_URL=http://192.168.0.105:5000/api`
+- All waiter-app routes verified in backend (tables, orders, pending, print-queue)
+
+### 4. Version Bump → v1.0.5
+**Status:** Complete
+- `server-app/package.json` → 1.0.5
+- `client-app/package.json` → 1.0.5
+- `server-app/renderer/index.html` → v1.0.5 display
+
+### 5. Frontend Production Build
+**Status:** Complete
+- `npm run build` successful in `main-app/frontend`
+- dist files updated
+
+### 6. EXE Rebuild v1.0.5
+**Status:** Complete
+- `AByte ERP Server Setup 1.0.5.exe` ✅
+- `AByte ERP Server 1.0.5.exe` (Portable) ✅
+- `AByte ERP Client Setup 1.0.5.exe` ✅
+- `AByte ERP Client 1.0.5.exe` (Portable) ✅
+
+### 7. Git Commit
+**Status:** Complete
+- Commit: `0b90d65` — feat: v1.0.5 suppliers date filter, version bump, waiter-app LAN config
+
+---
+
+## ⏳ Pending Tasks
+
+### 1. GitHub Release v1.0.5
+**Status:** Pending
+- 4 new exe files GitHub Release pe upload karne hain
+
+### 2. Full End-to-End UI Testing
+**Status:** Pending
+- Browser se complete flow test karna baqi hai
+
+---
+
 **Date:** 2026-08-29
 
 ---

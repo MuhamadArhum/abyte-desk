@@ -182,7 +182,7 @@ exports.itemWisePurchase = async (req, res) => {
       ' JOIN inv_purchase_vouchers pv ON pvi.pv_id = pv.pv_id' +
       ' JOIN products p ON pvi.product_id = p.product_id' +
       ' ' + where +
-      ' GROUP BY p.product_id, p.product_name, p.product_type ORDER BY total_amount DESC', params);
+      ' GROUP BY p.product_id, p.product_name, p.product_type ORDER BY total_amount DESC LIMIT 10000', params);
     const [totals] = await query(
       'SELECT SUM(pvi.total_price) as grand_total, SUM(pvi.quantity_received) as grand_qty' +
       ' FROM inv_purchase_voucher_items pvi' +
@@ -350,7 +350,7 @@ exports.stockReconciliation = async (req, res) => {
       ' (SELECT COALESCE(SUM(rsi.quantity),0) FROM raw_sale_items rsi WHERE rsi.product_id = p.product_id) as total_raw_sold' +
       ' FROM products p' +
       ' LEFT JOIN inventory inv ON p.product_id = inv.product_id' +
-      ' WHERE p.is_active = 1 ORDER BY p.product_name');
+      ' WHERE p.is_active = 1 ORDER BY p.product_name LIMIT 10000');
     res.json({ data: rows.map(r => ({
       ...r,
       current_stock: Number(r.current_stock),

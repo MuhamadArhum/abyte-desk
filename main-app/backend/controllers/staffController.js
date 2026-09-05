@@ -2,6 +2,8 @@ const logger = require('../config/logger');
 const { query, getConnection } = require('../config/database');
 const { logAction } = require('../services/auditService');
 
+const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 let dbReady = false;
 async function ensureTablesAndColumns() {
   if (dbReady) return;
@@ -2181,7 +2183,7 @@ exports.getOvertimeReport = async (req, res) => {
       const otMinutes = Number(r.total_ot_minutes || 0);
       const otHours = Math.round((otMinutes / 60) * 100) / 100;
       const hourlyRate = Number(r.monthly_salary || 0) / 26 / 8;
-      const otAmount = Math.round(hourlyRate * otHours * 1.5 * 100) / 100;
+      const otAmount = round2(hourlyRate * otHours * 1.5);
       return {
         ...r,
         ot_days: Number(r.ot_days || 0),
@@ -2195,7 +2197,7 @@ exports.getOvertimeReport = async (req, res) => {
     const summary = {
       total_staff: result.length,
       total_ot_hours: Math.round(result.reduce((s, r) => s + r.ot_hours, 0) * 100) / 100,
-      total_ot_amount: Math.round(result.reduce((s, r) => s + r.ot_amount, 0) * 100) / 100,
+      total_ot_amount: round2(result.reduce((s, r) => s + r.ot_amount, 0)),
     };
 
     res.json({ data: result, summary });

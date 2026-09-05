@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════
-#  Abyte ERP — Main App Deploy Script
+#  AbyteDesk ERP — Main App Deploy Script
 # ═══════════════════════════════════════════════════════════════
 
 set -e
@@ -37,7 +37,7 @@ elapsed() { local END=$(date +%s); echo $(( END - START_TIME )); }
 
 # ══════════════════════════════════════════════════════════════
 echo -e "\n${CYAN}${BOLD}╔══════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}${BOLD}║      Abyte ERP — Main App Deploy         ║${NC}"
+echo -e "${CYAN}${BOLD}║      AbyteDesk ERP — Main App Deploy         ║${NC}"
 echo -e "${CYAN}${BOLD}║      $(date '+%Y-%m-%d  %H:%M:%S')                 ║${NC}"
 echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════╝${NC}"
 echo "  node: $(node --version 2>/dev/null || echo 'NOT FOUND')"

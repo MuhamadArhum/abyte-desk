@@ -72,9 +72,9 @@ exports.create = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
 
-    // Look up role_name for the denormalized column
     const roleRow = await query('SELECT role_name FROM roles WHERE role_id = ?', [role_id]);
-    const role_name = roleRow.length > 0 ? roleRow[0].role_name : 'Cashier';
+    if (roleRow.length === 0) return res.status(400).json({ message: 'Invalid role selected' });
+    const role_name = roleRow[0].role_name;
 
     const result = await query(
       'INSERT INTO users (username, name, email, password_hash, role_id, role_name) VALUES (?, ?, ?, ?, ?, ?)',
