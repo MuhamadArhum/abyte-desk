@@ -1,0 +1,27 @@
+{
+  "name": "abyte-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E tests for AbyteDesk ERP",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:auth": "playwright test tests/01-auth.spec.ts",
+    "test:dashboard": "playwright test tests/02-dashboard.spec.ts",
+    "test:pos": "playwright test tests/03-pos.spec.ts",
+    "test:inventory": "playwright test tests/04-inventory.spec.ts",
+    "test:sales": "playwright test tests/05-sales.spec.ts",
+    "test:hr": "playwright test tests/06-hr.spec.ts",
+    "test:accounts": "playwright test tests/07-accounts.spec.ts",
+    "test:settings": "playwright test tests/08-settings.spec.ts",
+    "test:responsive": "playwright test tests/09-responsive.spec.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.4.1"
+  }
+}
