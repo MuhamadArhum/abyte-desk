@@ -59,6 +59,12 @@ exports.createReturn = async (req, res) => {
       const maxReturnable = original.quantity - alreadyReturned;
       const returnQty = item.quantity || item.quantity_returned || 0;
 
+      // BUG-021: Reject zero-quantity return items
+      if (returnQty <= 0) {
+        await conn.rollback();
+        return res.status(400).json({ message: `Return quantity must be greater than 0 for product ${item.product_id}` });
+      }
+
       if (returnQty > maxReturnable) {
         await conn.rollback();
         return res.status(400).json({
@@ -67,8 +73,10 @@ exports.createReturn = async (req, res) => {
       }
 
       item.returnQty = returnQty;
+      item.variant_id = original.variant_id || null;
       item.unit_price = parseFloat(original.unit_price);
-      item.refund_price = item.unit_price * returnQty;
+      // BUG-022: Round refund price to avoid floating-point drift
+      item.refund_price = Math.round(item.unit_price * returnQty * 100) / 100;
       totalRefund += item.refund_price;
     }
 
@@ -94,6 +102,17 @@ exports.createReturn = async (req, res) => {
         'UPDATE products SET stock_quantity = stock_quantity + ? WHERE product_id = ?',
         [item.returnQty, item.product_id]
       );
+      // BUG-010: Also restore variant stock if this was a variant item
+      if (item.variant_id) {
+        await conn.query(
+          'UPDATE variant_inventory SET available_stock = available_stock + ? WHERE variant_id = ?',
+          [item.returnQty, item.variant_id]
+        );
+        await conn.query(
+          'UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE variant_id = ?',
+          [item.returnQty, item.variant_id]
+        );
+      }
     }
 
     // Update cash register for refund

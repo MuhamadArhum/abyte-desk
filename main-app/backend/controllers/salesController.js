@@ -229,6 +229,37 @@ exports.createSale = async (req, res) => {
       }
     }
 
+    // BUG-002: Server-side price validation — non-Admin users cannot override system prices
+    if (req.user.role_name !== 'Admin') {
+      const productIds = [...new Set(items.map(i => i.product_id))];
+      const ph = productIds.map(() => '?').join(',');
+      const priceRows = await query(
+        `SELECT p.product_id, p.price,
+                pv.variant_id, COALESCE(pv.price_adjustment, 0) as price_adjustment
+         FROM products p
+         LEFT JOIN product_variants pv ON pv.product_id = p.product_id
+         WHERE p.product_id IN (${ph})`,
+        productIds
+      );
+      const priceMap = {};
+      for (const r of priceRows) {
+        if (!priceMap[r.product_id]) priceMap[r.product_id] = { base: Number(r.price), variants: {} };
+        if (r.variant_id) priceMap[r.product_id].variants[r.variant_id] = Number(r.price_adjustment);
+      }
+      for (const item of items) {
+        const entry = priceMap[item.product_id];
+        if (!entry) return res.status(400).json({ message: `Product ${item.product_id} not found` });
+        const adj = item.variant_id != null ? (entry.variants[item.variant_id] || 0) : 0;
+        const systemPrice = round2(entry.base + adj);
+        const tolerance = Math.max(0.02, systemPrice * 0.001);
+        if (Math.abs(item.unit_price - systemPrice) > tolerance) {
+          return res.status(400).json({
+            message: `Unit price for product ${item.product_id} does not match system price (${systemPrice})`,
+          });
+        }
+      }
+    }
+
     // Get a dedicated connection for the transaction (not from the shared query helper)
     conn = await getConnection();
     await conn.beginTransaction();  // START TRANSACTION
@@ -246,24 +277,27 @@ exports.createSale = async (req, res) => {
     const subtotal = round2(items.reduce((sum, item) => sum + round2(item.unit_price * item.quantity), 0));
     const discountAmt = round2(discount || 0);
     const bundleDiscountAmt = round2(applied_bundles.reduce((sum, bundle) => sum + (bundle.discount_amount || 0), 0));
-    const taxAmt = round2(subtotal * (parseFloat(tax_percent) / 100));
-    const additionalAmt = round2(subtotal * (parseFloat(additional_charges_percent) / 100));
+    // BUG-006: Tax and additional charges apply on post-discount amount, not on gross subtotal
+    const taxableAmount = round2(Math.max(0, subtotal - discountAmt - bundleDiscountAmt));
+    const taxAmt = round2(taxableAmount * (parseFloat(tax_percent) / 100));
+    const additionalAmt = round2(taxableAmount * (parseFloat(additional_charges_percent) / 100));
 
-    // Total Amount = Subtotal + Tax + Additional - Discount - Bundle
-    const total_amount = round2(Math.max(0, subtotal + taxAmt + additionalAmt - discountAmt - bundleDiscountAmt));
+    // Total Amount = Subtotal - Discount - Bundle + Tax + Additional
+    const total_amount = round2(Math.max(0, taxableAmount + taxAmt + additionalAmt));
 
     // Validate discount
-    const maxAllowedTotal = subtotal + taxAmt + additionalAmt;
-    if (discountAmt > maxAllowedTotal) {
+    if (discountAmt > subtotal) {
       await conn.rollback();
-      return res.status(400).json({ message: 'Discount cannot exceed total amount' });
+      return res.status(400).json({ message: 'Discount cannot exceed subtotal' });
     }
 
     const maxDiscountPercent = req.user.role_name === 'Cashier' ? 50 : 100;
     const discountPercent = subtotal > 0 ? (discountAmt / subtotal) * 100 : 0;
-    if (discountPercent > maxDiscountPercent) {
+    // BUG-020: Combined explicit + bundle discount capped for Cashier role
+    const totalDiscountPercent = subtotal > 0 ? ((discountAmt + bundleDiscountAmt) / subtotal) * 100 : 0;
+    if (discountPercent > maxDiscountPercent || totalDiscountPercent > maxDiscountPercent) {
       await conn.rollback();
-      return res.status(400).json({ message: `Discount cannot exceed ${maxDiscountPercent}% of subtotal for your role` });
+      return res.status(400).json({ message: `Total discount cannot exceed ${maxDiscountPercent}% of subtotal for your role` });
     }
 
     // Step 3: Always generate invoice_no; also generate token_no for pending orders
@@ -330,7 +364,7 @@ exports.createSale = async (req, res) => {
         invoice_no,
         table_id || null,
         order_type || 'on_spot',
-        null,
+        req.user.branch_id || null,
         customer_name || null,
         customer_phone || null,
         covers ? parseInt(covers) : null,
@@ -729,9 +763,11 @@ exports.deleteSale = async (req, res) => {
       return res.status(404).json({ message: 'Sale not found' });
     }
 
-    // Restore stock in 4 batch queries
+    // BUG-008: Only restore stock for completed sales — pending sales never deducted stock
     const items = await conn.query('SELECT product_id, variant_id, quantity FROM sale_details WHERE sale_id = ?', [id]);
-    await batchUpdateStock(conn, items, '+');
+    if (sale[0].status === 'completed') {
+      await batchUpdateStock(conn, items, '+');
+    }
 
     // Delete records
     await conn.query('DELETE FROM sale_details WHERE sale_id = ?', [id]);
@@ -741,7 +777,7 @@ exports.deleteSale = async (req, res) => {
 
     await logAction(req.user.user_id, req.user.name, 'SALE_DELETED', 'sale', id, { previous_status: sale[0].status }, req.ip);
 
-    res.json({ message: 'Sale deleted and stock restored' });
+    res.json({ message: 'Sale deleted' });
   } catch (error) {
     if (conn) await conn.rollback();
     logger.error('Delete sale error:', error);
@@ -991,8 +1027,13 @@ exports.getById = async (req, res) => {
 exports.refundSale = async (req, res) => {
   let conn;
   try {
+    // BUG-016: Refunds require Admin or Manager role — cashiers cannot self-authorize
+    if (!['Admin', 'Manager'].includes(req.user.role_name)) {
+      return res.status(403).json({ message: 'Only Admin or Manager can process refunds' });
+    }
+
     const { id } = req.params;
-    
+
     conn = await getConnection();
     await conn.beginTransaction();
 
@@ -1001,10 +1042,12 @@ exports.refundSale = async (req, res) => {
       await conn.rollback();
       return res.status(404).json({ message: 'Sale not found' });
     }
-    
-    if (sale[0].status === 'refunded') {
+
+    // BUG-009: Only completed sales can be refunded — pending sales never deducted stock
+    if (sale[0].status !== 'completed') {
       await conn.rollback();
-      return res.status(400).json({ message: 'Sale is already refunded' });
+      if (sale[0].status === 'refunded') return res.status(400).json({ message: 'Sale is already refunded' });
+      return res.status(400).json({ message: 'Only completed sales can be refunded' });
     }
 
     // Restore stock in 4 batch queries

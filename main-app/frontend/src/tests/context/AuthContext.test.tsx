@@ -43,10 +43,10 @@ describe('AuthProvider - initial state (no stored token)', () => {
     });
   });
 
-  it('defaults currentPlan to free when modules empty', async () => {
+  it('defaults currentPlan to enterprise (Phase 4: all modules always active)', async () => {
     render(<AuthProvider><AuthConsumer /></AuthProvider>);
     await waitFor(() => {
-      expect(screen.getByTestId('plan').textContent).toBe('free');
+      expect(screen.getByTestId('plan').textContent).toBe('enterprise');
     });
   });
 
@@ -128,7 +128,7 @@ describe('login and logout', () => {
     expect(screen.getByTestId('is-admin').textContent).toBe('true');
   });
 
-  it('sets currentPlan to active when modules provided', async () => {
+  it('currentPlan is always enterprise in Phase 4 single-tenant', async () => {
     render(<AuthProvider><AuthConsumer /></AuthProvider>);
     await waitFor(() => screen.getByTestId('authenticated'));
 
@@ -136,7 +136,7 @@ describe('login and logout', () => {
       await userEvent.click(screen.getByText('login'));
     });
 
-    expect(screen.getByTestId('plan').textContent).toBe('active');
+    expect(screen.getByTestId('plan').textContent).toBe('enterprise');
   });
 });
 
@@ -244,11 +244,11 @@ describe('hasModule', () => {
     expect(screen.getByTestId('has-module').textContent).toBe('true');
   });
 
-  it('returns false for unsubscribed module', async () => {
+  it('returns true for any module (Phase 4: single-tenant, all modules enabled)', async () => {
     render(<AuthProvider><ModuleConsumer moduleName="hr" /></AuthProvider>);
     await waitFor(() => screen.getByText('login'));
     await act(async () => { await userEvent.click(screen.getByText('login')); });
-    expect(screen.getByTestId('has-module').textContent).toBe('false');
+    expect(screen.getByTestId('has-module').textContent).toBe('true');
   });
 
   it('returns true for all modules when modules list is empty (fallback)', async () => {

@@ -180,18 +180,33 @@ exports.approve = async (req, res) => {
 };
 
 exports.cancel = async (req, res) => {
+  // BUG-012: Use a transaction with FOR UPDATE to prevent race with concurrent approve
+  const conn = await getConnection();
   try {
     const { id } = req.params;
-    const [transfer] = await query('SELECT * FROM stock_transfers WHERE transfer_id = ?', [id]);
-    if (!transfer) return res.status(404).json({ message: 'Transfer not found' });
-    if (transfer.status !== 'pending') return res.status(400).json({ message: 'Only pending transfers can be cancelled' });
+    await conn.beginTransaction();
 
-    await query("UPDATE stock_transfers SET status = 'cancelled' WHERE transfer_id = ?", [id]);
+    const [transfer] = await conn.query('SELECT * FROM stock_transfers WHERE transfer_id = ? FOR UPDATE', [id]);
+    if (!transfer) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Transfer not found' });
+    }
+    if (transfer.status !== 'pending') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Only pending transfers can be cancelled' });
+    }
+
+    await conn.query("UPDATE stock_transfers SET status = 'cancelled' WHERE transfer_id = ?", [id]);
+    await conn.commit();
+
     await logAction(req.user.user_id, req.user.name, 'TRANSFER_CANCELLED', 'stock_transfer', id, {}, req.ip);
     res.json({ message: 'Transfer cancelled' });
   } catch (error) {
+    await conn.rollback();
     logger.error('Cancel transfer error:', error);
     res.status(500).json({ message: 'Failed to cancel transfer' });
+  } finally {
+    conn.release();
   }
 };
 

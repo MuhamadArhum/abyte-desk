@@ -70,7 +70,9 @@ exports.openRegister = async (req, res) => {
       return res.status(400).json({ message: 'A register is already open. Close it before opening a new one.' });
     }
 
-    if (opening_balance === undefined || opening_balance < 0 || opening_balance > 10000000) {
+    // BUG-033: Reject non-numeric values; parseFloat('abc') === NaN which passes all numeric comparisons
+    const openingBalNum = parseFloat(opening_balance);
+    if (opening_balance === undefined || isNaN(openingBalNum) || openingBalNum < 0 || openingBalNum > 10000000) {
       return res.status(400).json({ message: 'Valid opening balance is required (0 – 10,000,000)' });
     }
 
@@ -112,7 +114,9 @@ exports.closeRegister = async (req, res) => {
   try {
     const { closing_balance, close_note } = req.body;
 
-    if (closing_balance === undefined || closing_balance < 0 || closing_balance > 10000000) {
+    // BUG-033: Reject non-numeric values
+    const closingBalNum = parseFloat(closing_balance);
+    if (closing_balance === undefined || isNaN(closingBalNum) || closingBalNum < 0 || closingBalNum > 10000000) {
       return res.status(400).json({ message: 'Valid closing balance is required (0 – 10,000,000)' });
     }
 
@@ -147,8 +151,21 @@ exports.closeRegister = async (req, res) => {
     );
     const totalExpenses = round2(parseFloat(expensesResult[0].total));
 
-    // Expected = Opening Balance + Cash Sales - Expenses
-    const expected = round2(parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) - totalExpenses);
+    // BUG-011: Include cash_in and cash_out movements in expected balance
+    const movementsResult = await conn.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN type = 'cash_in' THEN amount ELSE 0 END), 0) as total_cash_in,
+        COALESCE(SUM(CASE WHEN type = 'cash_out' THEN amount ELSE 0 END), 0) as total_cash_out
+       FROM cash_movements WHERE register_id = ?`,
+      [reg.register_id]
+    );
+    const totalCashIn = round2(parseFloat(movementsResult[0].total_cash_in));
+    const totalCashOut = round2(parseFloat(movementsResult[0].total_cash_out));
+
+    // Expected = Opening + Cash Sales + Cash In - Cash Out - Expenses
+    const expected = round2(
+      parseFloat(reg.opening_balance) + parseFloat(reg.cash_sales_total) + totalCashIn - totalCashOut - totalExpenses
+    );
     const difference = round2(parseFloat(closing_balance) - expected);
 
     await conn.query(

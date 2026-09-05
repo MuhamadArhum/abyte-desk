@@ -1,34 +1,32 @@
 // Integration tests for /api/auth routes
+// Phase 4: single-tenant — no company_code, no tenant lookup, query() for all DB ops
 
 jest.mock('../../config/database');
 jest.mock('../../services/tokenBlacklist');
 jest.mock('../../services/auditService', () => ({ logAction: jest.fn() }));
 jest.mock('../../config/logger', () => ({ error: jest.fn(), warn: jest.fn(), info: jest.fn(), http: jest.fn() }));
 
-process.env.JWT_SECRET     = 'test-integration-secret-abc123';
-process.env.DB_NAME        = 'test_db';
-process.env.MASTER_DB_NAME = 'test_master';
+process.env.JWT_SECRET = 'test-integration-secret-abc123';
 
 const request  = require('supertest');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
-const { queryDb, tenantStorage } = require('../../config/database');
+const { query } = require('../../config/database');
 const { isBlacklisted, blacklistToken } = require('../../services/tokenBlacklist');
+const { logAction } = require('../../services/auditService');
 const { buildTestApp } = require('../helpers/testApp');
 
 let app;
 
 beforeAll(() => {
-  tenantStorage.run = jest.fn((db, fn) => fn());
   app = buildTestApp();
 });
 
 beforeEach(() => {
-  // jest.config has resetMocks:true — resets implementations before each test
-  // Re-initialize needed default behaviors
-  tenantStorage.run = jest.fn((db, fn) => fn());
   isBlacklisted.mockResolvedValue(false);
   blacklistToken.mockResolvedValue(true);
+  // authController calls logAction(...).catch(...) — must return a Promise
+  logAction.mockResolvedValue(undefined);
 });
 
 // ─── POST /api/auth/login ─────────────────────────────────────────
@@ -36,95 +34,82 @@ beforeEach(() => {
 describe('POST /api/auth/login', () => {
   const endpoint = '/api/auth/login';
 
-  it('returns 400 when required fields are missing', async () => {
+  it('returns 400 when email is missing', async () => {
+    const res = await request(app).post(endpoint).send({ password: 'pass' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when password is missing', async () => {
     const res = await request(app).post(endpoint).send({ email: 'a@b.com' });
     expect(res.status).toBe(400);
   });
 
-  it('returns 401 for unknown company code', async () => {
-    queryDb.mockResolvedValueOnce([]); // tenant not found
-    const res = await request(app).post(endpoint).send({
-      company_code: 'unknown', email: 'a@b.com', password: 'pass',
-    });
+  it('returns 401 when user not found', async () => {
+    query.mockResolvedValueOnce([]); // user lookup returns empty
+    const res = await request(app).post(endpoint).send({ email: 'notfound@x.com', password: 'pass' });
     expect(res.status).toBe(401);
-    expect(res.body.message).toMatch(/company code/i);
-  });
-
-  it('returns 403 for suspended tenant', async () => {
-    queryDb.mockResolvedValueOnce([{ tenant_id: 1, db_name: 'test_db', is_active: 0 }]);
-    const res = await request(app).post(endpoint).send({
-      company_code: 'abc', email: 'a@b.com', password: 'pass',
-    });
-    expect(res.status).toBe(403);
-    expect(res.body.message).toMatch(/suspended/i);
+    expect(res.body.message).toMatch(/invalid/i);
   });
 
   it('returns 401 for wrong password', async () => {
     const hash = await bcrypt.hash('correct', 10);
-    queryDb
-      .mockResolvedValueOnce([{ tenant_id: 1, db_name: 'test_db', is_active: 1 }])
-      .mockResolvedValueOnce([{ modules_enabled: '[]' }])
-      .mockResolvedValueOnce([{ user_id: 1, email: 'a@b.com', password_hash: hash, is_active: 1, role_name: 'Cashier', branch_id: null }]);
-    const res = await request(app).post(endpoint).send({
-      company_code: 'abc', email: 'a@b.com', password: 'wrong_password',
-    });
+    query.mockResolvedValueOnce([{
+      user_id: 1, email: 'a@b.com', password_hash: hash,
+      is_active: 1, role_name: 'Cashier', username: 'cashier', name: 'Test',
+    }]);
+    const res = await request(app).post(endpoint).send({ email: 'a@b.com', password: 'wrong_password' });
     expect(res.status).toBe(401);
   });
 
   it('returns 403 for deactivated user account', async () => {
     const hash = await bcrypt.hash('pass', 10);
-    queryDb
-      .mockResolvedValueOnce([{ tenant_id: 1, db_name: 'test_db', is_active: 1 }])
-      .mockResolvedValueOnce([{ modules_enabled: '[]' }])
-      .mockResolvedValueOnce([{ user_id: 1, email: 'a@b.com', password_hash: hash, is_active: 0, role_name: 'Cashier', branch_id: null }]);
-    const res = await request(app).post(endpoint).send({
-      company_code: 'abc', email: 'a@b.com', password: 'pass',
-    });
+    query.mockResolvedValueOnce([{
+      user_id: 1, email: 'a@b.com', password_hash: hash,
+      is_active: 0, role_name: 'Cashier', username: 'cashier', name: 'Test',
+    }]);
+    const res = await request(app).post(endpoint).send({ email: 'a@b.com', password: 'pass' });
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/deactivated/i);
   });
 
-  it('returns 200 with valid JWT on successful login (Admin, no branch)', async () => {
+  it('returns 200 with valid JWT on successful Admin login', async () => {
     const hash = await bcrypt.hash('pass123', 10);
-    // Admin login: tenant → modules → user (3 calls; Admin skips permissions + no branch)
-    queryDb
-      .mockResolvedValueOnce([{ tenant_id: 1, db_name: 'test_db', is_active: 1 }])
-      .mockResolvedValueOnce([{ modules_enabled: '["sales","inventory"]' }])
-      .mockResolvedValueOnce([{
-        user_id: 1, name: 'Admin User', email: 'admin@test.com', username: 'admin',
-        role_name: 'Admin', password_hash: hash, is_active: 1, branch_id: null,
-      }]);
-    const res = await request(app).post(endpoint).send({
-      company_code: 'abc', email: 'admin@test.com', password: 'pass123',
-    });
+    // Admin: 1 query (user by email). No permissions query.
+    query.mockResolvedValueOnce([{
+      user_id: 1, name: 'Admin User', email: 'admin@test.com', username: 'admin',
+      role_name: 'Admin', password_hash: hash, is_active: 1,
+    }]);
+    const res = await request(app).post(endpoint).send({ email: 'admin@test.com', password: 'pass123' });
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('token');
     expect(res.body).toHaveProperty('user');
     expect(res.body.user.email).toBe('admin@test.com');
+    expect(res.body.permissions).toBeNull();
+    expect(res.body.modules).toEqual([]);
     const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
-    expect(decoded.modules).toEqual(['sales', 'inventory']);
+    expect(decoded.user_id).toBe(1);
+    expect(decoded.role_name).toBe('Admin');
   });
 
-  it('JWT contains branch_id for branch user (Cashier with branch)', async () => {
+  it('returns 200 with permissions array for non-Admin (Cashier) login', async () => {
     const hash = await bcrypt.hash('pass', 10);
-    // Cashier login: tenant → modules → user → permissions → branch name (5 calls)
-    queryDb
-      .mockResolvedValueOnce([{ tenant_id: 2, db_name: 'test_db', is_active: 1 }])
-      .mockResolvedValueOnce([{ modules_enabled: '[]' }])
+    // Cashier: user lookup + permissions query
+    query
       .mockResolvedValueOnce([{
-        user_id: 7, name: 'Cashier', email: 'c@c.com', username: 'cashier',
-        role_name: 'Cashier', password_hash: hash, is_active: 1, branch_id: 1,
+        user_id: 7, name: 'Cashier User', email: 'c@c.com', username: 'cashier',
+        role_name: 'Cashier', password_hash: hash, is_active: 1,
       }])
-      .mockResolvedValueOnce([])                           // permissions (non-Admin)
-      .mockResolvedValueOnce([{ store_name: 'Branch A' }]); // branch name
-    const res = await request(app).post(endpoint).send({
-      company_code: 'xyz', email: 'c@c.com', password: 'pass',
-    });
+      .mockResolvedValueOnce([
+        { module_key: 'sales.pos' },
+        { module_key: 'sales' },
+      ]);
+    const res = await request(app).post(endpoint).send({ email: 'c@c.com', password: 'pass' });
     expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.permissions)).toBe(true);
+    expect(res.body.permissions).toContain('sales.pos');
     const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET);
     expect(decoded.user_id).toBe(7);
-    expect(decoded.branch_id).toBe(1);
-    expect(res.body.user.branch_name).toBe('Branch A');
+    expect(decoded.role_name).toBe('Cashier');
   });
 });
 
@@ -144,18 +129,22 @@ describe('GET /api/auth/verify', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 200 with user data for valid token (Admin — no permission DB call)', async () => {
-    const fakeUser = { user_id: 1, name: 'Test', email: 'a@b.com', role_name: 'Admin', branch_id: null };
-    const token = jwt.sign({ user_id: 1, tenant_db: 'test_db', modules: ['sales'] }, process.env.JWT_SECRET);
-    // Admin: authenticate calls queryDb once (user lookup), then verify returns directly (no permission/branch queries)
-    queryDb.mockResolvedValueOnce([fakeUser]);
+  it('returns 200 with user data for valid Admin token', async () => {
+    const fakeUser = {
+      user_id: 1, name: 'Test', email: 'a@b.com',
+      role_name: 'Admin', username: 'admin', is_active: 1,
+    };
+    const token = jwt.sign({ user_id: 1, role_name: 'Admin' }, process.env.JWT_SECRET);
+    // authenticate: user lookup by user_id
+    query.mockResolvedValueOnce([fakeUser]);
     const res = await request(app)
       .get('/api/auth/verify')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('user');
     expect(res.body.user.email).toBe('a@b.com');
-    expect(res.body.permissions).toBeNull(); // Admin always gets null (full access)
+    expect(res.body.permissions).toBeNull(); // Admin = full access
+    expect(res.body.modules).toEqual([]);
   });
 });
 
@@ -168,9 +157,13 @@ describe('POST /api/auth/logout', () => {
   });
 
   it('returns 200 and blacklists the token on valid logout', async () => {
-    const fakeUser = { user_id: 1, name: 'Test', email: 'a@b.com', role_name: 'Admin', branch_id: null };
-    const token = jwt.sign({ user_id: 1, tenant_db: 'test_db', modules: [] }, process.env.JWT_SECRET);
-    queryDb.mockResolvedValueOnce([fakeUser]);
+    const fakeUser = {
+      user_id: 1, name: 'Test', email: 'a@b.com',
+      role_name: 'Admin', username: 'admin', is_active: 1,
+    };
+    const token = jwt.sign({ user_id: 1, role_name: 'Admin' }, process.env.JWT_SECRET);
+    // authenticate: user lookup
+    query.mockResolvedValueOnce([fakeUser]);
     const res = await request(app)
       .post('/api/auth/logout')
       .set('Authorization', `Bearer ${token}`);

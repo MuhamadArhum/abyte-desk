@@ -48,7 +48,8 @@ exports.getAll = async (req, res) => {
       countParams.push(customer_id);
     }
 
-    if (overdue) {
+    // BUG-026: Compare against string 'true' — query params are always strings; 'false' is truthy
+    if (overdue === 'true') {
       sql += ' AND cs.due_date < CURDATE() AND cs.status != ?';
       countSql += ' AND cs.due_date < CURDATE() AND cs.status != ?';
       params.push('paid');
@@ -153,8 +154,12 @@ exports.create = async (req, res) => {
 
     const paidAmt = parseFloat(paid_amount) || 0;
     const totalAmt = parseFloat(total_amount);
-    const balanceDue = totalAmt - paidAmt;
-    const status = paidAmt > 0 ? 'partial' : 'pending';
+    // BUG-024: Reject overpayment which would create negative balance_due
+    if (paidAmt > totalAmt) {
+      return res.status(400).json({ message: 'Paid amount cannot exceed total amount' });
+    }
+    const balanceDue = Math.round((totalAmt - paidAmt) * 100) / 100;
+    const status = balanceDue <= 0.005 ? 'paid' : paidAmt > 0 ? 'partial' : 'pending';
 
     const conn = await getConnection();
     try {
@@ -234,9 +239,10 @@ exports.recordPayment = async (req, res) => {
         [id, paymentAmount, payment_method || 'cash', notes || null, req.user.user_id]
       );
 
-      const newPaidAmount = parseFloat(creditSale.paid_amount) + paymentAmount;
-      const newBalanceDue = parseFloat(creditSale.balance_due) - paymentAmount;
-      const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial';
+      // BUG-025: Round to 2 decimal places to prevent floating-point drift leaving 0.000001 balance
+      const newPaidAmount = Math.round((parseFloat(creditSale.paid_amount) + paymentAmount) * 100) / 100;
+      const newBalanceDue = Math.round((parseFloat(creditSale.balance_due) - paymentAmount) * 100) / 100;
+      const newStatus = newBalanceDue <= 0.005 ? 'paid' : 'partial';
 
       await conn.query(
         `UPDATE credit_sales SET paid_amount = ?, balance_due = ?, status = ? WHERE credit_sale_id = ?`,

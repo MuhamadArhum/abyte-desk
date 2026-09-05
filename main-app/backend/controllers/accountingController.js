@@ -1643,7 +1643,7 @@ exports.getCashFlowStatement = async (req, res) => {
     // Cash inflows from receipt vouchers
     const [crvTotals] = await query(`
       SELECT
-        COALESCE(SUM(rv.total_amount), 0) as total_receipts,
+        COALESCE(SUM(rv.amount), 0) as total_receipts,
         COUNT(rv.voucher_id) as receipt_count
       FROM receipt_vouchers rv
       WHERE rv.voucher_date BETWEEN ? AND ?
@@ -1652,7 +1652,7 @@ exports.getCashFlowStatement = async (req, res) => {
     // Cash outflows from payment vouchers
     const [cpvTotals] = await query(`
       SELECT
-        COALESCE(SUM(pv.total_amount), 0) as total_payments,
+        COALESCE(SUM(pv.amount), 0) as total_payments,
         COUNT(pv.voucher_id) as payment_count
       FROM payment_vouchers pv
       WHERE pv.voucher_date BETWEEN ? AND ?
@@ -1662,36 +1662,34 @@ exports.getCashFlowStatement = async (req, res) => {
     const monthly = await query(`
       SELECT period, SUM(receipts) as receipts, SUM(payments) as payments
       FROM (
-        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, total_amount as receipts, 0 as payments
+        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, amount as receipts, 0 as payments
         FROM receipt_vouchers WHERE voucher_date BETWEEN ? AND ?
         UNION ALL
-        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, 0 as receipts, total_amount as payments
+        SELECT DATE_FORMAT(voucher_date, '%Y-%m') as period, 0 as receipts, amount as payments
         FROM payment_vouchers WHERE voucher_date BETWEEN ? AND ?
       ) combined
       GROUP BY period
       ORDER BY period
     `, [from_date, to_date, from_date, to_date]);
 
-    // Top receipt categories (account names)
+    // Top receipt categories by main account (income/receivable side)
     const topReceipts = await query(`
-      SELECT a.account_name, SUM(rvl.credit_amount) as amount
-      FROM receipt_voucher_lines rvl
-      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
-      JOIN accounts a ON rvl.account_id = a.account_id
-      WHERE rv.voucher_date BETWEEN ? AND ? AND rvl.credit_amount > 0
-      GROUP BY rvl.account_id
+      SELECT a.account_name, SUM(rv.amount) as amount
+      FROM receipt_vouchers rv
+      JOIN accounts a ON rv.main_account_id = a.account_id
+      WHERE rv.voucher_date BETWEEN ? AND ?
+      GROUP BY rv.main_account_id
       ORDER BY amount DESC
       LIMIT 10
     `, [from_date, to_date]);
 
-    // Top payment categories
+    // Top payment categories by main account (expense/payable side)
     const topPayments = await query(`
-      SELECT a.account_name, SUM(pvl.debit_amount) as amount
-      FROM payment_voucher_lines pvl
-      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
-      JOIN accounts a ON pvl.account_id = a.account_id
-      WHERE pv.voucher_date BETWEEN ? AND ? AND pvl.debit_amount > 0
-      GROUP BY pvl.account_id
+      SELECT a.account_name, SUM(pv.amount) as amount
+      FROM payment_vouchers pv
+      JOIN accounts a ON pv.main_account_id = a.account_id
+      WHERE pv.voucher_date BETWEEN ? AND ?
+      GROUP BY pv.main_account_id
       ORDER BY amount DESC
       LIMIT 10
     `, [from_date, to_date]);
@@ -1729,15 +1727,14 @@ exports.getPayablesAging = async (req, res) => {
     const rows = await query(`
       SELECT
         s.supplier_id, s.supplier_name, s.phone, s.email,
-        p.purchase_id, DATE(p.purchase_date) as purchase_date,
-        p.grand_total, COALESCE(p.paid_amount, 0) as paid_amount,
-        (p.grand_total - COALESCE(p.paid_amount, 0)) as outstanding,
-        DATEDIFF(NOW(), p.purchase_date) as days_old
-      FROM purchases p
-      JOIN suppliers s ON p.supplier_id = s.supplier_id
-      WHERE p.payment_status IN ('partial', 'unpaid', 'pending')
-        AND (p.grand_total - COALESCE(p.paid_amount, 0)) > 0
-      ORDER BY s.supplier_name, p.purchase_date
+        pv.pv_id, pv.pv_number, DATE(pv.voucher_date) as purchase_date,
+        pv.total_amount as grand_total,
+        pv.total_amount as outstanding,
+        DATEDIFF(NOW(), pv.voucher_date) as days_old
+      FROM inv_purchase_vouchers pv
+      JOIN suppliers s ON pv.supplier_id = s.supplier_id
+      WHERE pv.supplier_id IS NOT NULL AND pv.total_amount > 0
+      ORDER BY s.supplier_name, pv.voucher_date
     `, []);
 
     const supplierMap = {};
@@ -1803,25 +1800,29 @@ exports.getAccountStatement = async (req, res) => {
 
     // Opening balance from all posted entries before from_date
     const openingRows = await query(`
-      SELECT COALESCE(SUM(jel.debit_amount), 0) as total_dr, COALESCE(SUM(jel.credit_amount), 0) as total_cr
+      SELECT COALESCE(SUM(jel.debit), 0) as total_dr, COALESCE(SUM(jel.credit), 0) as total_cr
       FROM journal_entry_lines jel
       JOIN journal_entries je ON jel.entry_id = je.entry_id
       WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date < ?
     `, [account_id, from_date]);
 
+    // CPV: main_account_id side is debited, account_id side is credited
     const openingCPV = await query(`
-      SELECT COALESCE(SUM(pvl.debit_amount), 0) as total_dr, COALESCE(SUM(pvl.credit_amount), 0) as total_cr
-      FROM payment_voucher_lines pvl
-      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
-      WHERE pvl.account_id = ? AND pv.voucher_date < ?
-    `, [account_id, from_date]);
+      SELECT
+        COALESCE(SUM(CASE WHEN main_account_id = ? THEN amount ELSE 0 END), 0) as total_dr,
+        COALESCE(SUM(CASE WHEN account_id = ? THEN amount ELSE 0 END), 0) as total_cr
+      FROM payment_vouchers
+      WHERE (main_account_id = ? OR account_id = ?) AND voucher_date < ?
+    `, [account_id, account_id, account_id, account_id, from_date]);
 
+    // CRV: account_id side is debited, main_account_id side is credited
     const openingCRV = await query(`
-      SELECT COALESCE(SUM(rvl.debit_amount), 0) as total_dr, COALESCE(SUM(rvl.credit_amount), 0) as total_cr
-      FROM receipt_voucher_lines rvl
-      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
-      WHERE rvl.account_id = ? AND rv.voucher_date < ?
-    `, [account_id, from_date]);
+      SELECT
+        COALESCE(SUM(CASE WHEN account_id = ? THEN amount ELSE 0 END), 0) as total_dr,
+        COALESCE(SUM(CASE WHEN main_account_id = ? THEN amount ELSE 0 END), 0) as total_cr
+      FROM receipt_vouchers
+      WHERE (account_id = ? OR main_account_id = ?) AND voucher_date < ?
+    `, [account_id, account_id, account_id, account_id, from_date]);
 
     const openingDr = Number(openingRows[0]?.total_dr || 0) + Number(openingCPV[0]?.total_dr || 0) + Number(openingCRV[0]?.total_dr || 0);
     const openingCr = Number(openingRows[0]?.total_cr || 0) + Number(openingCPV[0]?.total_cr || 0) + Number(openingCRV[0]?.total_cr || 0);
@@ -1831,24 +1832,30 @@ exports.getAccountStatement = async (req, res) => {
     // Period transactions
     const txns = await query(`
       SELECT je.entry_date as txn_date, je.reference_number as reference, je.description,
-             COALESCE(jel.debit_amount, 0) as debit, COALESCE(jel.credit_amount, 0) as credit, 'Journal' as source
+             COALESCE(jel.debit, 0) as debit, COALESCE(jel.credit, 0) as credit, 'Journal' as source
       FROM journal_entry_lines jel
       JOIN journal_entries je ON jel.entry_id = je.entry_id
       WHERE jel.account_id = ? AND je.status = 'posted' AND je.entry_date BETWEEN ? AND ?
       UNION ALL
       SELECT pv.voucher_date, pv.voucher_number, pv.description,
-             COALESCE(pvl.debit_amount, 0), COALESCE(pvl.credit_amount, 0), 'CPV'
-      FROM payment_voucher_lines pvl
-      JOIN payment_vouchers pv ON pvl.voucher_id = pv.voucher_id
-      WHERE pvl.account_id = ? AND pv.voucher_date BETWEEN ? AND ?
+             CASE WHEN pv.main_account_id = ? THEN pv.amount ELSE 0 END,
+             CASE WHEN pv.account_id = ? THEN pv.amount ELSE 0 END,
+             'CPV'
+      FROM payment_vouchers pv
+      WHERE (pv.main_account_id = ? OR pv.account_id = ?) AND pv.voucher_date BETWEEN ? AND ?
       UNION ALL
       SELECT rv.voucher_date, rv.voucher_number, rv.description,
-             COALESCE(rvl.debit_amount, 0), COALESCE(rvl.credit_amount, 0), 'CRV'
-      FROM receipt_voucher_lines rvl
-      JOIN receipt_vouchers rv ON rvl.voucher_id = rv.voucher_id
-      WHERE rvl.account_id = ? AND rv.voucher_date BETWEEN ? AND ?
+             CASE WHEN rv.account_id = ? THEN rv.amount ELSE 0 END,
+             CASE WHEN rv.main_account_id = ? THEN rv.amount ELSE 0 END,
+             'CRV'
+      FROM receipt_vouchers rv
+      WHERE (rv.account_id = ? OR rv.main_account_id = ?) AND rv.voucher_date BETWEEN ? AND ?
       ORDER BY txn_date, reference
-    `, [account_id, from_date, to_date, account_id, from_date, to_date, account_id, from_date, to_date]);
+    `, [
+      account_id, from_date, to_date,
+      account_id, account_id, account_id, account_id, from_date, to_date,
+      account_id, account_id, account_id, account_id, from_date, to_date,
+    ]);
 
     // Compute running balance
     let runningBalance = openingBalance;

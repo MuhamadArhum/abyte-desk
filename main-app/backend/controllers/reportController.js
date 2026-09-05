@@ -16,13 +16,14 @@ const { query } = require('../config/database');  // Database query helper
 // Used on the Reports page "Daily" tab.
 exports.dailyReport = async (req, res) => {
   try {
+    // BUG-017: Exclude refunded/cancelled sales from revenue figures
     const summary = await query(
       `SELECT
          COUNT(*) as total_transactions,
          COALESCE(SUM(total_amount), 0) as total_sales,
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue
-       FROM sales WHERE sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
+       FROM sales WHERE status = 'completed' AND sale_date >= CURDATE() AND sale_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
     );
     res.json(summary[0]);  // Return single object (not array)
   } catch (err) {
@@ -47,7 +48,7 @@ exports.dateRangeReport = async (req, res) => {
       return res.status(400).json({ message: 'Start and end dates are required' });
     }
 
-    // Overall summary for the date range
+    // BUG-017: Exclude refunded/cancelled sales from revenue figures
     const summary = await query(
       `SELECT
          COUNT(*) as total_transactions,
@@ -55,7 +56,7 @@ exports.dateRangeReport = async (req, res) => {
          COALESCE(SUM(discount), 0) as total_discount,
          COALESCE(SUM(net_amount), 0) as total_revenue,
          COALESCE(AVG(net_amount), 0) as avg_transaction
-       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)`,
+       FROM sales WHERE status = 'completed' AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)`,
       [start_date, end_date]
     );
 
@@ -65,7 +66,7 @@ exports.dateRangeReport = async (req, res) => {
          DATE(sale_date) as date,
          COUNT(*) as transactions,
          SUM(net_amount) as revenue
-       FROM sales WHERE sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
+       FROM sales WHERE status = 'completed' AND sale_date >= ? AND sale_date < DATE_ADD(?, INTERVAL 1 DAY)
        GROUP BY DATE(sale_date) ORDER BY date`,
       [start_date, end_date]
     );
@@ -128,10 +129,16 @@ exports.productReport = async (req, res) => {
 // Used on the Reports page "Inventory" tab.
 exports.inventoryReport = async (req, res) => {
   try {
-    // Fetch all products with their stock levels and calculated stock value
+    // BUG-029: Read low_stock_threshold from store settings instead of hardcoding 10
+    const settingRows = await query(
+      `SELECT setting_value FROM store_settings WHERE setting_key = 'low_stock_threshold' LIMIT 1`
+    );
+    const lowStockThreshold = settingRows.length > 0 ? (parseInt(settingRows[0].setting_value) || 10) : 10;
+
+    // BUG-018: Use avg_cost (cost price) for stock valuation, not selling price
     const all = await query(
-      `SELECT p.product_name, p.price, i.available_stock, c.category_name,
-              (p.price * i.available_stock) as stock_value
+      `SELECT p.product_name, p.price, i.available_stock, i.avg_cost, c.category_name,
+              (COALESCE(i.avg_cost, 0) * i.available_stock) as stock_value
        FROM inventory i
        JOIN products p ON i.product_id = p.product_id
        LEFT JOIN categories c ON p.category_id = c.category_id
@@ -139,8 +146,8 @@ exports.inventoryReport = async (req, res) => {
        ORDER BY p.product_name`
     );
 
-    // Filter into categories in JavaScript (more readable than multiple SQL queries)
-    const lowStock = all.filter(r => r.available_stock > 0 && r.available_stock < 10);
+    // Filter into categories in JavaScript using the configured threshold
+    const lowStock = all.filter(r => r.available_stock > 0 && r.available_stock < lowStockThreshold);
     const outOfStock = all.filter(r => r.available_stock === 0);
 
     // Calculate total value of all inventory (sum of price * stock for each product)

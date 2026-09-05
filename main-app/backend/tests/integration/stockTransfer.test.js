@@ -1,4 +1,5 @@
 // Integration tests for /api/stock-transfers
+// Phase 4: single-tenant — authenticate uses query(), not queryDb()
 // Routes: GET /, GET /:id, POST /, PUT /:id/approve, PUT /:id/cancel, GET /stats
 //
 // ensureStoreInventory() is only called in getAll (GET /).
@@ -11,18 +12,20 @@ jest.mock('../../config/logger', () => ({ error: jest.fn(), warn: jest.fn(), inf
 
 process.env.JWT_SECRET     = 'test-secret-transfer';
 process.env.DB_NAME        = 'test_db';
-process.env.MASTER_DB_NAME = 'test_master';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
-const { queryDb, query, getConnection, tenantStorage } = require('../../config/database');
+const { query, getConnection } = require('../../config/database');
 const { isBlacklisted } = require('../../services/tokenBlacklist');
 const { buildTestApp } = require('../helpers/testApp');
 
 let app;
-const adminUser = { user_id: 1, name: 'Admin', email: 'a@a.com', role_name: 'Admin', branch_id: null };
+const adminUser = {
+  user_id: 1, name: 'Admin', email: 'a@a.com',
+  role_name: 'Admin', branch_id: null, is_active: 1,
+};
 const makeToken = () =>
-  jwt.sign({ user_id: 1, tenant_db: 'test_db', modules: [], role_name: 'Admin' }, process.env.JWT_SECRET);
+  jwt.sign({ user_id: 1, role_name: 'Admin' }, process.env.JWT_SECRET);
 const authHeader = () => ({ Authorization: `Bearer ${makeToken()}` });
 
 const makeConn = () => {
@@ -38,15 +41,15 @@ const makeConn = () => {
 };
 
 beforeAll(() => {
-  tenantStorage.run = jest.fn((db, fn) => fn());
   app = buildTestApp();
 });
 
 beforeEach(() => {
-  tenantStorage.run = jest.fn((db, fn) => fn());
+  // Phase 4: authenticate uses query() first (user lookup by user_id).
+  // Prepend adminUser as first Once value so authenticate always succeeds.
   isBlacklisted.mockResolvedValue(false);
-  queryDb.mockResolvedValue([adminUser]);
-  query.mockResolvedValue([]);
+  query.mockResolvedValueOnce([adminUser]); // authenticate: user lookup
+  query.mockResolvedValue([]);              // fallback for controller calls
 });
 
 // ─── GET /api/stock-transfers ────────────────────────────────────
@@ -60,7 +63,7 @@ describe('GET /api/stock-transfers', () => {
   it('returns 200 with paginated list', async () => {
     // getAll calls: ensureStoreInventory (CREATE TABLE) → COUNT → data
     query
-      .mockResolvedValueOnce(undefined)          // CREATE TABLE (ensureStoreInventory — first call only)
+      .mockResolvedValueOnce(undefined)          // CREATE TABLE (ensureStoreInventory)
       .mockResolvedValueOnce([{ total: 0 }])     // COUNT
       .mockResolvedValueOnce([]);                // data
     const res = await request(app)
@@ -73,7 +76,7 @@ describe('GET /api/stock-transfers', () => {
 });
 
 // ─── GET /api/stock-transfers/stats ──────────────────────────────
-// (tested early — getStats does NOT call ensureStoreInventory)
+// (getStats does NOT call ensureStoreInventory)
 
 describe('GET /api/stock-transfers/stats', () => {
   it('returns 401 without token', async () => {
@@ -96,7 +99,7 @@ describe('GET /api/stock-transfers/stats', () => {
 });
 
 // ─── POST /api/stock-transfers ────────────────────────────────────
-// create does NOT call ensureStoreInventory — no extra mock needed
+// create does NOT call ensureStoreInventory
 
 describe('POST /api/stock-transfers', () => {
   it('returns 400 when required fields are missing', async () => {
@@ -133,7 +136,6 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('returns 400 when source has no stock entry', async () => {
-    // create: SELECT available_stock (no row found)
     query.mockResolvedValueOnce([]); // no stock entry
     const res = await request(app)
       .post('/api/stock-transfers')
@@ -144,7 +146,6 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('returns 400 when source has insufficient stock', async () => {
-    // create: SELECT available_stock (3 < 50)
     query.mockResolvedValueOnce([{ available_stock: 3 }]);
     const res = await request(app)
       .post('/api/stock-transfers')
@@ -155,7 +156,6 @@ describe('POST /api/stock-transfers', () => {
   });
 
   it('creates transfer with pending status when stock is sufficient', async () => {
-    // create: SELECT available_stock (100 >= 10) → INSERT
     query
       .mockResolvedValueOnce([{ available_stock: 100 }])
       .mockResolvedValueOnce({ insertId: 7 });
@@ -170,6 +170,7 @@ describe('POST /api/stock-transfers', () => {
 });
 
 // ─── PUT /api/stock-transfers/:id/approve ────────────────────────
+// approve uses getConnection (conn.query), global query only for authenticate
 
 describe('PUT /api/stock-transfers/:id/approve', () => {
   it('returns 401 without token', async () => {
@@ -240,7 +241,8 @@ describe('PUT /api/stock-transfers/:id/cancel', () => {
   });
 
   it('returns 404 when transfer not found', async () => {
-    query.mockResolvedValueOnce([]); // not found
+    const conn = makeConn();
+    conn.query.mockResolvedValueOnce([]); // FOR UPDATE: not found
     const res = await request(app)
       .put('/api/stock-transfers/999/cancel')
       .set(authHeader());
@@ -248,7 +250,8 @@ describe('PUT /api/stock-transfers/:id/cancel', () => {
   });
 
   it('returns 400 when transfer is already completed', async () => {
-    query.mockResolvedValueOnce([{ transfer_id: 1, status: 'completed' }]);
+    const conn = makeConn();
+    conn.query.mockResolvedValueOnce([{ transfer_id: 1, status: 'completed' }]); // FOR UPDATE
     const res = await request(app)
       .put('/api/stock-transfers/1/cancel')
       .set(authHeader());
@@ -257,12 +260,15 @@ describe('PUT /api/stock-transfers/:id/cancel', () => {
   });
 
   it('cancels a pending transfer', async () => {
-    query
-      .mockResolvedValueOnce([{ transfer_id: 1, status: 'pending' }])
-      .mockResolvedValueOnce({ affectedRows: 1 }); // UPDATE
+    const conn = makeConn();
+    conn.query
+      .mockResolvedValueOnce([{ transfer_id: 1, status: 'pending' }]) // FOR UPDATE
+      .mockResolvedValueOnce({ affectedRows: 1 });                    // UPDATE status
     const res = await request(app)
       .put('/api/stock-transfers/1/cancel')
       .set(authHeader());
     expect(res.status).toBe(200);
+    expect(conn.commit).toHaveBeenCalled();
+    expect(conn.release).toHaveBeenCalled();
   });
 });

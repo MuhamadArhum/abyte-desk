@@ -58,14 +58,16 @@ exports.getAll = async (req, res) => {
     await ensureAddressTable();
     const { search } = req.query;  // Optional search keyword from URL ?search=...
     // JOIN with customer_addresses to get default address (fallback for older records)
+    // BUG-028: Exclude soft-deleted customers (deleted_at IS NOT NULL)
     let sql = `SELECT c.*, ca.address_text AS default_address
                FROM customers c
-               LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1`;
+               LEFT JOIN customer_addresses ca ON ca.customer_id = c.customer_id AND ca.is_default = 1
+               WHERE c.deleted_at IS NULL`;
     const params = [];
 
     // If a search keyword is provided, filter by name or phone (partial match)
     if (search) {
-      sql += ' WHERE c.customer_name LIKE ? OR c.phone_number LIKE ?';
+      sql += ' AND (c.customer_name LIKE ? OR c.phone_number LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
 
@@ -74,7 +76,7 @@ exports.getAll = async (req, res) => {
     if (page && limit) {
       const pg = parsePagination(page, limit);
 
-      const countSql = 'SELECT COUNT(*) as total FROM customers' + (search ? ' WHERE customer_name LIKE ? OR phone_number LIKE ?' : '');
+      const countSql = 'SELECT COUNT(*) as total FROM customers WHERE deleted_at IS NULL' + (search ? ' AND (customer_name LIKE ? OR phone_number LIKE ?)' : '');
       const countParams = search ? [`%${search}%`, `%${search}%`] : [];
       const countResult = await query(countSql, countParams);
       const total = Number(countResult[0].total);
@@ -91,7 +93,7 @@ exports.getAll = async (req, res) => {
 
     sql += ' ORDER BY c.customer_name LIMIT 50';
     const rows = await query(sql, params);
-    res.json({ data: rows });
+    res.json({ data: rows, total: rows.length });
   } catch (err) {
     logger.error('getAll customers error', { message: err.message, code: err.code, sql: err.sql });
     res.status(500).json({ message: 'Server error', detail: err.message });
@@ -115,19 +117,32 @@ exports.create = async (req, res) => {
 
     const addrVal = address && address.trim() ? address.trim() : null;
 
-    const result = await query(
-      'INSERT INTO customers (customer_name, phone_number, email, company, tax_id, address) VALUES (?, ?, ?, ?, ?, ?)',
-      [customer_name, phone, emailVal, companyVal, taxIdVal, addrVal]
-    );
+    // BUG-027: Wrap customer insert and address insert in a single transaction
+    const conn = await require('../config/database').getConnection();
+    let customerId;
+    try {
+      await conn.beginTransaction();
 
-    const customerId = Number(result.insertId);
-
-    // Also save address to customer_addresses for multi-address support
-    if (addrVal) {
-      await query(
-        'INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)',
-        [customerId, addrVal]
+      const result = await conn.query(
+        'INSERT INTO customers (customer_name, phone_number, email, company, tax_id, address) VALUES (?, ?, ?, ?, ?, ?)',
+        [customer_name, phone, emailVal, companyVal, taxIdVal, addrVal]
       );
+      customerId = Number(result.insertId);
+
+      // Also save address to customer_addresses for multi-address support
+      if (addrVal) {
+        await conn.query(
+          'INSERT INTO customer_addresses (customer_id, address_text, is_default) VALUES (?, ?, 1)',
+          [customerId, addrVal]
+        );
+      }
+
+      await conn.commit();
+    } catch (txErr) {
+      await conn.rollback();
+      throw txErr;
+    } finally {
+      conn.release();
     }
 
     // Return full customer object for auto-selection in POS

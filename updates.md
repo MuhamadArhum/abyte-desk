@@ -55,15 +55,91 @@
 
 ---
 
+---
+
+**Date:** 2026-09-05
+
+---
+
+## ✅ Completed Tasks
+
+### 1. Integration Test Fixes (Phase 4 Migration)
+**Status:** Complete
+- `tests/integration/auth.test.js` — Phase 4 rewrite: removed tenantStorage, fixed logAction mock
+- `tests/integration/products.test.js` — FIFO queue strategy for authenticate + controller mocks
+- `tests/integration/stockTransfer.test.js` — Added missing route in testApp.js, updated cancel tests
+- Frontend `AuthContext.test.tsx` — Fixed 3 failing tests for Phase 4 enterprise plan behavior
+- **All 62 automated tests pass**
+
+### 2. Full QA Audit — 37 Bugs Found & Catalogued
+**Status:** Complete
+- `qa/SYSTEM_INVENTORY.md` — 76 tables, 46 controllers, all modules catalogued
+- `qa/BUGS.md` — 37 bugs: 5× P0, 11× P1, 16× P2, 5× P3
+
+### 3. P0 Bug Fixes
+**Status:** Complete — 3 of 5 P0 bugs fixed
+- **BUG-001**: `getCashFlowStatement`, `getAccountStatement`, `getPayablesAging` — all 3 accounting endpoints crashed on every call due to non-existent tables (`receipt_voucher_lines`, `payment_voucher_lines`, `purchases`) and wrong column names (`debit_amount`/`credit_amount`). Fixed to use actual schema.
+- **BUG-002**: Server-side price validation added — Cashiers can no longer submit arbitrary unit prices
+- **BUG-003**: Purchase return stock availability check added — stock can no longer go negative
+
+### 4. P1 Bug Fixes
+**Status:** Complete — 8 of 11 P1 bugs fixed
+- **BUG-006**: Tax now calculated on post-discount amount (not pre-discount subtotal)
+- **BUG-007**: Combined explicit + bundle discount cap enforced (partial fix)
+- **BUG-008**: Pending sale deletion no longer restores stock (stock was never deducted)
+- **BUG-009**: refundSale now blocks non-completed sales
+- **BUG-010**: Return controller now restores `variant_inventory` + `product_variants` stock
+- **BUG-011**: Cash register expected balance now includes `cash_in`/`cash_out` movements
+- **BUG-012**: Stock transfer cancel wrapped in transaction with FOR UPDATE lock
+- **BUG-015**: `branch_id` now set from `req.user.branch_id` on sale INSERT
+- **BUG-016**: refundSale now requires Admin or Manager role
+
+### 5. P2 Bug Fixes
+**Status:** Complete — 11 of 16 P2 bugs fixed
+- BUG-017: Reports filter `status='completed'` only
+- BUG-018: Inventory report uses `avg_cost` instead of selling price
+- BUG-021: Zero-quantity returns rejected
+- BUG-022: Refund price rounded to 2 decimal places
+- BUG-024: Credit sale rejects `paid_amount > total_amount`
+- BUG-025: Credit payment floating-point drift fixed with `Math.round`
+- BUG-026: `overdue` query param compared as `=== 'true'` (not truthy string)
+- BUG-027: Customer create + address insert wrapped in transaction
+- BUG-028: Soft-deleted customers excluded via `deleted_at IS NULL`
+- BUG-029: Low-stock threshold reads from `store_settings`
+- BUG-033: Register balance validation rejects NaN strings
+
+### 6. Full QA Documentation Suite
+**Status:** Complete
+- `qa/TEST_PLAN.md` ✅
+- `qa/TEST_CASES.md` ✅
+- `qa/SECURITY_AUDIT.md` ✅
+- `qa/PERFORMANCE_REPORT.md` ✅
+- `qa/OFFLINE_TEST_REPORT.md` ✅
+- `qa/REGRESSION_REPORT.md` ✅
+- `qa/FINAL_QA_REPORT.md` ✅
+
+---
+
 ## ⏳ Pending Tasks
 
 ### 1. GitHub Release v1.0.5
 **Status:** Pending
 - 4 new exe files GitHub Release pe upload karne hain
 
-### 2. Full End-to-End UI Testing
+### 2. Open P0 Bugs (Require DB Migration)
 **Status:** Pending
-- Browser se complete flow test karna baqi hai
+- BUG-004: Duplicate voucher numbers — needs UNIQUE constraint migration
+- BUG-005: Dual-table stock divergence — systemic; needs reconciliation
+
+### 3. Open P1 Bugs
+**Status:** Pending
+- BUG-013: Stock adjustment inventory lock missing
+- BUG-014: Trial balance excludes non-journalized vouchers
+
+### 4. Security Hardening
+**Status:** Pending
+- BUG-030: Protect /api/health endpoint with auth
+- BUG-036: Enable SSL for DB connection in production
 
 ---
 

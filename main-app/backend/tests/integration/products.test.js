@@ -1,5 +1,5 @@
 // Integration tests for /api/products routes
-// Note: productController uses `query` (not queryDb) for all DB ops
+// Phase 4: single-tenant — authenticate uses query(), not queryDb()
 // Field name: `price` (not `selling_price`) per controller schema
 
 jest.mock('../../config/database');
@@ -9,33 +9,32 @@ jest.mock('../../config/logger', () => ({ error: jest.fn(), warn: jest.fn(), inf
 
 process.env.JWT_SECRET     = 'test-secret-products';
 process.env.DB_NAME        = 'test_db';
-process.env.MASTER_DB_NAME = 'test_master';
 
 const request  = require('supertest');
 const jwt      = require('jsonwebtoken');
-const { queryDb, query, tenantStorage } = require('../../config/database');
+const { query } = require('../../config/database');
 const { isBlacklisted } = require('../../services/tokenBlacklist');
 const { buildTestApp } = require('../helpers/testApp');
 
 let app;
 const adminUser = { user_id: 1, name: 'Admin', email: 'a@a.com', role_name: 'Admin', branch_id: null, is_active: 1 };
 
-const makeToken = (role = 'Admin', modules = []) =>
-  jwt.sign({ user_id: 1, tenant_db: 'test_db', modules, role_name: role }, process.env.JWT_SECRET);
+const makeToken = (role = 'Admin') =>
+  jwt.sign({ user_id: 1, role_name: role }, process.env.JWT_SECRET);
 
 const authHeader = (role = 'Admin') => ({ Authorization: `Bearer ${makeToken(role)}` });
 
 beforeAll(() => {
-  tenantStorage.run = jest.fn((db, fn) => fn());
   app = buildTestApp();
 });
 
 beforeEach(() => {
-  // resetMocks: true in jest.config resets all implementations before each test
-  tenantStorage.run = jest.fn((db, fn) => fn());
+  // Phase 4: authenticate uses query() first (user lookup by user_id).
+  // Prepend adminUser as first Once value so authenticate always succeeds.
+  // Individual tests add their controller-specific mocks after this.
   isBlacklisted.mockResolvedValue(false);
-  queryDb.mockResolvedValue([adminUser]);
-  query.mockResolvedValue([]);
+  query.mockResolvedValueOnce([adminUser]); // authenticate: user lookup
+  query.mockResolvedValue([]);              // fallback for controller calls
 });
 
 // ─── GET /api/products ───────────────────────────────────────────
@@ -139,7 +138,6 @@ describe('POST /api/products', () => {
   });
 
   it('creates product and returns 201 with product_id', async () => {
-    // create calls: INSERT products → INSERT inventory
     query
       .mockResolvedValueOnce({ insertId: 42 })  // INSERT products
       .mockResolvedValueOnce({ insertId: 1 });   // INSERT inventory
@@ -153,7 +151,6 @@ describe('POST /api/products', () => {
   });
 
   it('returns 400 when barcode uniqueness is violated (ER_DUP_ENTRY)', async () => {
-    // Simulate MySQL duplicate key error
     const dupError = new Error('Duplicate entry');
     dupError.code = 'ER_DUP_ENTRY';
     query.mockRejectedValueOnce(dupError);
@@ -184,8 +181,7 @@ describe('DELETE /api/products/:id', () => {
   });
 
   it('returns 400 when product has sales history', async () => {
-    // delete flow: SELECT sale_details (has rows) → 400
-    query.mockResolvedValueOnce([{ sale_detail_id: 99 }]);
+    query.mockResolvedValueOnce([{ sale_detail_id: 99 }]); // has sales history
     const res = await request(app)
       .delete('/api/products/1')
       .set(authHeader());
@@ -194,7 +190,6 @@ describe('DELETE /api/products/:id', () => {
   });
 
   it('deletes product when no sales history exists', async () => {
-    // delete flow: SELECT sale_details (empty) → SELECT product → DELETE inventory → DELETE product
     query
       .mockResolvedValueOnce([])                       // no sales history
       .mockResolvedValueOnce([{ product_name: 'X' }]) // product name lookup

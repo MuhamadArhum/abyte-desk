@@ -88,14 +88,26 @@ exports.create = async (req, res) => {
     const prId = Number(result.insertId);
 
     for (const item of items) {
-      const totalPrice = Number(item.quantity_returned) * Number(item.unit_price);
+      const qty = Number(item.quantity_returned);
+      // BUG-003: Lock inventory row and check stock before deducting
+      const [inv] = await conn.query(
+        'SELECT available_stock FROM inventory WHERE product_id = ? FOR UPDATE',
+        [item.product_id]
+      );
+      if (!inv || Number(inv.available_stock) < qty) {
+        await conn.rollback();
+        return res.status(400).json({
+          message: `Insufficient stock to return for product ${item.product_id} (available: ${inv?.available_stock ?? 0})`,
+        });
+      }
+      const totalPrice = qty * Number(item.unit_price);
       await conn.query(
         'INSERT INTO purchase_return_items (pr_id, product_id, quantity_returned, unit_price, total_price) VALUES (?, ?, ?, ?, ?)',
-        [prId, item.product_id, item.quantity_returned, item.unit_price, totalPrice]
+        [prId, item.product_id, qty, item.unit_price, totalPrice]
       );
       // Deduct from inventory (returning to supplier)
-      await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [item.quantity_returned, item.product_id]);
-      await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [item.quantity_returned, item.product_id]);
+      await conn.query('UPDATE inventory SET available_stock = available_stock - ? WHERE product_id = ?', [qty, item.product_id]);
+      await conn.query('UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?', [qty, item.product_id]);
     }
 
     await conn.commit();
