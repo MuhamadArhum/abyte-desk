@@ -81,8 +81,8 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
       } else {
         setProducts(res.data);
       }
-    } catch (error) {
-      console.error('Failed to fetch inventory', error);
+    } catch {
+      /* silent */
     } finally {
       setLoading(false);
     }
@@ -92,14 +92,14 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
     try {
       const res = await api.get('/products/categories');
       setCategories(res.data.data || []);
-    } catch (error) { console.error(error); }
+    } catch { /* silent */ }
   };
 
   const fetchStats = async () => {
     try {
       const res = await api.get('/inventory-reports/summary');
       setStats(res.data);
-    } catch (error) { console.error(error); }
+    } catch { /* silent */ }
   };
 
   useEffect(() => { fetchCategories(); fetchStats(); }, []);

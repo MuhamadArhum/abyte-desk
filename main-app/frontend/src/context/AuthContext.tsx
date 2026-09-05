@@ -180,19 +180,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // RBAC: check individual module key or any sub-key (e.g. 'sales' matches 'sales.pos')
   const hasPermission = useCallback((moduleKey: string): boolean => {
-    if (permissions === null) return true; // Admin: full access
+    // Only bypass permission check when the user is actually an admin
+    if (user?.role_name === 'Admin') return true;
+    if (!permissions) return false;
     return permissions.some(p => p === moduleKey || p.startsWith(`${moduleKey}.`));
-  }, [permissions]);
+  }, [permissions, user]);
 
   // CRUD sub-permission check: canDo('inventory.products', 'create')
   const canDo = useCallback((moduleKey: string, action: 'create' | 'update' | 'delete'): boolean => {
-    if (permissions === null) return true; // Admin: full access
+    if (user?.role_name === 'Admin') return true; // Admin: full access
+    if (!permissions) return false;
     return permissions.includes(`${moduleKey}.${action}`);
-  }, [permissions]);
+  }, [permissions, user]);
 
-  // Phase 4: Single-tenant — all modules always enabled.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const hasModule = useCallback((_moduleName: string): boolean => true, []);
+  // Check whether the tenant has a given module enabled (from JWT modules array)
+  const hasModule = useCallback((moduleName: string): boolean => {
+    if (user?.role_name === 'Admin') return true; // Admins always see all modules
+    return modules.includes(moduleName);
+  }, [modules, user]);
 
   const currentPlan    = 'enterprise'; // Phase 4: single-tenant, all modules active
   const currencySymbol = tenantConfig?.currency_symbol || 'Rs.';

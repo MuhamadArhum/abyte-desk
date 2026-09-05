@@ -97,6 +97,7 @@ const PurchaseReturn = () => {
 
   const handleSubmit = async () => {
     if (!items.length) return error('Add at least one item');
+    if (!formSupplier && !(mode === 'pv' && selectedPV)) return error('Select a supplier or a Purchase Voucher before submitting');
     setSaving(true);
     try {
       const payload: any = {

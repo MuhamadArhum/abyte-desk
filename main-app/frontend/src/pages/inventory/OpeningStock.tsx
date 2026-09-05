@@ -74,7 +74,7 @@ export default function OpeningStock() {
       .map(([id, v]) => ({
         product_id: Number(id),
         quantity: Number(v.qty),
-        unit_cost: Number(v.cost) || 0,
+        unit_cost: Math.max(0, Number(v.cost) || 0),
       }));
 
     if (!items.length) { error('Enter at least one product quantity'); return; }

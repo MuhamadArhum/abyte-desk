@@ -111,11 +111,17 @@ exports.updateSettings = async (req, res) => {
       pos_mode, pos_tax_config
     } = req.body;
 
+    // Validate numeric fields
+    const taxRate = parseFloat(tax_rate);
+    if (tax_rate !== undefined && tax_rate !== null && tax_rate !== '' && isNaN(taxRate)) {
+      return res.status(400).json({ message: 'Invalid tax rate' });
+    }
+
     // Build dynamic SET clause to handle optional columns gracefully
     const baseParams = [
       store_name, address, phone, email, website,
       receipt_header || null, receipt_footer, receipt_logo || null,
-      tax_rate || 0, currency_symbol || 'Rs.',
+      isNaN(taxRate) ? 0 : taxRate, currency_symbol || 'Rs.',
       low_stock_threshold || 10, default_payment_method || 'cash', auto_print_receipt ? 1 : 0,
       barcode_prefix || '', invoice_prefix || 'INV-', date_format || 'DD/MM/YYYY', timezone || 'Asia/Karachi',
       business_hours_open || '09:00:00', business_hours_close || '21:00:00',
@@ -219,9 +225,13 @@ exports.updateSettings = async (req, res) => {
     // Update printer agent URL and agent token
     try {
       const { printer_agent_url, agent_token } = req.body;
+      const agentUrl = printer_agent_url ? printer_agent_url.trim() : null;
+      if (agentUrl && !/^https?:\/\/.+/.test(agentUrl)) {
+        return res.status(400).json({ message: 'Invalid Agent URL format' });
+      }
       await query(
         `UPDATE store_settings SET printer_agent_url=?, agent_token=? WHERE setting_id=1`,
-        [printer_agent_url || null, agent_token || null]
+        [agentUrl || null, agent_token || null]
       );
     } catch (paErr) {
       logger.warn('printer_agent_url/agent_token column error:', paErr.message);
@@ -288,12 +298,22 @@ exports.verifyPosPassword = async (req, res) => {
     const { type, password } = req.body;
     const validTypes = { view_completed: 'view_completed_orders_password', refund: 'refund_password', reports: 'reports_password', jv_delete: 'jv_delete_password' };
     const col = validTypes[type];
-    if (!col || !password) return res.status(400).json({ valid: false });
+    if (!col || !password || password === '') return res.status(400).json({ valid: false });
 
-    const rows = await query(`SELECT ${col} FROM store_settings WHERE setting_id = 1`);
-    if (!rows.length || !rows[0][col]) return res.json({ valid: true }); // no password set = always valid
+    // Use explicit column lookup — no dynamic SQL interpolation
+    let rows;
+    if (col === 'view_completed_orders_password') {
+      rows = await query('SELECT view_completed_orders_password AS pw FROM store_settings WHERE setting_id = 1');
+    } else if (col === 'refund_password') {
+      rows = await query('SELECT refund_password AS pw FROM store_settings WHERE setting_id = 1');
+    } else if (col === 'reports_password') {
+      rows = await query('SELECT reports_password AS pw FROM store_settings WHERE setting_id = 1');
+    } else {
+      rows = await query('SELECT jv_delete_password AS pw FROM store_settings WHERE setting_id = 1');
+    }
+    if (!rows.length || !rows[0].pw) return res.json({ valid: true }); // no password set = always valid
 
-    const stored = rows[0][col];
+    const stored = rows[0].pw;
     let valid = false;
     if (stored.startsWith('$2b$') || stored.startsWith('$2a$')) {
       valid = await bcrypt.compare(password, stored);
@@ -302,7 +322,16 @@ exports.verifyPosPassword = async (req, res) => {
       valid = (password === stored);
       if (valid) {
         const hash = await bcrypt.hash(password, 10);
-        await query(`UPDATE store_settings SET ${col} = ? WHERE setting_id = 1`, [hash]);
+        // Use explicit UPDATE per column — no dynamic SQL
+        if (col === 'view_completed_orders_password') {
+          await query('UPDATE store_settings SET view_completed_orders_password = ? WHERE setting_id = 1', [hash]);
+        } else if (col === 'refund_password') {
+          await query('UPDATE store_settings SET refund_password = ? WHERE setting_id = 1', [hash]);
+        } else if (col === 'reports_password') {
+          await query('UPDATE store_settings SET reports_password = ? WHERE setting_id = 1', [hash]);
+        } else {
+          await query('UPDATE store_settings SET jv_delete_password = ? WHERE setting_id = 1', [hash]);
+        }
       }
     }
     res.json({ valid });
@@ -989,7 +1018,7 @@ exports.deleteLogo = async (req, res) => {
   try {
     const rows = await query('SELECT receipt_logo FROM store_settings WHERE setting_id = 1');
     const currentLogo = rows[0]?.receipt_logo;
-    if (currentLogo) {
+    if (currentLogo && !currentLogo.includes('..') && !path.isAbsolute(currentLogo)) {
       const fullPath = path.join(uploadsDir, path.basename(currentLogo));
       await fsp.unlink(fullPath).catch(() => {}); // ignore if already gone
     }

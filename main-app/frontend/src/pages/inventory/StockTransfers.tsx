@@ -73,8 +73,8 @@ const StockTransfers = () => {
       setTransfers(res.data.data);
       setTotalPages(res.data.pagination.totalPages);
       setTotalItems(res.data.pagination.total);
-    } catch (error) {
-      console.error('Failed to fetch transfers', error);
+    } catch {
+      /* silent */
     } finally {
       setLoading(false);
     }
@@ -84,14 +84,14 @@ const StockTransfers = () => {
     try {
       const res = await api.get('/stock-transfers/stats');
       setStats(res.data);
-    } catch (error) { console.error(error); }
+    } catch { /* silent */ }
   };
 
   const fetchStores = async () => {
     try {
       const res = await api.get('/stores');
       setStores(res.data.data || []);
-    } catch (error) { console.error(error); }
+    } catch { /* silent */ }
   };
 
   useEffect(() => { fetchStats(); fetchStores(); }, []);
@@ -102,9 +102,9 @@ const StockTransfers = () => {
     if (!showModal) return;
     const timer = setTimeout(async () => {
       try {
-        const res = await api.get('/products', { params: { search: productSearch, limit: 20 } });
+        const res = await api.get('/products', { params: { search: productSearch, limit: 100 } });
         setProducts(res.data.data || []);
-      } catch (error) { console.error(error); }
+      } catch { /* silent */ }
     }, 300);
     return () => clearTimeout(timer);
   }, [productSearch, showModal]);

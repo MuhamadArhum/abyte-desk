@@ -63,6 +63,11 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+
     // Check if the email is already taken by another user
     const existing = await query('SELECT user_id FROM users WHERE email = ?', [email]);
     if (existing.length > 0) {

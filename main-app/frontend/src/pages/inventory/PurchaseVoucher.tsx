@@ -171,7 +171,8 @@ const PurchaseVoucher = () => {
     if (!poId) { setItems([]); return; }
     try {
       const res = await api.get(`/purchase-vouchers/po-items/${poId}`);
-      setItems((res.data.data || []).map((i: any) => ({
+      if (!res?.data?.data) return;
+      setItems(res.data.data.map((i: any) => ({
         product_id: i.product_id,
         product_name: i.product_name,
         quantity_received: Number(i.pending_qty) || 1,
@@ -271,7 +272,7 @@ const PurchaseVoucher = () => {
         success(`Voucher ${editingPV.pv_number} updated`);
       } else {
         const res = await api.post('/purchase-vouchers', payload);
-        success(`Purchase Voucher ${res.data.pv_number} created`);
+        success(`Purchase Voucher ${res?.data?.pv_number ?? ''} created`);
       }
       setShowForm(false); resetForm(); fetchVouchers();
     } catch (err: any) { error(err.response?.data?.message || 'Error'); }
@@ -286,8 +287,10 @@ const PurchaseVoucher = () => {
   };
 
   const openView = async (id: number) => {
-    const res = await api.get(`/purchase-vouchers/${id}`);
-    setViewVoucher(res.data);
+    try {
+      const res = await api.get(`/purchase-vouchers/${id}`);
+      setViewVoucher(res.data);
+    } catch { error('Failed to load voucher details'); }
   };
 
   const handlePrint = async (pv: any) => {

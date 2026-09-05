@@ -426,6 +426,15 @@ exports.createSale = async (req, res) => {
         } else if (pm === 'split') {
           const splitCash = round2(parseFloat(req.body.split_cash) || 0);
           const splitCard = round2(parseFloat(req.body.split_card) || 0);
+          if (splitCash < 0 || splitCard < 0) {
+            await conn.rollback();
+            return res.status(400).json({ message: 'Split payment amounts cannot be negative' });
+          }
+          const splitSum = round2(splitCash + splitCard);
+          if (Math.abs(splitSum - total_amount) > 0.01) {
+            await conn.rollback();
+            return res.status(400).json({ message: 'Split amounts must equal total' });
+          }
           await conn.query(
             'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
             [splitCash, splitCard, total_amount, rid]
@@ -675,6 +684,15 @@ exports.completeSale = async (req, res) => {
       } else if (finalPaymentMethod === 'split') {
         const splitCash = round2(parseFloat(req.body.split_cash) || 0);
         const splitCard = round2(parseFloat(req.body.split_card) || 0);
+        if (splitCash < 0 || splitCard < 0) {
+          await conn.rollback();
+          return res.status(400).json({ message: 'Split payment amounts cannot be negative' });
+        }
+        const splitSum = round2(splitCash + splitCard);
+        if (Math.abs(splitSum - serverTotal) > 0.01) {
+          await conn.rollback();
+          return res.status(400).json({ message: 'Split amounts must equal total' });
+        }
         await conn.query(
           'UPDATE cash_registers SET cash_sales_total = cash_sales_total + ?, card_sales_total = card_sales_total + ?, total_sales = total_sales + ? WHERE register_id = ?',
           [splitCash, splitCard, serverTotal, rid]

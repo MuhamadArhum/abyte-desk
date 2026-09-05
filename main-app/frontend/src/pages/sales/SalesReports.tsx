@@ -138,7 +138,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="hour" tick={{ fontSize: 11 }} tickFormatter={(h) => `${h}:00`} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`, 'Revenue'] : ['$0.00', 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
+                  <Tooltip formatter={(v: number | undefined) => v != null ? [`${currency}${Number(v).toFixed(0)}`, 'Revenue'] : ['0', 'Revenue']} labelFormatter={(h) => `${h}:00 - ${h}:59`} />
                   <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -155,7 +155,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`, 'Revenue'] : ['$0.00', 'Revenue']} />
+                  <Tooltip formatter={(v: number | undefined) => v != null ? [`${currency}${Number(v).toFixed(0)}`, 'Revenue'] : ['0', 'Revenue']} />
                   <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -187,7 +187,7 @@ const SalesReports = () => {
                   <div key={c.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">{idx + 1}</div>
                     <div className="flex-1"><p className="font-medium text-sm">{c.cashier_name}</p><p className="text-xs text-gray-400">{c.order_count} orders</p></div>
-                    <div className="text-right"><p className="font-bold text-sm">{currency}{Number(c.total_sales).toFixed(0)}</p><p className="text-xs text-gray-400">avg ${Number(c.avg_sale).toFixed(0)}</p></div>
+                    <div className="text-right"><p className="font-bold text-sm">{currency}{Number(c.total_sales).toFixed(0)}</p><p className="text-xs text-gray-400">avg {currency}{Number(c.avg_sale).toFixed(0)}</p></div>
                   </div>
                 ))}</div>
               )}
@@ -416,7 +416,7 @@ const SalesReports = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`] : ['0']} />
+                  <Tooltip formatter={(v: number | undefined) => v != null ? [`${currency}${Number(v).toFixed(0)}`] : ['0']} />
                   <Bar dataKey="tax_collected" name="Tax" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="net_amount" name="Net Sales" fill="#10b981" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -499,7 +499,7 @@ const SalesReports = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="shift_name" tick={{ fontSize: 9 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number | undefined) => v !== undefined ? [`${currency}${v.toFixed(0)}`, 'Revenue'] : ['0', 'Revenue']} />
+                    <Tooltip formatter={(v: number | undefined) => v != null ? [`${currency}${Number(v).toFixed(0)}`, 'Revenue'] : ['0', 'Revenue']} />
                     <Bar dataKey="total_sales" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

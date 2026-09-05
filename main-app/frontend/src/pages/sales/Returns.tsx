@@ -82,7 +82,14 @@ const Returns = () => {
       }
       setSale(res.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Sale not found');
+      if (error.response) {
+        // Server responded with an error status
+        toast.error(error.response.data?.message || (error.response.status === 404 ? 'Sale not found' : 'Failed to load sale'));
+      } else {
+        // Network / connection error
+        toast.error('Network error — please check your connection');
+        console.error('Returns search error:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -200,6 +207,7 @@ const Returns = () => {
       setShowRecent(true);
     } catch (error) {
       console.error('Failed to fetch returns', error);
+      toast.error('Failed to load recent returns');
     }
   }, [currentPage, itemsPerPage, returnsDateFrom, returnsDateTo]);
 
@@ -338,7 +346,7 @@ const Returns = () => {
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{item.product_name}</p>
                       <p className="text-sm text-gray-500">
-                        ${parseFloat(item.unit_price).toFixed(0)} each | Bought: {item.quantity}
+                        {currency}{parseFloat(item.unit_price).toFixed(0)} each | Bought: {item.quantity}
                         {item.already_returned > 0 && <span className="text-orange-500"> | Already returned: {item.already_returned}</span>}
                       </p>
                     </div>

@@ -1124,7 +1124,9 @@ const POS = () => {
                     try {
                       const res = await api.get('/register/current');
                       setRegister(res.data);
-                    } catch (_) {}
+                    } catch (err) {
+                      console.error('Failed to fetch register status:', err);
+                    }
                     setShowCloseModal(true);
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-4 md:py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors font-medium border border-red-200 text-sm"

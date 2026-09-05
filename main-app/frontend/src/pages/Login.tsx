@@ -37,9 +37,23 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Explicit client-side validation
+    const trimmedEmail    = email.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Email and password are required.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email: trimmedEmail, password: trimmedPassword });
       const { token, user, permissions, modules } = response.data;
       login(token, user, permissions ?? null, modules ?? []);
       navigate('/');
@@ -170,7 +184,7 @@ const Login = () => {
             <Shield size={14} className="text-emerald-500/60" />
             <span className="text-slate-500 text-xs">Secure & Encrypted</span>
           </div>
-          <span className="text-slate-600 text-xs">v1.0.0 &copy; 2025 AByte</span>
+          <span className="text-slate-600 text-xs">v1.0.0 &copy; {new Date().getFullYear()} AByte</span>
         </motion.div>
       </div>
 
@@ -315,7 +329,7 @@ const Login = () => {
           </div>{/* end card */}
 
           <p className="text-center text-xs text-gray-400 mt-4">
-            AByte ERP &copy; 2025 &nbsp;&middot;&nbsp; All rights reserved
+            AByte ERP &copy; {new Date().getFullYear()} &nbsp;&middot;&nbsp; All rights reserved
           </p>
         </motion.div>
       </div>

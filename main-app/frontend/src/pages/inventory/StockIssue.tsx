@@ -108,7 +108,7 @@ const StockIssue = () => {
       setProductResults([]);
       setShowForm(true);
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Failed to load issue', 'error');
+      showToast('error', err.response?.data?.message || 'Failed to load issue');
     }
   };
 
@@ -127,7 +127,7 @@ const StockIssue = () => {
       }
       setShowForm(false);
       fetchIssues();
-    } catch (err: any) { showToast(err.response?.data?.message || 'Error', 'error'); }
+    } catch (err: any) { showToast('error', err.response?.data?.message || 'Error'); }
     finally { setSaving(false); }
   };
 

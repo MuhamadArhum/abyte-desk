@@ -113,10 +113,15 @@ function AnnouncementBanner() {
         setTimeout(() => setVisible(true), 600);
         // Record view for all fetched announcements (fire-and-forget)
         r.data.forEach((ann: AnnouncementItem) => {
-          api.post(`/announcements/${ann.id}/view`).catch(() => {});
+          api.post(`/announcements/${ann.id}/view`).catch(() => {
+            // Silently ignore view-tracking failures — non-critical
+          });
         });
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      // Announcements are non-critical; silently fall back to no announcements
+      console.warn('Announcements fetch failed (non-critical):', err?.message);
+    });
   }, []);
 
   const active = announcements.filter(a => !dismissed.has(a.id));
@@ -299,12 +304,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   });
   const toggleSection = (key: string) =>
     setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications] = useState([
     { id: 1, title: 'Low Stock Alert', message: 'Product ABC is running low', time: '5m ago', read: false },
     { id: 2, title: 'New Order', message: 'Order #1234 received', time: '10m ago', read: false },
     { id: 3, title: 'Payment Successful', message: 'Payment of $150 received', time: '1h ago', read: true },
   ]);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   const menuStructure: MenuItem[] = [
     {

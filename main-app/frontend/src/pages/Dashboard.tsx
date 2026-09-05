@@ -158,7 +158,7 @@ const Dashboard = () => {
       const recentSales = recentOrdersRes.data.data || recentOrdersRes.data.sales || [];
       setRecentOrders(recentSales.slice(0, 5).map((s: any) => ({
         sale_id: s.sale_id, total: s.total_amount || s.net_amount || 0,
-        customer_name: s.customer_name, created_at: s.sale_date || s.created_at, status: s.status
+        customer_name: s.customer_name?.trim() || 'Walk-in Customer', created_at: s.sale_date || s.created_at, status: s.status
       })));
       const productSales = productReportRes.data.data || [];
       setTopProducts(productSales.slice(0, 5).map((p: any) => ({
@@ -166,7 +166,6 @@ const Dashboard = () => {
         quantity_sold: p.total_quantity || 0, revenue: p.total_revenue || 0
       })));
     } catch (e) {
-      console.error('Dashboard fetch error', e);
       setFetchError('Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false); setRefreshing(false);

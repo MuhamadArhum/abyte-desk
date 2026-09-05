@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Building2, Plus, Edit, Trash2, X } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
   const toast = useToast();
@@ -152,6 +153,7 @@ const BankAccountModal = ({ isOpen, onClose, onSuccess, bankAccount }: any) => {
 
 const BankAccounts = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -172,7 +174,8 @@ const BankAccounts = () => {
   useEffect(() => { fetchBankAccounts(); }, []);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this bank account?')) return;
+    const ok = await confirm({ title: 'Delete Bank Account', message: 'Are you sure you want to delete this bank account?', type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/accounting/bank-accounts/${id}`);
       toast.success('Bank account deleted');

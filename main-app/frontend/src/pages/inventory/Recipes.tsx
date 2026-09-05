@@ -182,7 +182,8 @@ const Recipes = () => {
     if (!form.recipe_name.trim()) return setError('Recipe name is required');
     if (!form.output_product_id) return setError('Output product is required');
     if (form.ingredients.length === 0) return setError('Add at least one ingredient');
-    if (form.ingredients.some(i => !i.product_id || i.quantity <= 0)) return setError('All ingredients must have a product and valid quantity');
+    if (form.ingredients.some(i => !i.product_id)) return setError('All ingredients must have a product selected');
+    if (form.ingredients.some(i => !i.quantity || i.quantity <= 0)) return setError('All ingredient quantities must be greater than zero');
 
     setSaving(true);
     try {

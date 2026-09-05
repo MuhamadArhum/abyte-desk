@@ -173,7 +173,8 @@ export default function ResetPassword() {
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={17} />
                         <input type={showPassword ? 'text' : 'password'} value={password}
                           onChange={e => setPassword(e.target.value)} placeholder="Enter new password" required
-                          className="w-full pl-11 pr-12 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition text-gray-800 placeholder-gray-400 text-sm" />
+                          disabled={!token}
+                          className="w-full pl-11 pr-12 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition text-gray-800 placeholder-gray-400 text-sm disabled:opacity-50 disabled:cursor-not-allowed" />
                         <button type="button" onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition" tabIndex={-1}>
                           {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -197,7 +198,8 @@ export default function ResetPassword() {
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={17} />
                         <input type={showConfirm ? 'text' : 'password'} value={confirm}
                           onChange={e => setConfirm(e.target.value)} placeholder="Re-enter new password" required
-                          className={`w-full pl-11 pr-12 py-3.5 bg-white border-2 rounded-xl focus:ring-0 outline-none transition text-gray-800 placeholder-gray-400 text-sm ${confirm && confirm !== password ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-emerald-500'}`} />
+                          disabled={!token}
+                          className={`w-full pl-11 pr-12 py-3.5 bg-white border-2 rounded-xl focus:ring-0 outline-none transition text-gray-800 placeholder-gray-400 text-sm disabled:opacity-50 disabled:cursor-not-allowed ${confirm && confirm !== password ? 'border-red-400 focus:border-red-400' : 'border-gray-200 focus:border-emerald-500'}`} />
                         <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition" tabIndex={-1}>
                           {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
@@ -209,7 +211,7 @@ export default function ResetPassword() {
                     </div>
 
                     <motion.button whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.985 }}
-                      type="submit" disabled={loading || !token}
+                      type="submit" disabled={loading || !token || (!!confirm && confirm !== password)}
                       className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm mt-2">
                       {loading ? <><Loader2 className="animate-spin" size={17} /> Updating...</> : 'Update Password'}
                     </motion.button>

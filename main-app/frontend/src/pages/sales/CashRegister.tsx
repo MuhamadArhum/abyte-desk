@@ -141,7 +141,7 @@ const CashRegister = () => {
             <p className="text-gray-500 mb-6">Open the register to start your shift</p>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Opening Balance ($)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Opening Balance ({currency})</label>
               <input
                 type="number"
                 value={openingBalance}
@@ -202,7 +202,7 @@ const CashRegister = () => {
                       <td className="p-4">
                         {h.difference !== null && h.difference !== undefined ? (
                           <span className={parseFloat(h.difference) >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                            ${parseFloat(h.difference).toFixed(0)}
+                            {currency}{parseFloat(h.difference).toFixed(0)}
                           </span>
                         ) : '-'}
                       </td>
@@ -338,7 +338,7 @@ const CashRegister = () => {
                     </span>
                   </td>
                   <td className={`p-4 font-medium ${m.type === 'cash_in' ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {m.type === 'cash_in' ? '+' : '-'}${parseFloat(m.amount).toFixed(0)}
+                    {m.type === 'cash_in' ? '+' : '-'}{currency}{parseFloat(m.amount).toFixed(0)}
                   </td>
                   <td className="p-4 text-gray-600">{m.reason}</td>
                   <td className="p-4 text-gray-600">{m.user_name}</td>

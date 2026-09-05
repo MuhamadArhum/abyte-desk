@@ -65,6 +65,7 @@ const StockCount = () => {
       })));
     } catch (err) {
       console.error('Failed to fetch products', err);
+      error('Failed to load products. Please refresh and try again.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,11 @@ const StockCount = () => {
       if (item.product_id !== productId) return item;
       if (value === null) return { ...item, physical_count: null, discrepancy: null };
       const count = Math.max(0, value);
-      return { ...item, physical_count: count, discrepancy: count - item.system_stock };
+      const discrepancy = count - item.system_stock;
+      if (discrepancy < 0) {
+        error(`Shortage detected for "${item.product_name}": physical count (${count}) is less than system stock (${item.system_stock})`);
+      }
+      return { ...item, physical_count: count, discrepancy };
     }));
   };
 
@@ -361,7 +366,9 @@ const StockCount = () => {
                             value={item.physical_count ?? ''}
                             onChange={e => {
                               const val = e.target.value;
-                              setCount(item.product_id, val === '' ? null : parseInt(val));
+                              if (val === '') { setCount(item.product_id, null); return; }
+                              const parsedVal = parseInt(val, 10);
+                              setCount(item.product_id, isNaN(parsedVal) ? 0 : parsedVal);
                             }}
                             min="0"
                             placeholder="—"

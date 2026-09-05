@@ -27,7 +27,7 @@ const LoanManagement = () => {
   const [repayments, setRepayments] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
-    api.get('/staff', { params: { limit: 200 } }).then(r => setStaffList(r.data.data || [])).catch(() => {});
+    api.get('/staff', { params: { limit: 200 } }).then(r => setStaffList(r.data.data || [])).catch(() => { toast.error('Failed to load staff list'); });
   }, []);
 
   useEffect(() => { fetchLoans(); }, [pagination.page, statusFilter, staffFilter]);
@@ -66,7 +66,7 @@ const LoanManagement = () => {
       try {
         const res = await api.get(`/staff/loans/${loanId}/repayments`);
         setRepayments(prev => ({ ...prev, [loanId]: res.data.data || [] }));
-      } catch (err) { console.error(err); }
+      } catch (err) { toast.error('Failed to load repayments'); }
     }
     setExpandedLoan(loanId);
   };

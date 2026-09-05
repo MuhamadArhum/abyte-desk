@@ -119,7 +119,8 @@ const Quotations = () => {
   };
 
   const handleCreate = async () => {
-    if (!formCustomer || formItems.length === 0) { toast.error('Select a customer and add items'); return; }
+    if (!formCustomer || isNaN(parseInt(formCustomer))) { toast.error('Please select a valid customer'); return; }
+    if (formItems.length === 0) { toast.error('Add at least one item'); return; }
     try {
       await api.post('/quotations', {
         customer_id: parseInt(formCustomer),
@@ -334,8 +335,8 @@ const Quotations = () => {
               <div className="border-t pt-3 space-y-1 text-sm text-right">
                 <p>Subtotal: <span className="font-medium">{currency}{Number(detailQt.subtotal || 0).toFixed(0)}</span></p>
                 {Number(detailQt.tax_amount) > 0 && <p>Tax: <span className="font-medium">{currency}{Number(detailQt.tax_amount).toFixed(0)}</span></p>}
-                {Number(detailQt.discount) > 0 && <p>Discount: <span className="font-medium text-red-600">-${Number(detailQt.discount).toFixed(0)}</span></p>}
-                <p className="text-lg font-bold">Total: ${Number(detailQt.total_amount).toFixed(0)}</p>
+                {Number(detailQt.discount) > 0 && <p>Discount: <span className="font-medium text-red-600">-{currency}{Number(detailQt.discount).toFixed(0)}</span></p>}
+                <p className="text-lg font-bold">Total: {currency}{Number(detailQt.total_amount).toFixed(0)}</p>
               </div>
               {detailQt.notes && <p className="mt-4 text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">{detailQt.notes}</p>}
             </div>

@@ -24,7 +24,7 @@ const SalaryVoucher = () => {
   useEffect(() => {
     api.get('/staff', { params: { limit: 500, is_active: 1 } })
       .then(r => setStaffList(r.data.data || []))
-      .catch(() => {});
+      .catch(() => { toast.error('Failed to load staff list'); });
   }, []);
 
   const fetchSlip = async () => {

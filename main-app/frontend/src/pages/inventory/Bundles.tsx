@@ -85,8 +85,8 @@ const Bundles = () => {
     try {
       const res = await api.get('/bundles');
       setBundles(res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch bundles', err);
+    } catch {
+      /* silent — UI shows empty list on error */
     } finally {
       setLoading(false);
     }
@@ -96,8 +96,8 @@ const Bundles = () => {
     try {
       const res = await api.get('/products', { params: { limit: 100 } });
       setProducts(res.data.data || res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch products', err);
+    } catch {
+      /* silent */
     }
   };
 
@@ -186,8 +186,8 @@ const Bundles = () => {
     try {
       await api.put(`/bundles/${bundle.bundle_id}`, { is_active: bundle.is_active ? 0 : 1 });
       fetchBundles();
-    } catch (err) {
-      console.error('Failed to toggle bundle status', err);
+    } catch {
+      /* silent */
     }
   };
 

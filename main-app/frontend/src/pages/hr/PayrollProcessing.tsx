@@ -85,7 +85,7 @@ const PayrollProcessing = () => {
       const flatten = (nodes: any[]) => nodes.forEach(n => { flat.push(n); if (n.children) flatten(n.children); });
       flatten(res.data.data || []);
       setAccounts(flat);
-    }).catch(() => {});
+    }).catch(() => { toast.error('Failed to load accounts list'); });
   }, []);
 
   const fetchDepartments = async () => {
@@ -95,7 +95,7 @@ const PayrollProcessing = () => {
       res.data.data?.forEach((s: any) => { if (s.department) depts.add(s.department); });
       setDepartments(Array.from(depts).sort());
     } catch (err) {
-      console.error(err);
+      // department fetch failure is non-critical; payroll can still run without filter
     }
   };
 

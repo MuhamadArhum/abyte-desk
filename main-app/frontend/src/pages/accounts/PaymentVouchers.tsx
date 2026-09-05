@@ -6,6 +6,7 @@ import {
 import Pagination from '../../components/Pagination';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { localToday } from '../../utils/dateUtils';
 
 const AccountSelector = ({
@@ -328,6 +329,7 @@ const CPVForm = ({ onBack, onRefresh, editVoucherNumber }: { onBack: () => void;
 
 const PaymentVouchers = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const [view, setView]                 = useState<'list' | 'new'>('list');
   const [editVoucherNum, setEditVoucherNum] = useState<string | undefined>(undefined);
   const [vouchers, setVouchers]         = useState<any[]>([]);
@@ -351,7 +353,8 @@ const PaymentVouchers = () => {
   useEffect(() => { if (hasLoaded) fetchVouchers(); }, [pagination.page]);
 
   const handleDelete = async (voucher_number: string) => {
-    if (!confirm(`Delete all entries of ${voucher_number}?`)) return;
+    const ok = await confirm({ title: 'Delete Payment Voucher', message: `Delete all entries of ${voucher_number}?`, type: 'danger' });
+    if (!ok) return;
     try { await api.delete(`/accounting/payment-vouchers/group/${voucher_number}`); toast.success('Deleted'); fetchVouchers(); }
     catch (err: any) { toast.error(err.response?.data?.message || 'Delete failed'); }
   };

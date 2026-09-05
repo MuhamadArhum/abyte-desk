@@ -72,7 +72,6 @@ const Staff = () => {
         setPagination(res.data.pagination);
       }
     } catch (error) {
-      console.error(error);
       setError('Failed to load staff. Please try again.');
     } finally {
       setLoading(false);
@@ -103,7 +102,6 @@ const Staff = () => {
       toast.success('Staff member deactivated successfully');
       fetchStaff();
     } catch (error: any) {
-      console.error('Error deactivating staff:', error);
       toast.error(error.response?.data?.message || 'Failed to deactivate staff member');
     }
   };

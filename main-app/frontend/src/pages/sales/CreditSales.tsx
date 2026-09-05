@@ -96,6 +96,7 @@ const CreditSales = () => {
 
   const handlePayment = async () => {
     if (!paymentModal || !payAmount || parseFloat(payAmount) <= 0) { toast.error('Enter a valid amount'); return; }
+    if (parseFloat(payAmount) > paymentModal.balance_due) { toast.error(`Amount cannot exceed balance due of ${currency}${Number(paymentModal.balance_due).toFixed(2)}`); return; }
     try {
       await api.post(`/credit-sales/${paymentModal.credit_sale_id}/payment`, {
         amount: parseFloat(payAmount), payment_method: payMethod, notes: payNotes || null

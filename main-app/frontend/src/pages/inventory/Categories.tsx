@@ -95,7 +95,9 @@ const Categories = ({ categoryType }: CategoriesProps = {}) => {
     try {
       const res = await api.get('/products/categories');
       setAllCategories(res.data.data || []);
-    } catch (err) { console.error(err); }
+    } catch {
+      error('Failed to load categories');
+    }
     finally { setLoading(false); }
   }, []);
 

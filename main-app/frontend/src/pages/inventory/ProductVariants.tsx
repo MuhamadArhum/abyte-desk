@@ -68,8 +68,8 @@ const ProductVariants = () => {
     try {
       const res = await api.get('/products', { params: { limit: 100 } });
       setProducts(res.data.data || res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch products', err);
+    } catch {
+      /* silent */
     } finally {
       setLoadingProducts(false);
     }
@@ -79,8 +79,8 @@ const ProductVariants = () => {
     try {
       const res = await api.get('/variants/types');
       setVariantTypes(res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch variant types', err);
+    } catch {
+      /* silent */
     }
   }, []);
 
@@ -89,8 +89,8 @@ const ProductVariants = () => {
     try {
       const res = await api.get(`/variants/product/${productId}`);
       setVariants(res.data || []);
-    } catch (err) {
-      console.error('Failed to fetch variants', err);
+    } catch {
+      /* silent */
     } finally {
       setLoadingVariants(false);
     }

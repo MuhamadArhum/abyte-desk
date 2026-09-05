@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSettings } from '../../context/SettingsContext';
 import {
   Truck, Search, X, Edit2, Trash2, CheckCircle,
   Clock, MapPin, Phone, User, Calendar, DollarSign, Loader2,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 import CheckoutModal from '../../components/CheckoutModal';
 
 type Status = 'pending' | 'assigned' | 'dispatched' | 'in_transit' | 'delivered' | 'failed' | 'cancelled';
@@ -422,14 +424,15 @@ const EditDrawer = ({ delivery: d, form, setForm, saving, onSave, onClose }: Dra
 // ════════════════════════════════════════════════════════════════════════════
 const Deliveries = () => {
   const toast = useToast();
+  const confirm = useConfirm();
   const navigate = useNavigate();
+  const { currencySymbol: currency } = useSettings();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats]           = useState<Stats | null>(null);
   const [loading, setLoading]       = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [layout, setLayout]         = useState<'card' | 'table'>(() => (localStorage.getItem('delivery_layout') as 'card' | 'table') || 'card');
-  const [cs, setCs]                 = useState('Rs.');
 
   const switchLayout = (l: 'card' | 'table') => { setLayout(l); localStorage.setItem('delivery_layout', l); };
 
@@ -463,16 +466,15 @@ const Deliveries = () => {
     try {
       const res = await api.get('/deliveries/stats');
       setStats(res.data);
-    } catch { } finally {
+    } catch (err) {
+      console.error('Failed to load delivery stats:', err);
+    } finally {
       setStatsLoading(false);
     }
   }, []);
 
   useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => {
-    api.get('/settings').then(r => setCs(r.data.currency_symbol || 'Rs.')).catch(() => {});
-  }, []);
 
   const handleUpdate = async () => {
     if (!editItem) return;
@@ -502,7 +504,8 @@ const Deliveries = () => {
   };
 
   const handleDelete = async (d: Delivery) => {
-    if (!confirm(`Delete ${d.delivery_number}?`)) return;
+    const ok = await confirm({ title: 'Delete Delivery', message: `Delete ${d.delivery_number}?`, type: 'danger' });
+    if (!ok) return;
     try {
       await api.delete(`/deliveries/${d.delivery_id}`);
       toast.success('Deleted');
@@ -727,7 +730,7 @@ const Deliveries = () => {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 {Number(d.delivery_charges) > 0
-                                  ? <span className="text-sm font-semibold text-gray-700">{cs} {Number(d.delivery_charges).toLocaleString()}</span>
+                                  ? <span className="text-sm font-semibold text-gray-700">{currency}{Number(d.delivery_charges).toLocaleString()}</span>
                                   : <span className="text-gray-300 text-sm">—</span>
                                 }
                               </td>
@@ -781,7 +784,7 @@ const Deliveries = () => {
                   <Truck size={16} /> Running Deliveries: <strong>{sortedRunning.length}</strong>
                 </span>
                 <span className="text-sm font-bold text-emerald-800">
-                  Total Charges: {cs} {sortedRunning.reduce((s, d) => s + parseFloat(String(d.delivery_charges || 0)), 0).toFixed(0)}
+                  Total Charges: {currency}{sortedRunning.reduce((s, d) => s + parseFloat(String(d.delivery_charges || 0)), 0).toFixed(0)}
                 </span>
               </div>
             </>

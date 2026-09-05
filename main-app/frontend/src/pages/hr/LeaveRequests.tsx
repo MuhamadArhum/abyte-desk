@@ -90,7 +90,7 @@ const LeaveRequestModal = ({ isOpen, onClose, onSuccess }: any) => {
     if (isOpen) {
       api.get('/staff', { params: { is_active: 1, limit: 200 } })
         .then(r => setStaffList(r.data.data || []))
-        .catch(() => {});
+        .catch(() => { toast.error('Failed to load staff list'); });
     }
   }, [isOpen]);
 
@@ -98,6 +98,10 @@ const LeaveRequestModal = ({ isOpen, onClose, onSuccess }: any) => {
     e.preventDefault();
     if (!formData.staff_id || !formData.from_date || !formData.to_date) {
       toast.error('Please fill all required fields');
+      return;
+    }
+    if (formData.from_date > formData.to_date) {
+      toast.error('From date must be before to date');
       return;
     }
 
@@ -192,7 +196,7 @@ const LeaveRequests = () => {
   const [reviewModal, setReviewModal] = useState<{ request: any; action: 'approved' | 'rejected' } | null>(null);
 
   useEffect(() => {
-    api.get('/staff', { params: { limit: 200 } }).then(r => setStaffList(r.data.data || [])).catch(() => {});
+    api.get('/staff', { params: { limit: 200 } }).then(r => setStaffList(r.data.data || [])).catch(() => { toast.error('Failed to load staff list'); });
   }, []);
 
   useEffect(() => { fetchRequests(); }, [pagination.page, statusFilter, staffFilter]);

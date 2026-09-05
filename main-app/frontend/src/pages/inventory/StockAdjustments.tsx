@@ -152,10 +152,12 @@ const StockAdjustments = () => {
   const handleCreate = async () => {
     if (!selectedProduct) { setFormError('Select a product'); return; }
     if (!formType) { setFormError('Select adjustment type'); return; }
-    if (!formQty || parseInt(formQty) <= 0) { setFormError('Enter valid quantity'); return; }
+    const parsedQty = parseInt(formQty, 10);
+    if (!formQty || isNaN(parsedQty) || parsedQty <= 0) { setFormError('Enter valid quantity'); return; }
 
     const afterQty = calculateAfter();
-    if (afterQty !== null && afterQty < 0) { setFormError('Insufficient stock for this adjustment'); return; }
+    if (afterQty === null) { setFormError('Unable to calculate resulting stock — check product and type'); return; }
+    if (afterQty < 0) { setFormError('Insufficient stock for this adjustment'); return; }
 
     setSaving(true);
     setFormError('');
@@ -163,7 +165,7 @@ const StockAdjustments = () => {
       await api.post('/stock-adjustments', {
         product_id: selectedProduct.product_id,
         adjustment_type: formType,
-        quantity_adjusted: parseInt(formQty),
+        quantity_adjusted: parsedQty,
         reason: formReason || null,
         reference_number: formRef || null,
       });

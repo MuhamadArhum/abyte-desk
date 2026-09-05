@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { Target, Plus, TrendingUp, Award, Users, Edit2, Trash2, X, BarChart3, Printer } from 'lucide-react';
 import { printReport, buildTable, buildStatsCards } from '../../utils/reportPrinter';
 import api from '../../utils/api';
@@ -332,8 +333,10 @@ const getTypeBadgeClass = (type: string): string => {
 // ---------- Main Page ----------
 const SalesTargets = () => {
   const { currencySymbol: currency } = useSettings();
+  const { user } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
+  const isAdminOrManager = user?.role_name === 'Admin' || user?.role_name === 'Manager';
   const [activeTab, setActiveTab] = useState<'dashboard' | 'manage'>('dashboard');
 
   // Dashboard state
@@ -816,13 +819,15 @@ const SalesTargets = () => {
                           >
                             <Edit2 size={16} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(t)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {isAdminOrManager && (
+                            <button
+                              onClick={() => handleDelete(t)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
