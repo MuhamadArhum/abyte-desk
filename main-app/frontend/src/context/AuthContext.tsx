@@ -94,7 +94,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         })
         .catch(() => {
-          // Network, timeout, or server error — keep token, user stays logged in
+          // Network, timeout, or server error — decode JWT locally so role_name is available
+          // This ensures PermissionGuard works even when the backend is temporarily unreachable
+          try {
+            const parts = storedToken.split('.');
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+              if (payload.user_id && payload.role_name) {
+                setUser({
+                  user_id:   payload.user_id,
+                  username:  payload.username || '',
+                  name:      payload.name || payload.username || '',
+                  email:     payload.email || '',
+                  role_name: payload.role_name,
+                });
+              }
+            }
+          } catch { /* JWT decode failed — user stays null */ }
         })
         .finally(() => {
           clearTimeout(timeoutId);

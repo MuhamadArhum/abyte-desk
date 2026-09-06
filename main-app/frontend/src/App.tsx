@@ -306,6 +306,7 @@ function App() {
                                   <Route path="/email-settings" element={<G k="system.settings"><EmailSettings /></G>} />
                                   <Route path="/tenants"        element={<Suspense fallback={<PageLoader />}><AdminGuard><Tenants /></AdminGuard></Suspense>} />
                                   <Route path="/help"           element={<HelpSupport />} />
+                                  <Route path="*"               element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
                                 </Routes>
                               </Suspense>
                             </ErrorBoundary>

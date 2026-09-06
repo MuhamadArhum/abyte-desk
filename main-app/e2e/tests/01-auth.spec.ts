@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { login, TEST_USER } from './helpers/auth';
 
 test.describe('Authentication', () => {
+  // Auth tests need to start unauthenticated — override global storageState
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   test('login page loads correctly', async ({ page }) => {
     await page.goto('/');

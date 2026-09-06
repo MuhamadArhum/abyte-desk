@@ -281,7 +281,7 @@ const Inventory = ({ productType }: InventoryProps = {}) => {
                       <td className="px-4 py-3">
                         <div className="flex items-center">
                           <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm">
-                            {product.product_name.charAt(0)}
+                            {(product.product_name || '?').charAt(0)}
                           </div>
                           <div className="ml-3">
                             <div className="font-medium text-gray-900">{product.product_name}</div>

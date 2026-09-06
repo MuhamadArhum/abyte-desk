@@ -1,24 +1,27 @@
 import { Page } from '@playwright/test';
 
 export const TEST_USER = {
-  company_code: process.env.TEST_COMPANY_CODE || 'DEMO',
-  email: process.env.TEST_EMAIL || 'admin@demo.com',
-  password: process.env.TEST_PASSWORD || 'Admin@1234',
+  email: process.env.TEST_EMAIL || 'admin@abyte.com',
+  password: process.env.TEST_PASSWORD || 'admin123',
 };
 
 export async function login(page: Page) {
   await page.goto('/');
-  await page.waitForSelector('input[type="email"], input[name="email"], input[placeholder*="email" i], input[placeholder*="Email" i]', { timeout: 10000 });
+  // Wait for React to load and potentially redirect unauthenticated users to /login
+  await page.waitForTimeout(2000);
 
+  // Check if already authenticated (storageState) by seeing if login form is absent
   const emailInput = page.locator('input[type="email"]').or(page.locator('input[name="email"]')).first();
-  const passwordInput = page.locator('input[type="password"]').first();
+  if (!await emailInput.isVisible()) {
+    return; // Already authenticated via storageState
+  }
 
   await emailInput.fill(TEST_USER.email);
-  await passwordInput.fill(TEST_USER.password);
+  await page.locator('input[type="password"]').first().fill(TEST_USER.password);
   await page.keyboard.press('Enter');
 
-  // Wait for dashboard to load
-  await page.waitForURL(/dashboard|\/$/i, { timeout: 15000 }).catch(() => {});
+  // Wait for navigation away from login
+  await page.waitForURL(url => !url.toString().includes('login'), { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
 }
 

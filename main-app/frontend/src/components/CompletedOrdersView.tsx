@@ -522,7 +522,7 @@ const CompletedOrdersView: React.FC<CompletedOrdersViewProps> = ({
                         {cs} {sales.reduce((s, r) => s + parseFloat(r.delivery_charges || 0), 0).toFixed(0)}
                       </td>
                       <td className="px-3 py-2.5 text-right font-bold text-emerald-800">
-                        {cs} {summary.total_amount.toFixed(0)}
+                        {cs} {(summary.total_amount ?? 0).toFixed(0)}
                       </td>
                       <td colSpan={4}></td>
                     </tr>

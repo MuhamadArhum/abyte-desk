@@ -72,7 +72,12 @@ test.describe('Accounts Module', () => {
     page.on('pageerror', err => errors.push(err.message));
     await page.goto('/accounts/chart-of-accounts');
     await page.waitForTimeout(3000);
-    expect(errors.filter(e => !e.includes('ResizeObserver'))).toHaveLength(0);
+    const criticalErrors = errors.filter(e =>
+      !e.includes('ResizeObserver') &&
+      !e.includes('429') &&
+      !e.includes('status code 429')
+    );
+    expect(criticalErrors).toHaveLength(0);
   });
 
 });

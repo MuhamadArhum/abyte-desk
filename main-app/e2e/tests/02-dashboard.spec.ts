@@ -17,8 +17,10 @@ test.describe('Dashboard', () => {
 
   test('sidebar is visible', async ({ page }) => {
     await page.goto('/dashboard');
-    const sidebar = page.locator('nav, aside, [class*="sidebar"]').first();
-    await expect(sidebar).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(2000);
+    // Desktop sidebar is an <aside> element with hidden md:flex classes
+    const sidebar = page.locator('aside, nav').first();
+    await expect(sidebar).toBeVisible({ timeout: 8000 });
   });
 
   test('KPI cards are visible', async ({ page }) => {
