@@ -1,19 +1,13 @@
 // =============================================================
 // aiController.js - AI Chat Assistant Controller
-// Full business context from ALL modules for Groq AI.
+// Uses local Ollama for fully offline AI — no cloud API needed.
 // =============================================================
 
 const logger = require('../config/logger');
 const { query } = require("../config/database");
 
-let groq = null;
-function getGroqClient() {
-  if (!groq && process.env.GROQ_API_KEY) {
-    const Groq = require("groq-sdk");
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  }
-  return groq;
-}
+const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+const OLLAMA_MODEL    = process.env.OLLAMA_MODEL    || 'llama3.2';
 
 const sq = async (sql, params = []) => {
   try { return await query(sql, params); }
@@ -462,16 +456,12 @@ exports.chat = async (req, res) => {
       return res.status(400).json({ error: 'Message too long (max 2000 characters)' });
     }
 
-    if (!getGroqClient()) {
-      return res.status(503).json({ error: 'AI feature not configured. Contact administrator.' });
-    }
-
     const tenantDb = process.env.DB_NAME || 'abyte_pos';
     const systemContext = await getSystemContext(tenantDb);
 
     const messages = [
       {
-        role: "system",
+        role: 'system',
         content: `You are an AI Business Assistant for AByte ERP system.
 You have COMPLETE real-time access to ALL business modules: Sales, Inventory, HR, Customers, Accounts, and System.
 
@@ -499,43 +489,57 @@ Instructions:
       });
     }
 
-    messages.push({ role: "user", content: message });
+    messages.push({ role: 'user', content: message });
 
-    const AI_TIMEOUT_MS = 30000;
-    const MAX_RETRIES = 2;
-    let completion;
-    let lastErr;
+    const AI_TIMEOUT_MS = 120000; // local models can be slower
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-      try {
-        completion = await getGroqClient().chat.completions.create(
-          { model: "llama-3.3-70b-versatile", messages, max_tokens: 800, temperature: 0.5 },
-          { signal: controller.signal }
-        );
-        clearTimeout(timer);
-        break;
-      } catch (err) {
-        clearTimeout(timer);
-        lastErr = err;
-        const isRetryable = !err.status || (err.status >= 500 && err.status < 600) || err.name === 'AbortError';
-        if (!isRetryable || attempt === MAX_RETRIES) break;
-        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    let ollamaRes;
+    try {
+      ollamaRes = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          messages,
+          stream: false,
+          options: { temperature: 0.5, num_predict: 800 },
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!ollamaRes.ok) {
+      const text = await ollamaRes.text().catch(() => '');
+      logger.error('Ollama error', { status: ollamaRes.status, body: text.slice(0, 200) });
+
+      if (ollamaRes.status === 404) {
+        return res.status(503).json({ error: `Model "${OLLAMA_MODEL}" not found. Run: ollama pull ${OLLAMA_MODEL}` });
       }
+      return res.status(503).json({ error: 'AI assistant is temporarily unavailable. Please try again.' });
     }
 
-    if (!completion) {
-      logger.error("AI Chat Error:", lastErr?.message);
-      if (lastErr?.status === 401) return res.status(503).json({ error: "Invalid Groq API key." });
-      if (lastErr?.status === 429) return res.status(503).json({ error: "Rate limit exceeded. Please wait a moment." });
-      if (lastErr?.name === 'AbortError') return res.status(503).json({ error: "AI request timed out. Please try again." });
-      return res.status(503).json({ error: "AI assistant is temporarily unavailable. Please try again." });
+    const data = await ollamaRes.json();
+    const reply = data.message?.content;
+
+    if (!reply) {
+      logger.error('Ollama returned empty response', { data });
+      return res.status(503).json({ error: 'AI returned an empty response. Please try again.' });
     }
 
-    res.json({ reply: completion.choices[0].message.content });
+    res.json({ reply });
+
   } catch (error) {
-    logger.error("AI Chat Error:", error.message);
-    res.status(503).json({ error: "AI assistant is temporarily unavailable. Please try again." });
+    if (error.name === 'AbortError') {
+      return res.status(503).json({ error: 'AI request timed out. The local model may be loading — please try again.' });
+    }
+    if (error.cause?.code === 'ECONNREFUSED') {
+      return res.status(503).json({ error: 'Ollama is not running. Start it with: ollama serve' });
+    }
+    logger.error('AI Chat Error:', error.message);
+    res.status(503).json({ error: 'AI assistant is temporarily unavailable. Please try again.' });
   }
 };
