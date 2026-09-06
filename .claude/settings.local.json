@@ -204,7 +204,23 @@
       "Bash(DB_HOST=localhost DB_PORT=3306 DB_USER=root DB_PASSWORD=12345 DB_NAME=abytedesk-arhum node -e \"const m=require\\('mariadb'\\); m.createConnection\\({host:'localhost',port:3306,user:'root',password:'12345',database:'abytedesk-arhum'}\\).then\\(c=>c.query\\('SELECT * FROM roles'\\).then\\(r=>{console.log\\(r\\);c.end\\(\\)}\\)\\)\")",
       "Bash(taskkill /PID 28544 /F)",
       "Bash(taskkill *)",
-      "PowerShell(Get-WmiObject *)"
+      "PowerShell(Get-WmiObject *)",
+      "Bash(eas whoami *)",
+      "Bash(eas build *)",
+      "Bash(sed -i 's/console\\\\.log\\(`\\\\[printers\\\\] Added:/process.stdout.write\\(`[printers] Added:/g; s/`\\\\\\(.*\\\\\\)`\\)$/`\\\\1`\\\\\\\\n`\\)/g' D:/abyte-desk/printer-agent/agent.js)",
+      "Bash(xargs -I{} gh release delete {} --repo MuhamadArhum/abyte-desk --yes)",
+      "Bash(npm test *)",
+      "Bash(npx playwright *)",
+      "Bash(echo \"Backend PID: $!\")",
+      "Bash(echo \"Frontend PID: $!\")",
+      "Bash(echo \"New backend PID: $!\")",
+      "Bash(echo \"PID: $!\")",
+      "Bash(pkill -f \"playwright\")",
+      "Bash(echo \"Backend starting in background, PID: $!\")",
+      "Bash(timeout 3)",
+      "Bash(:)",
+      "Bash(awk '{print $5}')",
+      "PowerShell(Get-PSDrive C | Select-Object Used, Free | ForEach-Object { \"Used: $\\([math]::Round\\($_.Used/1GB,1\\)\\)GB | Free: $\\([math]::Round\\($_.Free/1GB,1\\)\\)GB\" })"
     ]
   }
 }

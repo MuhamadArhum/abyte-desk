@@ -75,7 +75,7 @@ const AIWidgetInner = () => {
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.text }]
         })).slice(-10)
-      });
+      }, { timeout: 120_000 });
 
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
