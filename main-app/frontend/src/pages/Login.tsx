@@ -261,6 +261,7 @@ const Login = () => {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  tabIndex={1}
                   className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition-all duration-200 text-gray-800 placeholder-gray-400 text-sm"
                   placeholder="name@company.com"
                   required
@@ -283,6 +284,7 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  tabIndex={2}
                   className="w-full pl-11 pr-12 py-3.5 bg-white border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-emerald-500 outline-none transition-all duration-200 text-gray-800 placeholder-gray-400 text-sm"
                   placeholder="Enter your password"
                   required
