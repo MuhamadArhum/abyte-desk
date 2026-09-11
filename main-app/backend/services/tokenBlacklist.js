@@ -14,6 +14,16 @@ const q = (sql, params) => query(sql, params);
 // In-memory fallback (used if DB table not ready yet)
 const memoryFallback = new Set();
 
+// BUG-038: short-lived positive cache ("confirmed NOT blacklisted") so a
+// burst of requests on the same token doesn't hit the DB pool once per
+// request, and so a transient pool-exhaustion/timeout on isBlacklisted()
+// doesn't immediately fail-closed and log out a session that was verified
+// clean moments ago. cleared for a hash the instant it's blacklisted, so
+// logout still takes effect immediately for anyone hitting this instance.
+const CLEAN_CACHE_TTL_MS  = 15000; // how long a "clean" result is trusted outright
+const STALE_GRACE_MS      = 60000; // how long a stale "clean" result is reused if the DB check errors
+const cleanCache = new Map(); // hash -> verifiedAt (ms)
+
 // Ensure the blacklist table exists (called once at startup)
 async function ensureTable() {
   try {
@@ -52,6 +62,7 @@ function getTokenExpiry(token) {
 async function blacklistToken(token) {
   const hash      = hashToken(token);
   const expiresAt = getTokenExpiry(token);
+  cleanCache.delete(hash); // don't let a cached "clean" result mask this logout
 
   try {
     await q(
@@ -67,24 +78,49 @@ async function blacklistToken(token) {
 async function isBlacklisted(token) {
   const hash = hashToken(token);
 
-  // Check memory fallback first (fast)
+  // Check memory fallback first (fast) — tokens blacklisted while the DB was down
   if (memoryFallback.has(hash)) return true;
+
+  const verifiedAt = cleanCache.get(hash);
+  if (verifiedAt !== undefined && Date.now() - verifiedAt < CLEAN_CACHE_TTL_MS) {
+    return false; // verified clean recently enough to trust without a DB round-trip
+  }
 
   try {
     const rows = await q(
       'SELECT 1 FROM token_blacklist WHERE token_hash = ? AND expires_at > NOW() LIMIT 1',
       [hash]
     );
-    return rows.length > 0;
+    if (rows.length > 0) {
+      cleanCache.delete(hash);
+      return true;
+    }
+    cleanCache.set(hash, Date.now());
+    return false;
   } catch (err) {
+    // BUG-038: a saturated connection pool used to fail every in-flight
+    // request closed (logged out) the moment isBlacklisted() couldn't get a
+    // connection. If we verified this token clean within the last minute,
+    // trust that instead of punishing the user for a pool hiccup.
+    if (verifiedAt !== undefined && Date.now() - verifiedAt < STALE_GRACE_MS) {
+      logger.warn('[TokenBlacklist] DB check failed, reusing recent clean result', { error: err.message });
+      return false;
+    }
     logger.warn('[TokenBlacklist] DB check failed, treating as blacklisted for safety', { error: err.message });
-    // Fail-closed: on DB error deny the request to prevent revoked tokens from slipping through
+    // Fail-closed: on DB error with no recent clean result, deny the request
+    // to prevent revoked tokens from slipping through
     return true;
   }
 }
 
 // Periodic cleanup — call from server startup (every 1 hour)
 async function cleanExpired() {
+  // Prune stale cleanCache entries so the map doesn't grow unbounded
+  const cutoff = Date.now() - STALE_GRACE_MS;
+  for (const [hash, verifiedAt] of cleanCache) {
+    if (verifiedAt < cutoff) cleanCache.delete(hash);
+  }
+
   try {
     const result = await q('DELETE FROM token_blacklist WHERE expires_at < NOW()');
     if (result.affectedRows > 0) {

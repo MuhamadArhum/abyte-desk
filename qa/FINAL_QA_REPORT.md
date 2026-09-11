@@ -175,4 +175,29 @@ The system is suitable for **controlled LAN deployment** with the following cond
 
 ---
 
+## Addendum — Re-verification Pass (2026-09-11)
+
+A follow-up full-system test pass was run today ahead of finalizing the release. Findings:
+
+**All 4 "Must Fix Before Broader Deployment" items from the original verdict above are now closed:**
+- **BUG-013, BUG-014, BUG-030** — were actually fixed on 2026-09-05 in commit `6348279` ("fix: production readiness — resolve all P0/P1 bugs across ERP"), about an hour after this report was written; this document and `qa/BUGS.md` were simply never updated to reflect it. Re-verified directly against current code today — all three confirmed fixed.
+- **BUG-004** — the DB-level UNIQUE constraint was already in place (migration v24), but the CPV/CRV controller functions had no retry logic, so a losing concurrent request got a raw 500 instead of succeeding with a fresh number. Fixed today: added retry-on-collision (mirroring the existing `nextPVNumber()` pattern used for purchase vouchers) plus the `UNIQUE` keyword directly in `database/schema.sql`. Verified with real concurrent requests against a running instance — no duplicate voucher numbers, no errors, at realistic concurrency.
+
+**Automated test suite results (2026-09-11):**
+
+| Suite | Tests | Pass | Fail |
+|-------|-------|------|------|
+| Backend: Jest (unit + integration) | 120 | 120 | 0 |
+| Frontend: Vitest | 17 | 17 | 0 |
+| E2E: Playwright (all 9 modules) | 67 | 67 | 0 |
+| **Total** | **204** | **204** | **0** |
+
+The Playwright suite could not run at all before today — `main-app/e2e` had a stale hardcoded password in `global-setup.ts` and a `waitForURL()` call that never resolves for this app's client-side-routed login redirect. Both fixed (logged as BUG-039); all 67 specs pass afterward.
+
+**BUG-038 (P2) — fixed 2026-09-12:** stress-testing the BUG-004 fix under an artificial 20-simultaneous-request burst had exposed a pre-existing, unrelated issue — the DB connection pool (`connectionLimit: 10`) could exhaust under real concurrent load, and `tokenBlacklist.isBlacklisted()` failed closed on a pool timeout, logging out legitimate users with a false "Token has been revoked" 401. Fixed same day: `connectionLimit` raised to 25 and `acquireTimeout` cut from 30s to 8s (both env-overridable), plus a 15s positive cache in front of the blacklist check (with a 60s stale-result grace period on DB error) so a pool hiccup no longer punishes an already-verified-clean session; logout still invalidates the cache instantly. Re-ran the same 20-request burst that originally surfaced this: false-401 count dropped from 7/20 to 0/20. Full regression after the fix: Jest 120/120, Vitest 17/17, Playwright 67/67 — all still green.
+
+**Updated verdict: production-ready for controlled LAN deployment**, with no outstanding P0/P1/P2 blockers. Remaining open items (BUG-005, 019, 023, 031, 036, 037) are P3 — recommended follow-ups, not blockers. Full current status of every bug: `qa/BUGS.md`.
+
+---
+
 _End of Final QA Report_

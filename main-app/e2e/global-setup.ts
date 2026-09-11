@@ -10,12 +10,13 @@ async function globalSetup() {
   // Fill login form
   const emailInput = page.locator('input[type="email"]').or(page.locator('input[name="email"]')).first();
   await emailInput.waitFor({ timeout: 15000 });
-  await emailInput.fill('admin@abyte.com');
-  await page.locator('input[type="password"]').first().fill('admin123');
+  await emailInput.fill(process.env.TEST_EMAIL || 'admin@abyte.com');
+  await page.locator('input[type="password"]').first().fill(process.env.TEST_PASSWORD || 'admin123');
   await page.keyboard.press('Enter');
 
-  // Wait for navigation away from login page
-  await page.waitForURL(url => !url.toString().includes('login'), { timeout: 20000 });
+  // Wait for navigation away from login page (SPA route change — no real
+  // page load event fires, so poll location.href instead of waitForURL)
+  await page.waitForFunction(() => !window.location.href.includes('login'), null, { timeout: 20000 });
   await page.waitForTimeout(1500);
 
   // Save auth state

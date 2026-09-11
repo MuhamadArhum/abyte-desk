@@ -20,8 +20,8 @@ export async function login(page: Page) {
   await page.locator('input[type="password"]').first().fill(TEST_USER.password);
   await page.keyboard.press('Enter');
 
-  // Wait for navigation away from login
-  await page.waitForURL(url => !url.toString().includes('login'), { timeout: 15000 }).catch(() => {});
+  // Wait for navigation away from login (SPA route change — poll location.href)
+  await page.waitForFunction(() => !window.location.href.includes('login'), null, { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
 }
 

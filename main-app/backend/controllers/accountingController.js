@@ -11,6 +11,25 @@ const { logAction } = require('../services/auditService');
 
 const round2 = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
+// BUG-004: no row lock here on purpose — a FOR UPDATE on "last row by PK"
+// still deadlocks under concurrent INSERTs (InnoDB next-key locking on the
+// tail of the index). The UNIQUE constraint (migration v24) is the actual
+// safety net; callers just retry on ER_DUP_ENTRY / deadlock with a fresh
+// number, which is cheap and non-blocking.
+async function nextCPVNumber(conn) {
+  const [last] = await conn.query('SELECT voucher_number FROM payment_vouchers ORDER BY voucher_id DESC LIMIT 1');
+  const m = last?.voucher_number?.match(/(\d+)$/);
+  const n = m ? parseInt(m[1], 10) + 1 : 1;
+  return `CPV${String(n).padStart(6, '0')}`;
+}
+
+async function nextCRVNumber(conn) {
+  const [last] = await conn.query('SELECT voucher_number FROM receipt_vouchers ORDER BY voucher_id DESC LIMIT 1');
+  const m = last?.voucher_number?.match(/(\d+)$/);
+  const n = m ? parseInt(m[1], 10) + 1 : 1;
+  return `CRV${String(n).padStart(6, '0')}`;
+}
+
 const parsePagination = (page, limit) => {
   const pageNum = parseInt(page) || 1;
   const limitNum = Math.min(parseInt(limit) || 20, 100);
@@ -1132,11 +1151,25 @@ exports.createPaymentVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
+    // BUG-004: auto-generated numbers retry on collision; a manually
+    // supplied voucher_number is not regenerated and fails fast instead.
+    const autoNumber = !voucher_number;
     let voucherNumber = voucher_number;
-    if (!voucherNumber) {
-      const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM payment_vouchers WHERE voucher_number REGEXP '^CPV[0-9]+'");
-      const nextNumber = (maxRow?.max_num || 0) + 1;
-      voucherNumber = `CPV${String(nextNumber).padStart(6, '0')}`;
+    let result;
+    const MAX_RETRIES = 5;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (autoNumber) voucherNumber = await nextCPVNumber(conn);
+        result = await conn.query(
+          'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+        );
+        break; // success
+      } catch (insertErr) {
+        const retryable = insertErr.code === 'ER_DUP_ENTRY' || insertErr.errno === 1213 /* deadlock */;
+        if (autoNumber && retryable && attempt < MAX_RETRIES) continue;
+        throw insertErr;
+      }
     }
 
     // CPV: line account gets debited (expense increases)
@@ -1151,11 +1184,6 @@ exports.createPaymentVoucher = async (req, res) => {
         await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? -amount : amount, main_account_id]);
       }
     }
-
-    const result = await conn.query(
-      'INSERT INTO payment_vouchers (voucher_number, voucher_date, payment_to, payment_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, payment_to, payment_type || 'expense', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
-    );
 
     await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'PAYMENT_VOUCHER_CREATED', 'payment_vouchers', result.insertId, { voucher_number: voucherNumber, amount }, req.ip);
@@ -1397,11 +1425,25 @@ exports.createReceiptVoucher = async (req, res) => {
 
     await conn.beginTransaction();
 
+    // BUG-004: auto-generated numbers retry on collision; a manually
+    // supplied voucher_number is not regenerated and fails fast instead.
+    const autoNumber = !voucher_number;
     let voucherNumber = voucher_number;
-    if (!voucherNumber) {
-      const [maxRow] = await conn.query("SELECT MAX(CAST(SUBSTRING(voucher_number, 4) AS UNSIGNED)) as max_num FROM receipt_vouchers WHERE voucher_number REGEXP '^CRV[0-9]+'");
-      const nextNumber = (maxRow?.max_num || 0) + 1;
-      voucherNumber = `CRV${String(nextNumber).padStart(6, '0')}`;
+    let result;
+    const MAX_RETRIES = 5;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (autoNumber) voucherNumber = await nextCRVNumber(conn);
+        result = await conn.query(
+          'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
+        );
+        break; // success
+      } catch (insertErr) {
+        const retryable = insertErr.code === 'ER_DUP_ENTRY' || insertErr.errno === 1213 /* deadlock */;
+        if (autoNumber && retryable && attempt < MAX_RETRIES) continue;
+        throw insertErr;
+      }
     }
 
     // CRV: line account gets credited (income increases)
@@ -1416,11 +1458,6 @@ exports.createReceiptVoucher = async (req, res) => {
         await conn.query('UPDATE accounts SET current_balance = current_balance + ? WHERE account_id = ?', [mainDebitInc ? amount : -amount, main_account_id]);
       }
     }
-
-    const result = await conn.query(
-      'INSERT INTO receipt_vouchers (voucher_number, voucher_date, received_from, receipt_type, account_id, main_account_id, amount, payment_method, cheque_number, bank_account_id, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [voucherNumber, voucher_date, received_from, receipt_type || 'customer', account_id, main_account_id || null, amount, payment_method || 'cash', cheque_number || null, bank_account_id || null, description || null, req.user.user_id]
-    );
 
     await conn.commit();
     await logAction(req.user.user_id, req.user.name, 'RECEIPT_VOUCHER_CREATED', 'receipt_vouchers', result.insertId, { voucher_number: voucherNumber, amount }, req.ip);

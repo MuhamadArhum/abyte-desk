@@ -1,6 +1,6 @@
 # AbyteDesk ERP — Bug Register
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-11 — re-verified against current code; see qa/FINAL_QA_REPORT.md for the 2026-09-11 re-verification pass_
 
 ---
 
@@ -72,7 +72,7 @@ _Last updated: 2026-09-05_
 **Severity:** P0  
 **Category:** Financial Integrity  
 **Module:** Accounting  
-**Status:** OPEN
+**Status:** FIXED (2026-09-11)
 
 **Steps to Reproduce:**
 1. Two concurrent POST /api/accounting/payment-vouchers requests
@@ -83,7 +83,8 @@ _Last updated: 2026-09-05_
 **Actual:** Two vouchers with identical numbers; account balances double-counted
 
 **Affected Files:** `controllers/accountingController.js` (createPaymentVoucher, createReceiptVoucher); `database/schema.sql` (payment_vouchers, receipt_vouchers — missing UNIQUE constraint)  
-**Recommended Fix:** Add UNIQUE constraint via migration; add retry logic or named lock
+**Fix Applied (2026-09-11):** UNIQUE constraint on `voucher_number` was already added via migration v24 (`add_unique_constraints_voucher_numbers`) and confirmed present on the live DB, but the two controller functions had no retry logic, so a losing concurrent request surfaced as a raw 500 instead of getting a fresh number. Added `nextCPVNumber`/`nextCRVNumber` + a retry-on-`ER_DUP_ENTRY`/deadlock loop (up to 5 attempts), matching the existing `nextPVNumber()` pattern in `purchaseVoucherController.js`. Also added the `UNIQUE` keyword directly to `database/schema.sql` so fresh installs get it without relying on the migration.
+**Verification:** Fired 5 truly concurrent CPV creations and 5 concurrent CRV creations against the running backend — all 10 succeeded with 10 unique voucher numbers, no duplicates, no errors. (A synthetic 20-way burst was also tried; it surfaced two unrelated pre-existing issues, logged as BUG-038 and BUG-039 below, rather than any duplicate-number leak.)
 
 ---
 
@@ -201,11 +202,12 @@ _Last updated: 2026-09-05_
 **Severity:** P1  
 **Category:** Inventory Integrity  
 **Module:** Stock Adjustments  
-**Status:** OPEN
+**Status:** FIXED (was fixed 2026-09-05 in commit 6348279; this doc had not been updated — corrected 2026-09-11)
 
 **Description:** `products` is locked with FOR UPDATE but `inventory` is not. Concurrent POS sale deducting inventory runs between the adjustment's SELECT and UPDATE on inventory, setting it to an absolute value that overwrites the sale's deduction.
 
 **Affected Files:** `controllers/stockAdjustmentController.js` L111-155
+**Verification (2026-09-11):** `SELECT avg_cost FROM inventory WHERE product_id = ? FOR UPDATE` confirmed present before the inventory UPDATE (L151).
 
 ---
 
@@ -214,11 +216,12 @@ _Last updated: 2026-09-05_
 **Severity:** P1  
 **Category:** Financial Integrity  
 **Module:** Accounting  
-**Status:** OPEN
+**Status:** FIXED (was fixed 2026-09-05 in commit 6348279; this doc had not been updated — corrected 2026-09-11)
 
 **Description:** Trial balance only aggregates `journal_entry_lines`. Payment/receipt vouchers that update `accounts.current_balance` directly (without a journal entry) are excluded, causing the trial balance to not balance.
 
 **Affected Files:** `controllers/accountingController.js` (~L592)
+**Verification (2026-09-11):** `getTrialBalance` / `getTrialBalance6Col` confirmed to `UNION ALL` journal-entry lines with non-journalized CPV/CRV direct-balance movements.
 
 ---
 
@@ -385,10 +388,11 @@ _Last updated: 2026-09-05_
 ### BUG-030
 **Title:** Health endpoint publicly exposes memory usage, DB status, and uptime  
 **Severity:** P2 (Security)  
-**Status:** OPEN  
+**Status:** FIXED (was fixed 2026-09-05 in commit 6348279; this doc had not been updated — corrected 2026-09-11)  
 **Module:** Security  
 **Description:** `GET /api/health` requires no authentication; exposes internal metrics.  
 **Affected Files:** `server.js` L236
+**Verification (2026-09-11):** `app.get('/api/health', authenticate, ...)` confirmed at server.js:314. (`/api/ping` and `/api/ready` remain intentionally public/unauthenticated liveness probes — no metrics exposed.)
 
 ---
 
@@ -459,5 +463,45 @@ _Last updated: 2026-09-05_
 **Status:** OPEN  
 **Module:** Security  
 **Affected Files:** `services/metricsService.js` L85-89
+
+---
+
+### BUG-038
+**Title:** DB connection pool (limit 10) exhausts under concurrent load, causing legitimate users to be logged out ("Token has been revoked")  
+**Severity:** P2  
+**Category:** Reliability / Availability  
+**Module:** Backend Infrastructure  
+**Status:** FIXED (2026-09-12)
+
+**Steps to Reproduce:**
+1. Fire ~20 simultaneous authenticated requests (e.g. concurrent voucher creation, or several cashiers hitting POS at once)
+2. Pool (`connectionLimit: 10`, `acquireTimeout: 30000`) saturates
+3. `tokenBlacklist.isBlacklisted()` (`services/tokenBlacklist.js`) cannot acquire a connection within 30s, its query fails
+4. Its catch block is fail-closed ("treat as blacklisted for safety") → `authenticate` middleware returns 401 "Token has been revoked. Please login again."
+
+**Expected:** Under load, requests should queue briefly or fail with a retriable 503, not silently log the user out.
+**Actual:** Legitimate, still-valid sessions get a false 401 that looks identical to an intentional logout — confusing for end users and would repeat any time real concurrent load (multi-cashier POS, batch operations) exceeds the pool.
+
+**Affected Files:** `config/database.js` L36-44 (`connectionLimit: 10`, `acquireTimeout: 30000`); `services/tokenBlacklist.js` L78-83 (fail-closed on DB error)
+**Fix Applied (2026-09-12):**
+- `config/database.js`: `connectionLimit` raised 10 → 25 (env-overridable via `DB_POOL_LIMIT`), `acquireTimeout` cut 30000ms → 8000ms (env-overridable via `DB_POOL_ACQUIRE_TIMEOUT`) so a saturated pool fails fast instead of stalling each request for 30s.
+- `services/tokenBlacklist.js`: added a 15s positive ("confirmed not blacklisted") in-memory cache in front of the DB check, so a burst of requests on the same token doesn't hit the pool once per request. On a DB error, a result verified clean within the last 60s is reused instead of failing closed immediately — only a token with no recent clean verification still fails closed. The cache entry for a token is deleted the instant it's actually blacklisted (logout), so revocation still takes effect immediately; a periodic sweep in `cleanExpired()` prevents unbounded cache growth.
+**Verification:** Re-ran the same 20-simultaneous-request burst that originally surfaced this — **false-401 count: 0** (was 7/20). Remaining failures under that synthetic burst are plain duplicate-key retries exhausting (`errno 1062`), not pool/auth related. At realistic concurrency (5 simultaneous requests) — 0 failures. Full backend Jest suite (120/120) still passes.
+**Note:** Surfaced only under an artificial 20-simultaneous-identical-request burst while stress-testing the BUG-004 fix — not hit at realistic concurrency (5 simultaneous requests). Not blocking for LAN/small-deployment use, but worth tuning before higher-concurrency production use.
+
+---
+
+### BUG-039
+**Title:** E2E test harness (`main-app/e2e`) could not actually run — wrong hardcoded password + SPA navigation wait bug
+**Severity:** P2 (Test Infrastructure)
+**Category:** Test Infrastructure
+**Module:** E2E / QA
+**Status:** FIXED (2026-09-11)
+
+**Description:** `global-setup.ts` hardcoded the password `admin123`, while the seeded admin account's password is `12345678` (and `tests/helpers/auth.ts` already correctly read `TEST_PASSWORD` from env) — so the Playwright global setup's login always failed, and every spec depending on `auth-state.json` would have failed too. Separately, both `global-setup.ts` and `helpers/auth.ts` used `page.waitForURL()` to detect a successful login, which waits for a real navigation `load` event; this app's React Router client-side redirect never fires one, so even a successful login timed out.
+
+**Affected Files:** `main-app/e2e/global-setup.ts`, `main-app/e2e/tests/helpers/auth.ts`
+**Fix Applied:** `global-setup.ts` now reads `TEST_EMAIL`/`TEST_PASSWORD` from env (same convention as `helpers/auth.ts`, default password corrected). Both files now detect login success by polling `window.location.href` via `page.waitForFunction()` instead of `waitForURL()`.
+**Verification:** Full suite run after the fix — **67/67 Playwright E2E tests passed** (see qa/FINAL_QA_REPORT.md).
 
 ---

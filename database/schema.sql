@@ -573,7 +573,7 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
 -- Payment Vouchers
 CREATE TABLE IF NOT EXISTS payment_vouchers (
     voucher_id INT PRIMARY KEY AUTO_INCREMENT,
-    voucher_number VARCHAR(50) NOT NULL,
+    voucher_number VARCHAR(50) NOT NULL UNIQUE,
     voucher_date DATE NOT NULL,
     payment_to VARCHAR(200) NOT NULL,
     payment_type ENUM('supplier','expense','staff','other') DEFAULT 'expense',
@@ -599,7 +599,7 @@ CREATE TABLE IF NOT EXISTS payment_vouchers (
 -- Receipt Vouchers
 CREATE TABLE IF NOT EXISTS receipt_vouchers (
     voucher_id INT PRIMARY KEY AUTO_INCREMENT,
-    voucher_number VARCHAR(50) NOT NULL,
+    voucher_number VARCHAR(50) NOT NULL UNIQUE,
     voucher_date DATE NOT NULL,
     received_from VARCHAR(200) NOT NULL,
     receipt_type ENUM('customer','sales','other') DEFAULT 'customer',

@@ -39,9 +39,14 @@ const pool = mariadb.createPool({
   user:             process.env.DB_USER     || 'root',
   password:         process.env.DB_PASSWORD || '',
   database:         DB_NAME,
-  connectionLimit:  10,
+  // BUG-038: 10 was too small under real concurrent load (multi-cashier POS,
+  // batch operations) — the pool would saturate and every dependent query,
+  // including the token-blacklist check, would hang for the full
+  // acquireTimeout before failing. Raised the ceiling and cut the timeout so
+  // a saturated pool fails fast instead of stalling each request for 30s.
+  connectionLimit:  parseInt(process.env.DB_POOL_LIMIT)           || 25,
   idleTimeout:      60000,
-  acquireTimeout:   30000,
+  acquireTimeout:   parseInt(process.env.DB_POOL_ACQUIRE_TIMEOUT) || 8000,
   connectTimeout:   10000,
   bigIntAsNumber:   true,
   insertIdAsNumber: true,
